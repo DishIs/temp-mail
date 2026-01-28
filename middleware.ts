@@ -7,7 +7,7 @@ const i18nMiddleware = createMiddleware(routing);
 export default async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  if (path === '/blog' || path.startsWith('/blog/') || path === '/docs' || path === '/pricing') {
+  if (path === '/blog' || path.startsWith('/blog/') || path === '/docs' || path === '/pricing' || path === '/auth') {
     return NextResponse.next(); // skip next-intl redirect for blog
   }
 

@@ -4,19 +4,17 @@
 import { useTranslations } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
-import { Moon, Sun, Menu as MenuIconLucide, X as CloseIcon, Gift } from "lucide-react";
+import { Moon, Sun, Menu as MenuIconLucide, X as CloseIcon } from "lucide-react";
 import Link from 'next/link';
 import { FaDiscord, FaGithub, FaPatreon } from "react-icons/fa";
 import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
-import Navigation from "./Navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AuthPopup } from './AuthPopup';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuLabel } from './ui/dropdown-menu';
-import { LATEST_CHANGELOG_VERSION } from "@/lib/changelog";
-import { WhatsNewModal } from "./WhatsNewModal";
 import { signOut, useSession } from 'next-auth/react';
 import { Session } from 'next-auth';
+import { usePathname } from 'next/navigation';
 
 export function AppHeader({ initialSession }: { initialSession: Session | null; }) {
   const { data: _, status } = useSession()
@@ -26,22 +24,7 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-
-  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
-  const [hasSeenLatest, setHasSeenLatest] = useState(true);
-
-  useEffect(() => {
-    const seenVersion = localStorage.getItem('seenChangelogVersion');
-    if (seenVersion !== LATEST_CHANGELOG_VERSION) {
-      setHasSeenLatest(false);
-    }
-  }, []);
-
-  const openWhatsNew = () => {
-    setIsWhatsNewOpen(true);
-    localStorage.setItem('seenChangelogVersion', LATEST_CHANGELOG_VERSION);
-    setHasSeenLatest(true);
-  };
+  const pathname = usePathname();
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -69,16 +52,39 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
     };
   }, [menuOpen]);
 
+  // Determine user status
+  const isLoggedIn = status === 'authenticated' && !!session?.user;
+  // @ts-ignore
+  const userPlan = session?.user?.plan || 'free';
+  const isPro = userPlan === 'pro';
+
+  const NavLinks = () => (
+    <>
+      <Link href="/dashboard" className={`text-sm font-medium transition-colors hover:text-primary ${pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}>
+        Dashboard
+      </Link>
+      
+      {!isLoggedIn && (
+         <Link href="/blog" className={`text-sm font-medium transition-colors hover:text-primary ${pathname.startsWith('/blog') ? 'text-primary' : 'text-muted-foreground'}`}>
+            Blog
+         </Link>
+      )}
+
+      {/* Show Pricing for Logged Out OR Free users. Hide for Pro. */}
+      {(!isLoggedIn || !isPro) && (
+        <Link href="/pricing" className={`text-sm font-medium transition-colors hover:text-primary ${pathname === '/pricing' ? 'text-primary' : 'text-muted-foreground'}`}>
+          Pricing
+        </Link>
+      )}
+    </>
+  );
+
   const renderAuthButton = () => {
     if (status === 'loading') {
       return <div className="h-10 w-10 bg-muted rounded-full animate-pulse"></div>;
     }
 
-    if (status === 'authenticated' && session?.user) {
-      // @ts-ignore - Assuming 'plan' is a custom property on the session user object
-      const userPlan = session.user?.plan || 'free';
-      const isPro = userPlan === 'pro';
-
+    if (isLoggedIn && session?.user) {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -115,8 +121,7 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><a href="https://whatsyour.info/billing" target="_blank" rel="noopener noreferrer">Billing</a></DropdownMenuItem>
-            <DropdownMenuItem asChild><a href="https://whatsyour.info/profile" target="_blank" rel="noopener noreferrer">WYI Profile</a></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
             {!isPro && (
               <div className="p-1">
@@ -150,25 +155,22 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
             <span className="text-base block xs:hidden font-bold whitespace-nowrap">FC.E</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-2">
-            <Navigation />
-            {renderAuthButton()}
-            <Button variant="ghost" size="icon" onClick={openWhatsNew} className="relative p-2" aria-label={'whats new'}>
-              <Gift className="h-5 w-5" />
-              {!hasSeenLatest && (
-                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
-                </span>
-              )}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="p-2" aria-label={t('aria_toggle_theme')}>
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">{t('aria_toggle_theme')}</span>
-            </Button>
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-6">
+            <nav className="flex items-center gap-6">
+                <NavLinks />
+            </nav>
+            <div className="flex items-center gap-2">
+                {renderAuthButton()}
+                <Button variant="ghost" size="icon" onClick={toggleTheme} className="p-2" aria-label={t('aria_toggle_theme')}>
+                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">{t('aria_toggle_theme')}</span>
+                </Button>
+            </div>
           </div>
 
+          {/* Mobile Actions */}
           <div className="md:hidden flex items-center gap-2">
             {renderAuthButton()}
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="p-2" aria-label={t('aria_toggle_theme')}>
@@ -182,6 +184,7 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
           </div>
         </div>
 
+        {/* Mobile Menu */}
         <AnimatePresence>
           {menuOpen && (
             <>
@@ -190,18 +193,16 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
                 <button className="ml-auto mb-4 p-1 rounded hover:bg-accent" onClick={() => setMenuOpen(false)} aria-label={t('aria_close_menu')}>
                   <CloseIcon className="h-5 w-5" />
                 </button>
-                <div className="flex flex-col gap-2">
-                  <Link href="/docs" className="text-sm hover:underline py-1" onClick={handleMobileLinkClick}>{t('api_docs')}</Link>
-                  <Link href="/blog" className="text-sm hover:underline py-1" onClick={handleMobileLinkClick}>Blog</Link>
-                  <a href="https://github.com/DishIs/temp-mail" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline flex items-center gap-2 py-1" onClick={handleMobileLinkClick}><FaGithub className="h-4 w-4" /> {t('github')}</a>
-                  <a href="https://www.patreon.com/maildrop" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline flex items-center gap-2 py-1" onClick={handleMobileLinkClick}><FaPatreon className="h-4 w-4" /> {t('patreon')}</a>
-                  <a href="https://discord.gg/Ztp7kT2QBz" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline flex items-center gap-2 py-1" onClick={handleMobileLinkClick}><FaDiscord className="h-4 w-4" /> {t('discord')}</a>
-                  <Button variant="ghost" onClick={() => { openWhatsNew(); handleMobileLinkClick(); }} className="relative p-2 w-full justify-start gap-2 mt-auto" aria-label={'whats new'}>
-                    <Gift className="h-5 w-5" /> Updates
-                    {!hasSeenLatest && <span className="absolute top-2 right-2 flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span></span>}
-                  </Button>
-
-                  <Navigation />
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3 border-b pb-4">
+                    <NavLinks />
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <Link href="/docs" className="text-sm hover:underline py-1" onClick={handleMobileLinkClick}>{t('api_docs')}</Link>
+                    <a href="https://github.com/DishIs/temp-mail" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline flex items-center gap-2 py-1" onClick={handleMobileLinkClick}><FaGithub className="h-4 w-4" /> {t('github')}</a>
+                    <a href="https://discord.gg/Ztp7kT2QBz" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline flex items-center gap-2 py-1" onClick={handleMobileLinkClick}><FaDiscord className="h-4 w-4" /> {t('discord')}</a>
+                  </div>
                 </div>
               </motion.div>
             </>
@@ -209,7 +210,6 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
         </AnimatePresence>
       </header>
       <AuthPopup isOpen={isPopupOpen} onClose={() => setIsPopupOpen(false)} />
-      <WhatsNewModal isOpen={isWhatsNewOpen} onClose={() => setIsWhatsNewOpen(false)} />
     </>
   );
 }

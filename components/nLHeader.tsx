@@ -1,112 +1,213 @@
-"use client"
+// components/app-header.tsx
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { useTheme } from "next-themes"
-import { Moon, Sun, Menu as MenuIconLucide } from "lucide-react" // Renamed to avoid conflict if you ever use a Menu component
-import Link from "next/link"
-import { FaDiscord, FaGithub, FaPatreon } from "react-icons/fa"
-import { useState, useCallback } from "react" // Added useCallback
-import Image from "next/image"
+import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
+import { Moon, Sun, Menu as MenuIconLucide } from "lucide-react";
+import Link from "next/link";
+import { FaDiscord, FaGithub } from "react-icons/fa";
+import { useState, useCallback } from "react";
+import Image from "next/image";
+import { signOut, useSession } from "next-auth/react";
+import { Session } from "next-auth";
+import { usePathname } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-export function AppHeader() {
-  const { theme, setTheme } = useTheme()
-  const [menuOpen, setMenuOpen] = useState(false)
+export function AppHeader({ initialSession }: { initialSession: Session | null }) {
+  const { data: _, status } = useSession();
+  // Use initialSession for server-side rendering support, but session status for client interactions
+  const session = initialSession; 
+  const { theme, setTheme } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }, [theme, setTheme])
+    setTheme(theme === "dark" ? "light" : "dark");
+  }, [theme, setTheme]);
 
   const toggleMobileMenu = useCallback(() => {
-    setMenuOpen((prev) => !prev)
-  }, [])
+    setMenuOpen((prev) => !prev);
+  }, []);
 
-  // Optional: Close mobile menu when a link is clicked
   const handleMobileLinkClick = useCallback(() => {
     setMenuOpen(false);
   }, []);
 
+  // Determine user status
+  const isLoggedIn = status === 'authenticated' && !!session?.user;
+  // @ts-ignore - Assuming 'plan' exists on user
+  const userPlan = session?.user?.plan || 'free';
+  const isPro = userPlan === 'pro';
+
+  // Helper for Nav Links with Active State
+  const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
+    const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+    return (
+      <Link
+        href={href}
+        onClick={menuOpen ? handleMobileLinkClick : undefined}
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          isActive ? 'text-primary' : 'text-muted-foreground'
+        }`}
+      >
+        {children}
+      </Link>
+    );
+  };
+
+  const NavLinksGroup = () => (
+    <>
+      <NavLink href="/dashboard">Dashboard</NavLink>
+      
+      {!isLoggedIn && (
+         <NavLink href="/blog">Blog</NavLink>
+      )}
+
+      {/* Show Pricing for Logged Out OR Free users. Hide for Pro. */}
+      {(!isLoggedIn || !isPro) && (
+        <NavLink href="/pricing">Pricing</NavLink>
+      )}
+    </>
+  );
+
+  const RenderAuthButton = () => {
+    if (status === 'loading') {
+      return <div className="h-9 w-9 bg-muted rounded-full animate-pulse"></div>;
+    }
+
+    if (isLoggedIn && session?.user) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0 ml-2">
+              {/* Avatar Container */}
+              <div className={`relative h-full w-full rounded-full border-2 ${isPro ? 'border-yellow-400' : 'border-slate-300'}`}>
+                {session.user.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name || 'User avatar'}
+                    className="rounded-full object-cover h-full w-full"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full w-full bg-muted rounded-full text-muted-foreground text-xs">
+                    {session.user.name?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
+              {/* Plan Badge on Avatar */}
+              <div className="absolute -bottom-1.5 w-full flex justify-center">
+                <div className={`rounded-sm px-[3px] py-[0.5px] text-[8px] leading-none font-bold border ${isPro ? 'bg-yellow-400 text-black border-yellow-500' : 'bg-secondary text-secondary-foreground border-border'}`}>
+                  {isPro ? 'PRO' : 'FREE'}
+                </div>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{session.user.name}</p>
+                <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {!isPro && (
+              <div className="p-1">
+                <Button asChild className="w-full h-8" size="sm">
+                  <Link href="/pricing">Upgrade to Pro</Link>
+                </Button>
+              </div>
+            )}
+            <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer">Logout</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
+    return (
+        <Button asChild size="sm" className="ml-2">
+            <Link href="/auth">Login</Link>
+        </Button>
+    );
+  };
+
   return (
-    // Consider w-full instead of max-w-[100vw] if container handles max width
-    <header className="border-b w-full">
+    <header className="border-b w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2" aria-label="Home" onClick={menuOpen ? handleMobileLinkClick : undefined}>
             <Image
-              src="/logo.webp" // Ensure this path is correct in your public folder
-              alt="FreeCustom.Email Logo" // Slightly more descriptive alt
-              width={40}
-              height={40}
-              className="h-8 w-8 sm:h-10 sm:w-10" // These sizes are fine
-              priority={false} // Correct for non-LCP images
+              src="/logo.webp"
+              alt="FreeCustom.Email Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+              priority
             />
-          <span className="text-base sm:text-lg md:text-xl font-bold whitespace-nowrap">
+          <span className="text-base sm:text-lg font-bold whitespace-nowrap hidden xs:block">
             FreeCustom.Email
+          </span>
+           <span className="text-base font-bold whitespace-nowrap xs:hidden">
+            FC.E
           </span>
         </Link>
 
-        {/* Desktop Actions */}
-        <div className="hidden md:flex items-center gap-4">
-          <Button variant="outline" className="text-sm px-4 py-2" asChild>
-            <a
-              href="https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="whitespace-nowrap"
-              aria-label="View API documentation"
-            >
-              API
-            </a>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="p-2"
-            asChild
-          >
-            <a
-              href="https://discord.gg/EDmxUbym"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Jion our Discord community"
-            >
-              <FaDiscord className="h-5 w-5" />
-            </a>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme} // Use useCallback version
-            className="p-2"
-            aria-label="Toggle theme"
-          >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
-          </Button>
+        {/* Desktop Nav & Actions */}
+        <div className="hidden md:flex items-center gap-6">
+          <nav className="flex items-center gap-6">
+             <NavLinksGroup />
+          </nav>
+          
+          <div className="flex items-center border-l pl-4 ml-2 gap-2">
+             <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-9 w-9"
+                aria-label="Toggle theme"
+              >
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+              <RenderAuthButton />
+          </div>
         </div>
 
-        {/* Mobile Menu Toggle & Theme Toggle */}
+        {/* Mobile Menu Toggle & Actions */}
         <div className="md:hidden flex items-center gap-2">
+          <RenderAuthButton />
+          
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleTheme} // Use useCallback version
-            className="p-2"
+            onClick={toggleTheme}
+            className="h-9 w-9"
             aria-label="Toggle theme"
           >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
+
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleMobileMenu} // Use useCallback version
-            className="p-2"
-            aria-label={menuOpen ? "Close mobile menu" : "Open mobile menu"} // Dynamic aria-label
-            aria-expanded={menuOpen} // Indicate expanded state
-            // aria-controls="mobile-menu-dropdown" // If dropdown had an id
+            onClick={toggleMobileMenu}
+            className="h-9 w-9"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
           >
             <MenuIconLucide className="h-5 w-5" />
           </Button>
@@ -115,56 +216,38 @@ export function AppHeader() {
 
       {/* Mobile Dropdown */}
       {menuOpen && (
-        // id="mobile-menu-dropdown" // For aria-controls
-        <nav // Using nav for semantic navigation links
-          className="md:hidden px-4 pb-4 pt-2 flex flex-col gap-3 bg-background border-t"
-        >
-          <Link href="/docs" className="text-sm hover:underline py-1" aria-label="View Pricing" onClick={handleMobileLinkClick}>
-            API - Docs
-          </Link>
-          <a
-            href="https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm hover:underline py-1"
-            aria-label="View API documentation"
-            onClick={handleMobileLinkClick}
-          >
-            API
-          </a>
-          <a
-            href="https://github.com/DishIs/temp-mail"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm hover:underline flex items-center gap-1 py-1"
-            aria-label="View GitHub repository"
-            onClick={handleMobileLinkClick}
-          >
-            <FaGithub className="h-4 w-4" /> GitHub
-          </a>
-          <a
-            href="https://www.patreon.com/maildrop"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm hover:underline flex items-center gap-1 py-1"
-            aria-label="View Patreon"
-            onClick={handleMobileLinkClick}
-          >
-            <FaPatreon className="h-4 w-4" /> Patreon
-          </a>
-          <a
-            href="https://discord.gg/EDmxUbym"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm hover:underline flex items-center gap-1 py-1"
-            aria-label="Join our Discord community"
-            onClick={handleMobileLinkClick}
-          >
-            <FaDiscord className="h-4 w-4" /> Discord
-          </a>
-
+        <nav className="md:hidden px-4 pb-4 pt-2 flex flex-col gap-4 bg-background border-b shadow-sm">
+          <div className="flex flex-col gap-3 pt-2">
+            <NavLinksGroup />
+          </div>
+          
+          <div className="border-t pt-3 flex flex-col gap-2">
+            <Link href="/docs" className="text-sm text-muted-foreground hover:text-primary transition-colors py-1" onClick={handleMobileLinkClick}>
+                API Documentation
+            </Link>
+            <div className="flex gap-4 pt-1">
+                <a
+                    href="https://github.com/DishIs/temp-mail"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    aria-label="GitHub"
+                >
+                    <FaGithub className="h-5 w-5" />
+                </a>
+                <a
+                    href="https://discord.gg/EDmxUbym"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    aria-label="Discord"
+                >
+                    <FaDiscord className="h-5 w-5" />
+                </a>
+            </div>
+          </div>
         </nav>
       )}
     </header>
-  )
+  );
 }

@@ -1,3 +1,4 @@
+// components/email-box.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -22,7 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
-import { UpsellModal } from "./upsell-modal"; // <-- Import Upsell Modal
+import { UpsellModal } from "./upsell-modal"; 
 
 const FREE_DOMAINS = [
   "saleis.live", "arrangewith.me", "areueally.info", "ditapi.info",
@@ -232,13 +233,38 @@ export function EmailBox({
     setEmail(`${prefix}@${newDomain}`);
   };
 
-  const shortcuts = {
-    'r': () => refreshInbox(),
-    'c': () => copyEmail(),
-    'd': () => deleteEmail(),
-    'n': () => isAuthenticated && changeEmail(),
+  // --- KEYBOARD SHORTCUTS HANDLER ---
+  // Helper to intercept shortcuts if user is not Pro
+  const handleProShortcut = (action: () => void, featureName: string) => {
+    if (isPro) {
+      action();
+    } else {
+      openUpsell(`Keyboard Shortcut: ${featureName}`);
+    }
   };
-  useKeyboardShortcuts(shortcuts, userPlan || 'anonymous');
+
+  // Helper for Authenticated-only shortcuts (that might not be Pro)
+  const handleAuthShortcut = (action: () => void) => {
+      if(isAuthenticated) {
+          action();
+      } else {
+           // If simple auth needed, maybe just focus email or show simple error?
+           // For now, changeEmail handles its own auth check inside.
+           action();
+      }
+  }
+
+  const shortcuts = {
+    'r': () => refreshInbox(), // Always allowed
+    'c': () => copyEmail(),    // Always allowed
+    // Gated Shortcuts:
+    'd': () => handleProShortcut(deleteEmail, "Delete / Burn Email"), 
+    'n': () => handleProShortcut(changeEmail, "Quick Edit"), 
+  };
+  
+  // We pass 'pro' to the hook so it *always* listens to keys, 
+  // allowing us to intercept them in the functions above and show the Upsell modal.
+  useKeyboardShortcuts(shortcuts, 'pro'); 
 
   const fetchToken = async (): Promise<string | null> => {
     try {
@@ -431,7 +457,14 @@ export function EmailBox({
                     return (
                       <DropdownMenuItem
                         key={domain}
-                        onSelect={() => handleDomainChange(domain)}
+                        onSelect={() => {
+                            // Gate Custom Domains for non-Pro
+                            if(isCustom && !isPro) {
+                                openUpsell("Custom Domains");
+                                return;
+                            }
+                            handleDomainChange(domain);
+                        }}
                         className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-muted dark:hover:bg-zinc-800"
                       >
                         <div className="flex items-center gap-2">
@@ -442,7 +475,15 @@ export function EmailBox({
                           title={primaryDomain === domain ? t('unset_primary') : t('set_primary')}
                           variant="ghost"
                           size="icon"
-                          onClick={(e) => { e.stopPropagation(); handlePrimaryDomainChange(domain); }}
+                          onClick={(e) => { 
+                              e.stopPropagation(); 
+                              // Gate "Set Primary" functionality for non-Pro
+                              if (!isPro) {
+                                  openUpsell("Priority Domain Settings");
+                                  return;
+                              }
+                              handlePrimaryDomainChange(domain); 
+                            }}
                           aria-label={`Set ${domain} as primary`}
                           className="hover:bg-transparent"
                         >
@@ -495,15 +536,15 @@ export function EmailBox({
                 <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => { changeEmail(); handleNewDomainUpdates(); }} aria-label={isEditing ? t('save') : t('change')}>
                   {!session?.user ? <RotateCwSquare className="mr-2 h-4 w-4" /> : isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
                   <span className="hidden sm:inline">{!session?.user ? t('change') : isEditing ? t('save') : t('change')}</span>
-                  {isAuthenticated && <Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>}
-                  <AnimatePresence>
+                  <Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>
+                  {/* <AnimatePresence>
                     {!discoveredUpdates.newDomains && (
                       <motion.span key="new-badge" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="text-[10px] bg-black text-white rounded-full px-1.5">{t('new')}</motion.span>
                     )}
-                  </AnimatePresence>
+                  </AnimatePresence> */}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Only for PRO users'}</p></TooltipContent>
+              <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -513,19 +554,30 @@ export function EmailBox({
                   <Badge variant="outline" className="ml-auto hidden sm:block">D</Badge>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : (isPro) ? 'Press D to delete' : 'Only for PRO users'}</p></TooltipContent>
+              <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : (isPro) ? 'Press D to delete' : 'Shortcut is Pro Only'}</p></TooltipContent>
             </Tooltip>
-            {(isPro) && (
-              <Tooltip>
+            
+            {/* MANAGE INBOXES: Always visible, but gated logic */}
+            <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" className="flex-1" onClick={() => setIsManageModalOpen(true)} aria-label="Manage all inboxes">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => {
+                        if (isPro) {
+                            setIsManageModalOpen(true);
+                        } else {
+                            openUpsell("Inbox Management");
+                        }
+                    }} 
+                    aria-label="Manage all inboxes"
+                  >
                     <ListOrdered className="mr-2 h-4 w-4" />
                     <span className="hidden sm:inline">Manage Inboxes</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>View and manage your full inbox history.</p></TooltipContent>
-              </Tooltip>
-            )}
+            </Tooltip>
           </div>
         </TooltipProvider>
         
