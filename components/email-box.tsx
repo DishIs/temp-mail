@@ -1,9 +1,8 @@
-// components/email-box.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { getCookie, setCookie } from "cookies-next";
-import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
+import { UpsellModal } from "./upsell-modal"; // <-- Import Upsell Modal
 
 const FREE_DOMAINS = [
   "saleis.live", "arrangewith.me", "areueally.info", "ditapi.info",
@@ -39,6 +39,19 @@ function generateRandomEmail(domain: string): string {
   }
   return `${prefix}@${domain}`;
 }
+
+// --- PRIVACY AD COMPONENT ---
+const PrivacyAdSide = () => (
+    <div className="p-4 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
+      <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
+        <EyeOff className="w-3 h-3" /> Privacy-Safe Ad
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Keeping this service free & private. <br/>
+        <span className="font-semibold text-primary">Upgrade to remove.</span>
+      </div>
+    </div>
+);
 
 interface Message {
   id: string;
@@ -79,6 +92,9 @@ export function EmailBox({
   const t = useTranslations('EmailBox');
   const [session] = useState(initialSession);
   const isAuthenticated = !!session;
+  const userPlan = session?.user?.plan || 'none'; // 'none', 'free', 'pro'
+  const isPro = userPlan === 'pro';
+
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -99,7 +115,16 @@ export function EmailBox({
   const [oldEmailUsed, setOldEmailUsed] = useState(false);
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
-  const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set()); // <-- NEW: State for saved messages
+  const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
+  
+  // --- UPSELL STATE ---
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
+  const [upsellFeature, setUpsellFeature] = useState("Pro Features");
+
+  const openUpsell = (feature: string) => {
+    setUpsellFeature(feature);
+    setIsUpsellOpen(true);
+  };
 
   const availableDomains = useMemo(() => {
     const verifiedCustomDomains = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
@@ -152,9 +177,9 @@ export function EmailBox({
     const currentLocalHistory: string[] = JSON.parse(localStorage.getItem('emailHistory') || '[]');
     let newHistory = [email, ...currentLocalHistory.filter(e => e !== email)];
 
-    if (session?.user?.plan === 'free') {
+    if (userPlan === 'free') {
       newHistory = newHistory.slice(0, 7);
-    } else if (!session?.user) {
+    } else if (!isAuthenticated) {
       newHistory = newHistory.slice(0, 5);
     }
     localStorage.setItem('emailHistory', JSON.stringify(newHistory));
@@ -176,7 +201,6 @@ export function EmailBox({
     return () => socket.close();
   }, [email, token]);
 
-  // --- NEW: Helper to check local storage and update saved state ---
   const checkSavedMessages = (currentMessages: Message[]) => {
     const savedIds = new Set<string>();
     currentMessages.forEach(msg => {
@@ -214,7 +238,7 @@ export function EmailBox({
     'd': () => deleteEmail(),
     'n': () => isAuthenticated && changeEmail(),
   };
-  useKeyboardShortcuts(shortcuts, session?.user?.plan || 'anonymous');
+  useKeyboardShortcuts(shortcuts, userPlan || 'anonymous');
 
   const fetchToken = async (): Promise<string | null> => {
     try {
@@ -249,7 +273,7 @@ export function EmailBox({
       const typedData = data as { success: boolean; data: Message[]; message?: string };
       if (typedData.success && Array.isArray(typedData.data)) {
         setMessages(typedData.data);
-        checkSavedMessages(typedData.data); // <-- Check saved status on refresh
+        checkSavedMessages(typedData.data);
       } else {
         throw new Error(typedData.message || 'Failed to fetch messages');
       }
@@ -266,9 +290,8 @@ export function EmailBox({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // --- REVISED: Toggle save/unsave without alert ---
   const toggleSaveMessage = async (message: Message) => {
-    if (session?.user?.plan !== 'free') return;
+    if (userPlan !== 'free') return; // Only free users save to browser (Pro saves to cloud auto)
 
     const isSaved = savedMessageIds.has(message.id);
     const messageId = message.id;
@@ -480,7 +503,7 @@ export function EmailBox({
                   </AnimatePresence>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (session?.user?.plan === "pro") ? 'Press N to edit' : 'Only for PRO users'}</p></TooltipContent>
+              <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Only for PRO users'}</p></TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -490,9 +513,9 @@ export function EmailBox({
                   <Badge variant="outline" className="ml-auto hidden sm:block">D</Badge>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : (session?.user?.plan === "pro") ? 'Press D to delete' : 'Only for PRO users'}</p></TooltipContent>
+              <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : (isPro) ? 'Press D to delete' : 'Only for PRO users'}</p></TooltipContent>
             </Tooltip>
-            {(session?.user?.plan === 'pro') && (
+            {(isPro) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="outline" className="flex-1" onClick={() => setIsManageModalOpen(true)} aria-label="Manage all inboxes">
@@ -505,6 +528,25 @@ export function EmailBox({
             )}
           </div>
         </TooltipProvider>
+        
+        {/* --- EXPIRATION & UPSELL NOTICE --- */}
+        {!isPro && messages.length > 0 && (
+            <div 
+                className="group flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                onClick={() => openUpsell("Permanent Cloud Storage")}
+            >
+                <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-500">
+                    <Clock className="h-4 w-4" />
+                    <span>
+                        Emails in this inbox will be deleted in <strong>{userPlan === 'free' ? '24 hours' : '12 hours'}</strong>.
+                    </span>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400 group-hover:underline">
+                    Prevent deletion <Crown className="h-3 w-3" />
+                </div>
+            </div>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -534,8 +576,7 @@ export function EmailBox({
                   <TableCell>
                     <Button variant="link" onClick={() => viewMessage(message)}>{t('view')}</Button>
                     <Button variant="link" onClick={() => deleteMessage(message.id)}>{t('delete')}</Button>
-                    {/* --- REVISED: Save button with dynamic state --- */}
-                    {(session?.user?.plan === 'free') && (
+                    {(userPlan === 'free') && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -551,30 +592,60 @@ export function EmailBox({
             )}
           </TableBody>
         </Table>
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-2">{t('history_title')}</h3>
-          <ul className="space-y-2">
-            {emailHistory.map((historyEmail, index) => (
-              <li key={index} className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{historyEmail}</span>
-                <Button variant="ghost" size="sm" onClick={() => { setEmail(historyEmail); setOldEmailUsed(!oldEmailUsed); }}>{t('history_use')}</Button>
-              </li>
-            ))}
-          </ul>
+
+        <div className="mt-8 flex flex-col md:flex-row gap-8">
+            <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-2">{t('history_title')}</h3>
+                <ul className="space-y-2">
+                    {emailHistory.map((historyEmail, index) => (
+                    <li key={index} className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">{historyEmail}</span>
+                        <Button variant="ghost" size="sm" onClick={() => { setEmail(historyEmail); setOldEmailUsed(!oldEmailUsed); }}>{t('history_use')}</Button>
+                    </li>
+                    ))}
+                </ul>
+            </div>
+            
+            {/* Sidebar for Ads (Non-Pro) */}
+            {!isPro && (
+                <div className="w-full md:w-64 shrink-0">
+                    <PrivacyAdSide />
+                </div>
+            )}
         </div>
+
       </CardContent>
       {showAttachmentNotice && (
-        <div className="p-3 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 text-center">
-          An email arrived with an attachment that exceeds your plan's limit. <button className="font-bold underline ml-2">Upgrade Now</button> to receive larger attachments.
+        <div 
+            className="p-3 mb-4 mx-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 text-center cursor-pointer hover:underline"
+            onClick={() => openUpsell("Large Attachments")}
+        >
+          An email arrived with a large attachment. Upgrade to Pro to view files up to 25MB.
         </div>
       )}
       <CardHeader>
         <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>
         <p className="text-sm text-muted-foreground">{t('card_header_p')}</p>
       </CardHeader>
+      
+      {/* Modals */}
       <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={useHistoryEmail} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
-      <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} />
+      
+      <MessageModal 
+        message={selectedMessage} 
+        isOpen={isMessageModalOpen} 
+        onClose={() => setIsMessageModalOpen(false)} 
+        isPro={isPro} // Pass Pro status
+        onUpsell={() => openUpsell("Attachments")} // Handle Upsell Trigger
+      />
+      
+      <UpsellModal 
+        isOpen={isUpsellOpen} 
+        onClose={() => setIsUpsellOpen(false)} 
+        featureName={upsellFeature} 
+      />
+      
       {error && (<ErrorPopup message={error} onClose={() => setError(null)} />)}
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirmation} itemToDelete={itemToDelete?.type === 'email' ? 'email address' : 'message'} />
     </Card>

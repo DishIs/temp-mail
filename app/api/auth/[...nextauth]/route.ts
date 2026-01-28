@@ -2,6 +2,9 @@
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import type { DefaultSession, User } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
+import GoogleProvider from "next-auth/providers/google"; // ➕ Added
+import GithubProvider from "next-auth/providers/github"; // ➕ Added
+import EmailProvider from "next-auth/providers/email";   // ➕ Added
 import { fetchFromServiceAPI } from '@/lib/api';
 
 // --------------------
@@ -51,7 +54,7 @@ async function upsertUserInBackend(profile: WYIProfile): Promise<void> {
                 wyiUserId: profile._id,
                 email: profile.email,
                 name: `${profile.firstName} ${profile.lastName}`.trim(),
-                plan: profile.isProUser ? 'pro' : 'free',
+                plan: 'free',
             }),
         });
     } catch (error) {
@@ -68,6 +71,7 @@ export const authOptions: NextAuthOptions = {
         strategy: 'jwt',
     },
     providers: [
+        // 🔹 1. WhatsYourInfo (Existing)
         {
             id: 'wyi',
             name: 'WhatsYourInfo',
@@ -129,13 +133,65 @@ export const authOptions: NextAuthOptions = {
                     name: `${profile.firstName} ${profile.lastName}`.trim(),
                     email: profile.email,
                     image: `https://whatsyour.info/api/v1/avatar/${profile.username}`,
-                    plan: profile.isProUser ? 'pro' : 'free',
+                    plan: 'free',
                 };
             },
         },
+        // 🔹 2. Google Provider (New)
+        GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            profile(profile) {
+                return {
+                    id: profile.sub,
+                    name: profile.name,
+                    email: profile.email,
+                    image: profile.picture,
+                    plan: 'free', // Default plan for Google users
+                };
+            },
+        }),
+        // 🔹 3. GitHub Provider (New)
+        GithubProvider({
+            clientId: process.env.GITHUB_ID!,
+            clientSecret: process.env.GITHUB_SECRET!,
+            profile(profile) {
+                return {
+                    id: profile.id.toString(),
+                    name: profile.name || profile.login,
+                    email: profile.email,
+                    image: profile.avatar_url,
+                    plan: 'free', // Default plan for GitHub users
+                };
+            },
+        }),
+        // 🔹 4. Magic Link / Email (New)
+        EmailProvider({
+            server: process.env.EMAIL_SERVER,
+            from: process.env.EMAIL_FROM,
+            // Note: Since EmailProvider creates a user dynamically, 
+            // the `plan` defaults are handled in the JWT callback below.
+        }),
     ],
     callbacks: {
         async signIn({ user, account, profile }) {
+            // 🛑 Logic to Block Specific Temp Mail Domains for Magic Link
+            if (account?.provider === 'email' && user.email) {
+                const blockedDomains = [
+                    'temp-mail.org',
+                    '10minutemail.com',
+                    'guerrillamail.com',
+                    // TODO: Add your own temp mail domains here
+                    'your-temp-domain.com' 
+                ];
+                
+                const emailDomain = user.email.split('@')[1];
+                if (blockedDomains.includes(emailDomain)) {
+                    return false; // Blocks sign-in
+                }
+            }
+
+            // ✅ Existing Logic for WYI Backend Sync
             if (account?.provider === 'wyi' && profile) {
                 try {
                     await upsertUserInBackend(profile as WYIProfile);
@@ -145,13 +201,14 @@ export const authOptions: NextAuthOptions = {
                     return false;
                 }
             }
-            return false;
+            return true;
         },
 
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
-                token.plan = user.plan;
+                // Use user.plan if available (WYI/Google/GitHub), otherwise default to 'free' (Email)
+                token.plan = user.plan || 'free'; 
             }
             return token;
         },

@@ -48,3 +48,4 @@ cloudflare-env.d.ts
 .wrangler
 
 wrangler.jsonc
+.env.local

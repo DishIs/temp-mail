@@ -21,6 +21,12 @@ export function AppFooter() {
             >
               Terms of Service
             </Link>
+            <Link
+              href="/contact"
+              className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              Contact
+            </Link>
             <a
               href="https://github.com/DishIs/temp-mail"
               target="_blank"
@@ -29,6 +35,28 @@ export function AppFooter() {
             >
               GitHub Repository
             </a>
+            <a
+              href="https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              For developers: Temp Mail API
+            </a>
+            <a
+              href="https://www.reddit.com/r/FreeCustomEmail/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              Reddit Community
+            </a>
+            <Link
+              href="/feedback"
+              className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              Feedback
+            </Link>
           </div>
         </div>
       </div>
