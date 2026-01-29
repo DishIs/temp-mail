@@ -21,13 +21,13 @@ function remarkRemoveFirstH1() {
 
 // Define a type for the code props to satisfy TypeScript and access ReactMarkdown specific props
 interface CodeProps extends React.HTMLAttributes<HTMLElement> {
-  inline?: boolean;
-  className?: string;
-  children?: React.ReactNode;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  node?: any; // Add node here if you might use it, or handle it per-component
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any; // Allow other props passed by ReactMarkdown
+    inline?: boolean;
+    className?: string;
+    children?: React.ReactNode;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    node?: any; // Add node here if you might use it, or handle it per-component
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any; // Allow other props passed by ReactMarkdown
 }
 
 const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {

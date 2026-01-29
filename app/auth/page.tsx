@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Mail, Github, Chrome, ArrowRight, Loader2 } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader } from "@/components/nLHeader";
 
 export default function AuthPage() {
     const searchParams = useSearchParams();

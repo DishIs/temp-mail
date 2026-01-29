@@ -265,7 +265,7 @@ export default function PricingPage() {
                       <span className="text-green-600">name</span>
                       {"}"}
                     </code>
-                    @saleis.live
+                    @junkstopper.info
                   </p>
                 </div>
               </div>
@@ -324,7 +324,7 @@ export default function PricingPage() {
   "message": "Message retrieved successfully.",
   "data": {
     "id": "7122AUPOL",
-    "from": "dishant@saleis.live",
+    "from": "dishant@junkstopper.info",
     "to": "dishant.singh",
     "subject": "Testing SMTP connectivity!",
     "date": "2024-09-25T06:10:24.271Z",

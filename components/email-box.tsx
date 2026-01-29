@@ -3,10 +3,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { getCookie, setCookie } from "cookies-next";
-import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { QRCodeModal } from "./qr-code-modal";
 import { cn } from "@/lib/utils";
@@ -23,10 +22,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
-import { UpsellModal } from "./upsell-modal"; 
+import { UpsellModal } from "./upsell-modal";
+import { AuthNeed } from "./auth-needed-moda";
 
 const FREE_DOMAINS = [
-  "saleis.live", "arrangewith.me", "areueally.info", "ditapi.info",
+  "areueally.info", "ditapi.info",
   "ditcloud.info", "ditdrive.info", "ditgame.info", "ditlearn.info",
   "ditpay.info", "ditplay.info", "ditube.info", "junkstopper.info"
 ];
@@ -43,15 +43,15 @@ function generateRandomEmail(domain: string): string {
 
 // --- PRIVACY AD COMPONENT ---
 const PrivacyAdSide = () => (
-    <div className="p-4 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
-      <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
-        <EyeOff className="w-3 h-3" /> Privacy-Safe Ad
-      </div>
-      <div className="text-xs text-muted-foreground">
-        Keeping this service free & private. <br/>
-        <span className="font-semibold text-primary">Upgrade to remove.</span>
-      </div>
+  <div className="p-4 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
+    <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
+      <EyeOff className="w-3 h-3" /> Privacy-Safe Ad
     </div>
+    <div className="text-xs text-muted-foreground">
+      Keeping this service free & private. <br />
+      <span className="font-semibold text-primary">Upgrade to remove.</span>
+    </div>
+  </div>
 );
 
 interface Message {
@@ -84,6 +84,35 @@ const getPreferredDomain = (
   return firstAvailableDomain || FREE_DOMAINS[0];
 };
 
+// Helper for nice dates
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true
+  }).format(date);
+};
+
+// Helper for Expiration Date
+const getExpirationDate = (dateString: string, hours: number) => {
+  const date = new Date(dateString);
+  date.setHours(date.getHours() + hours);
+
+  const now = new Date();
+  const diff = date.getTime() - now.getTime();
+  const isTomorrow = date.getDate() !== now.getDate();
+
+  const timeStr = date.toLocaleTimeString('en-GB', { hour: 'numeric', minute: 'numeric', hour12: true });
+
+  if (diff <= 0) return "Expired";
+  if (isTomorrow) return `Tomorrow at ${timeStr}`;
+  return `Today at ${timeStr}`;
+};
+
 export function EmailBox({
   initialSession,
   initialCustomDomains,
@@ -93,8 +122,12 @@ export function EmailBox({
   const t = useTranslations('EmailBox');
   const [session] = useState(initialSession);
   const isAuthenticated = !!session;
-  const userPlan = session?.user?.plan || 'none'; // 'none', 'free', 'pro'
+  // @ts-ignore
+  const userPlan = session?.user?.plan || 'none';
   const isPro = userPlan === 'pro';
+
+  // --- DYNAMIC ENDPOINT SELECTION ---
+  const API_ENDPOINT = isAuthenticated ? '/api/private-mailbox' : '/api/public-mailbox';
 
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -117,10 +150,17 @@ export function EmailBox({
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
-  
+
+  // --- NEW STATE FOR UI ---
+  const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
+  const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
+  const [dismissedMessageIds, setDismissedMessageIds] = useState<Set<string>>(new Set());
+
   // --- UPSELL STATE ---
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
+  const [isAuthNeedOpen, setIsAuthNeedOpen] = useState(false);
   const [upsellFeature, setUpsellFeature] = useState("Pro Features");
+  const [authNeedFeature, setAuthNeedFeature] = useState("LoggedIn Features");
 
   const openUpsell = (feature: string) => {
     setUpsellFeature(feature);
@@ -154,6 +194,13 @@ export function EmailBox({
       let effectiveInitialEmail: string | null = null;
       let historyToDisplay: string[] = [];
 
+      // Load local Read/Dismissed state
+      const savedReadIds = JSON.parse(localStorage.getItem('readMessageIds') || '[]');
+      setReadMessageIds(new Set(savedReadIds));
+
+      const savedDismissedIds = JSON.parse(localStorage.getItem('dismissedMessageIds') || '[]');
+      setDismissedMessageIds(new Set(savedDismissedIds));
+
       if (initialInboxes.length > 0) {
         historyToDisplay = initialInboxes;
         effectiveInitialEmail = initialCurrentInbox || initialInboxes[0];
@@ -171,6 +218,16 @@ export function EmailBox({
     };
     initialize();
   }, []);
+
+  // Persist Read/Dismissed state changes
+  useEffect(() => {
+    localStorage.setItem('readMessageIds', JSON.stringify(Array.from(readMessageIds)));
+  }, [readMessageIds]);
+
+  useEffect(() => {
+    localStorage.setItem('dismissedMessageIds', JSON.stringify(Array.from(dismissedMessageIds)));
+  }, [dismissedMessageIds]);
+
 
   useEffect(() => {
     if (!email) return;
@@ -194,13 +251,13 @@ export function EmailBox({
   }, [selectedDomain]);
 
   useEffect(() => {
-    if (!email || !token) return;
+    if (!email || (isAuthenticated && !token)) return; // Wait for token if authenticated
     refreshInbox();
     const socket = new WebSocket(`wss://api2.freecustom.email/?mailbox=${email}`);
     socket.onopen = () => console.log("WebSocket connection established");
     socket.onmessage = () => refreshInbox();
     return () => socket.close();
-  }, [email, token]);
+  }, [email, token, isAuthenticated]);
 
   const checkSavedMessages = (currentMessages: Message[]) => {
     const savedIds = new Set<string>();
@@ -225,6 +282,7 @@ export function EmailBox({
     setEmail(newEmail);
     setSelectedDomain(domainToUse);
     setMessages([]);
+    setReadMessageIds(new Set()); // Reset read status for new email
   };
 
   const handleDomainChange = (newDomain: string) => {
@@ -234,7 +292,6 @@ export function EmailBox({
   };
 
   // --- KEYBOARD SHORTCUTS HANDLER ---
-  // Helper to intercept shortcuts if user is not Pro
   const handleProShortcut = (action: () => void, featureName: string) => {
     if (isPro) {
       action();
@@ -243,28 +300,14 @@ export function EmailBox({
     }
   };
 
-  // Helper for Authenticated-only shortcuts (that might not be Pro)
-  const handleAuthShortcut = (action: () => void) => {
-      if(isAuthenticated) {
-          action();
-      } else {
-           // If simple auth needed, maybe just focus email or show simple error?
-           // For now, changeEmail handles its own auth check inside.
-           action();
-      }
-  }
-
   const shortcuts = {
-    'r': () => refreshInbox(), // Always allowed
-    'c': () => copyEmail(),    // Always allowed
-    // Gated Shortcuts:
-    'd': () => handleProShortcut(deleteEmail, "Delete / Burn Email"), 
-    'n': () => handleProShortcut(changeEmail, "Quick Edit"), 
+    'r': () => refreshInbox(),
+    'c': () => copyEmail(),
+    'd': () => handleProShortcut(deleteEmail, "Delete / Burn Email"),
+    'n': () => handleProShortcut(changeEmail, "Quick Edit"),
   };
-  
-  // We pass 'pro' to the hook so it *always* listens to keys, 
-  // allowing us to intercept them in the functions above and show the Upsell modal.
-  useKeyboardShortcuts(shortcuts, 'pro'); 
+
+  useKeyboardShortcuts(shortcuts, 'pro');
 
   const fetchToken = async (): Promise<string | null> => {
     try {
@@ -278,22 +321,33 @@ export function EmailBox({
       }
       throw new Error("No token received from server");
     } catch (error) {
-      setError(`Error fetching token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Guests won't get a token, and that's expected for public-mailbox
       return null;
     }
   };
 
   const refreshInbox = async () => {
-    if (!token) {
-      setError('Not authenticated');
+    // Only block if we expect a token (authenticated) but don't have one yet
+    if (isAuthenticated && !token) {
       return;
     }
+
     setIsRefreshing(true);
     try {
-      const response = await fetch(`/api/mailbox?fullMailboxId=${email}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const headers: Record<string, string> = {
+        'x-fce-client': 'web-client'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}`, {
+        headers
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      if (!response.ok) {
+        if (response.status === 429) throw new Error("You are refreshing too fast.");
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       setShowAttachmentNotice(!!data.wasAttachmentStripped);
       const typedData = data as { success: boolean; data: Message[]; message?: string };
@@ -304,7 +358,7 @@ export function EmailBox({
         throw new Error(typedData.message || 'Failed to fetch messages');
       }
     } catch (error) {
-      setError(`Error fetching inbox: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(error);
     } finally {
       setIsRefreshing(false);
     }
@@ -316,8 +370,9 @@ export function EmailBox({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const toggleSaveMessage = async (message: Message) => {
-    if (userPlan !== 'free') return; // Only free users save to browser (Pro saves to cloud auto)
+  const toggleSaveMessage = async (message: Message, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (userPlan !== 'free') return;
 
     const isSaved = savedMessageIds.has(message.id);
     const messageId = message.id;
@@ -331,8 +386,11 @@ export function EmailBox({
       });
     } else {
       try {
-        const response = await fetch(`/api/mailbox?fullMailboxId=${email}&messageId=${messageId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const headers: Record<string, string> = { 'x-fce-client': 'web-client' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${messageId}`, {
+          headers
         });
         const data = await response.json();
         if (data.success) {
@@ -347,12 +405,34 @@ export function EmailBox({
     }
   };
 
-  const deleteMessage = (messageId: string) => {
-    setItemToDelete({ type: 'message', id: messageId });
-    setIsDeleteModalOpen(true);
+  const handleMessageAction = (messageId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeTab === 'dismissed') {
+      // Restore action
+      setDismissedMessageIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(messageId);
+        return newSet;
+      });
+      return;
+    }
+
+    if (isAuthenticated) {
+      // Pro/Logged in users get permanent delete
+      setItemToDelete({ type: 'message', id: messageId });
+      setIsDeleteModalOpen(true);
+    } else {
+      // Guests get dismissal
+      setDismissedMessageIds(prev => new Set(prev).add(messageId));
+    }
   };
 
   const viewMessage = async (message: Message) => {
+    // Mark as read
+    if (!readMessageIds.has(message.id)) {
+      setReadMessageIds(prev => new Set(prev).add(message.id));
+    }
+
     setSelectedMessage(message);
     setIsMessageModalOpen(true);
   };
@@ -367,14 +447,18 @@ export function EmailBox({
       setEmail(newEmail);
       setSelectedDomain(domain);
       setMessages([]);
-      if (email && token) {
+      setReadMessageIds(new Set()); // Reset read on email change
+      if (email && (isAuthenticated ? token : true)) {
         refreshInbox();
       }
     } else if (itemToDelete?.type === 'message' && itemToDelete.id) {
       try {
-        const response = await fetch(`/api/mailbox?fullMailboxId=${email}&messageId=${itemToDelete.id}`, {
+        const headers: Record<string, string> = { 'x-fce-client': 'web-client' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${itemToDelete.id}`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers
         });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
@@ -400,8 +484,8 @@ export function EmailBox({
 
   const changeEmail = () => {
     if (!isAuthenticated) {
-      const newEmail = generateRandomEmail(selectedDomain);
-      setEmail(newEmail);
+      setIsAuthNeedOpen(true)
+      setAuthNeedFeature('Update Email')
       return;
     }
     if (isEditing) {
@@ -409,6 +493,7 @@ export function EmailBox({
       if (prefix && prefix.length > 0) {
         setEmail(`${prefix}@${selectedDomain}`);
         setIsEditing(false);
+        setReadMessageIds(new Set()); // Reset read status
       } else {
         setError('Please enter a valid email prefix.');
       }
@@ -433,9 +518,17 @@ export function EmailBox({
     localStorage.setItem('discoveredUpdates', JSON.stringify({ newDomains: true }));
   };
 
+  // Filter messages based on tab
+  const filteredMessages = useMemo(() => {
+    if (activeTab === 'dismissed') {
+      return messages.filter(m => dismissedMessageIds.has(m.id));
+    }
+    return messages.filter(m => !dismissedMessageIds.has(m.id));
+  }, [messages, activeTab, dismissedMessageIds]);
+
   return (
     <Card className="border-dashed">
-      <CardContent className="space-y-4 pt-10">
+      <CardContent className="space-y-2 pt-3 ">
         <div className="flex items-center gap-2">
           {isEditing ? (
             <div className="flex flex-1 items-center gap-2">
@@ -458,12 +551,11 @@ export function EmailBox({
                       <DropdownMenuItem
                         key={domain}
                         onSelect={() => {
-                            // Gate Custom Domains for non-Pro
-                            if(isCustom && !isPro) {
-                                openUpsell("Custom Domains");
-                                return;
-                            }
-                            handleDomainChange(domain);
+                          if (isCustom && !isPro) {
+                            openUpsell("Custom Domains");
+                            return;
+                          }
+                          handleDomainChange(domain);
                         }}
                         className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-muted dark:hover:bg-zinc-800"
                       >
@@ -475,15 +567,14 @@ export function EmailBox({
                           title={primaryDomain === domain ? t('unset_primary') : t('set_primary')}
                           variant="ghost"
                           size="icon"
-                          onClick={(e) => { 
-                              e.stopPropagation(); 
-                              // Gate "Set Primary" functionality for non-Pro
-                              if (!isPro) {
-                                  openUpsell("Priority Domain Settings");
-                                  return;
-                              }
-                              handlePrimaryDomainChange(domain); 
-                            }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isPro) {
+                              openUpsell("Priority Domain Settings");
+                              return;
+                            }
+                            handlePrimaryDomainChange(domain);
+                          }}
                           aria-label={`Set ${domain} as primary`}
                           className="hover:bg-transparent"
                         >
@@ -534,14 +625,14 @@ export function EmailBox({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => { changeEmail(); handleNewDomainUpdates(); }} aria-label={isEditing ? t('save') : t('change')}>
-                  {!session?.user ? <RotateCwSquare className="mr-2 h-4 w-4" /> : isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
-                  <span className="hidden sm:inline">{!session?.user ? t('change') : isEditing ? t('save') : t('change')}</span>
-                  <Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>
-                  {/* <AnimatePresence>
+                  {isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
+                  <span className="hidden sm:inline">{isEditing ? t('save') : t('change')}</span>
+                  {isAuthenticated && <Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>}
+                  <AnimatePresence>
                     {!discoveredUpdates.newDomains && (
                       <motion.span key="new-badge" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="text-[10px] bg-black text-white rounded-full px-1.5">{t('new')}</motion.span>
                     )}
-                  </AnimatePresence> */}
+                  </AnimatePresence>
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
@@ -556,121 +647,171 @@ export function EmailBox({
               </TooltipTrigger>
               <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : (isPro) ? 'Press D to delete' : 'Shortcut is Pro Only'}</p></TooltipContent>
             </Tooltip>
-            
-            {/* MANAGE INBOXES: Always visible, but gated logic */}
+
             <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1" 
-                    onClick={() => {
-                        if (isPro) {
-                            setIsManageModalOpen(true);
-                        } else {
-                            openUpsell("Inbox Management");
-                        }
-                    }} 
-                    aria-label="Manage all inboxes"
-                  >
-                    <ListOrdered className="mr-2 h-4 w-4" />
-                    <span className="hidden sm:inline">Manage Inboxes</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>View and manage your full inbox history.</p></TooltipContent>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    if (isPro) {
+                      setIsManageModalOpen(true);
+                    } else {
+                      openUpsell("Inbox Management");
+                    }
+                  }}
+                  aria-label="Manage all inboxes"
+                >
+                  <ListOrdered className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Manage Inboxes</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>View and manage your full inbox history.</p></TooltipContent>
             </Tooltip>
           </div>
         </TooltipProvider>
-        
-        {/* --- EXPIRATION & UPSELL NOTICE --- */}
-        {!isPro && messages.length > 0 && (
-            <div 
-                className="group flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
-                onClick={() => openUpsell("Permanent Cloud Storage")}
-            >
-                <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-500">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                        Emails in this inbox will be deleted in <strong>{userPlan === 'free' ? '24 hours' : '12 hours'}</strong>.
-                    </span>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400 group-hover:underline">
-                    Prevent deletion <Crown className="h-3 w-3" />
-                </div>
-            </div>
-        )}
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('table_sender')}</TableHead>
-              <TableHead>{t('table_subject')}</TableHead>
-              <TableHead>{t('table_date')}</TableHead>
-              <TableHead>{t('table_actions')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {messages.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  <div className="py-12">
-                    <div className="mb-4 flex justify-center"><Mail className="h-12 w-12 text-muted-foreground" /></div>
-                    <div className="text-lg font-medium">{t('inbox_empty_title')}</div>
-                    <div className="text-sm text-muted-foreground">{t('inbox_empty_subtitle')}</div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              messages.map((message, index) => (
-                <TableRow key={message.id} className={index % 2 === 0 ? 'bg-gray-100 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'}>
-                  <TableCell>{message.from}</TableCell>
-                  <TableCell>{message.subject}</TableCell>
-                  <TableCell>{new Date(message.date).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Button variant="link" onClick={() => viewMessage(message)}>{t('view')}</Button>
-                    <Button variant="link" onClick={() => deleteMessage(message.id)}>{t('delete')}</Button>
-                    {(userPlan === 'free') && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={savedMessageIds.has(message.id) ? "Unsave from Browser" : "Save to Browser"}
-                        onClick={() => toggleSaveMessage(message)}
-                      >
-                        <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
+        {/* TABS HEADER */}
+        <div className="flex items-center gap-4 mt-6 border-b pb-2">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={cn(
+              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+              activeTab === 'all' ? "text-primary border-b-2 border-primary pb-2 -mb-2.5" : "text-muted-foreground"
             )}
-          </TableBody>
-        </Table>
+          >
+            <Mail className="h-4 w-4" /> All
+          </button>
+          <button
+            onClick={() => setActiveTab('dismissed')}
+            className={cn(
+              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+              activeTab === 'dismissed' ? "text-primary border-b-2 border-primary pb-2 -mb-2.5" : "text-muted-foreground"
+            )}
+          >
+            {isAuthenticated ? <Trash2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            {isAuthenticated ? "Trash" : "Dismissed"}
+          </button>
+        </div>
+
+        {/* MESSAGE LIST - GMAIL STYLE */}
+        <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
+          {filteredMessages.length === 0 ? (
+            <div className="py-16 flex flex-col items-center justify-center text-center px-4">
+              <div className="bg-muted/30 p-4 rounded-full mb-4">
+                {activeTab === 'all' ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}
+              </div>
+              <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
+              <div className="text-sm text-muted-foreground max-w-xs">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
+            </div>
+          ) : (
+            filteredMessages.map((message) => {
+              const isRead = readMessageIds.has(message.id);
+              const isUnread = !isRead;
+              // Pro users usually have longer retention, Free users 24h.
+              // If pro, we show "Permanent" or nothing, if Free we show expiration.
+              // Prompt requested tiny text for upsell.
+              const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
+
+              return (
+                <div
+                  key={message.id}
+                  onClick={() => viewMessage(message)}
+                  className={cn(
+                    "group relative flex flex-col sm:flex-row gap-2 sm:items-center py-2 px-4 border-b last:border-0 cursor-pointer transition-all hover:bg-muted/40",
+                    isUnread ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
+                  )}
+                >
+                  {/* Avatar / Icon Placeholder */}
+                  <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                    {message.from.charAt(1).toUpperCase()}
+                  </div>
+
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="flex items-center justify-between ">
+                      <span className={cn("truncate text-sm", isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
+                        {message.from}
+                      </span>
+                      <span className={cn("text-xs whitespace-nowrap shrink-0", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                        {formatDate(message.date)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className={cn("truncate text-xs", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                        {message.subject || "(No Subject)"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      {/* Expiration Notice - Tiny & Upsell Trigger */}
+                      <div
+                        className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openUpsell("Permanent Storage");
+                        }}
+                      >
+                        <Clock className="h-3 w-3" />
+                        <span>Auto deletes: {expirationText}</span>
+                      </div>
+
+                      {/* Actions (visible on hover or mobile) */}
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        {(userPlan === 'free') && activeTab === 'all' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
+                            onClick={(e) => toggleSaveMessage(message, e)}
+                          >
+                            <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          title={isAuthenticated ? "Delete Permanently" : activeTab === 'dismissed' ? "Restore" : "Dismiss"}
+                          onClick={(e) => handleMessageAction(message.id, e)}
+                        >
+                          {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : isAuthenticated ? <Trash2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
 
         <div className="mt-8 flex flex-col md:flex-row gap-8">
-            <div className="flex-1">
-                <h3 className="text-lg font-semibold mb-2">{t('history_title')}</h3>
-                <ul className="space-y-2">
-                    {emailHistory.map((historyEmail, index) => (
-                    <li key={index} className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{historyEmail}</span>
-                        <Button variant="ghost" size="sm" onClick={() => { setEmail(historyEmail); setOldEmailUsed(!oldEmailUsed); }}>{t('history_use')}</Button>
-                    </li>
-                    ))}
-                </ul>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold mb-2">{t('history_title')}</h3>
+            <ul className="space-y-2">
+              {emailHistory.map((historyEmail, index) => (
+                <li key={index} className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{historyEmail}</span>
+                  <Button variant="ghost" size="sm" onClick={() => { setEmail(historyEmail); setOldEmailUsed(!oldEmailUsed); }}>{t('history_use')}</Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {!isPro && (
+            <div className="w-full md:w-64 shrink-0">
+              <PrivacyAdSide />
             </div>
-            
-            {/* Sidebar for Ads (Non-Pro) */}
-            {!isPro && (
-                <div className="w-full md:w-64 shrink-0">
-                    <PrivacyAdSide />
-                </div>
-            )}
+          )}
         </div>
 
       </CardContent>
       {showAttachmentNotice && (
-        <div 
-            className="p-3 mb-4 mx-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 text-center cursor-pointer hover:underline"
-            onClick={() => openUpsell("Large Attachments")}
+        <div
+          className="p-3 mb-4 mx-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 text-center cursor-pointer hover:underline"
+          onClick={() => openUpsell("Large Attachments")}
         >
           An email arrived with a large attachment. Upgrade to Pro to view files up to 25MB.
         </div>
@@ -679,25 +820,30 @@ export function EmailBox({
         <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>
         <p className="text-sm text-muted-foreground">{t('card_header_p')}</p>
       </CardHeader>
-      
-      {/* Modals */}
+
       <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={useHistoryEmail} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
-      
-      <MessageModal 
-        message={selectedMessage} 
-        isOpen={isMessageModalOpen} 
-        onClose={() => setIsMessageModalOpen(false)} 
-        isPro={isPro} // Pass Pro status
-        onUpsell={() => openUpsell("Attachments")} // Handle Upsell Trigger
+
+      <MessageModal
+        message={selectedMessage}
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        isPro={isPro}
+        onUpsell={() => openUpsell("Attachments")}
+        apiEndpoint={API_ENDPOINT}
       />
-      
-      <UpsellModal 
-        isOpen={isUpsellOpen} 
-        onClose={() => setIsUpsellOpen(false)} 
-        featureName={upsellFeature} 
+
+      <UpsellModal
+        isOpen={isUpsellOpen}
+        onClose={() => setIsUpsellOpen(false)}
+        featureName={upsellFeature}
       />
-      
+      <AuthNeed
+        isOpen={isAuthNeedOpen}
+        onClose={() => setIsAuthNeedOpen(false)}
+        featureName={authNeedFeature}
+      />
+
       {error && (<ErrorPopup message={error} onClose={() => setError(null)} />)}
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirmation} itemToDelete={itemToDelete?.type === 'email' ? 'email address' : 'message'} />
     </Card>

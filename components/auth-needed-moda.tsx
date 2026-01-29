@@ -7,13 +7,13 @@ import { Crown, CheckCircle2, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-interface UpsellModalProps {
+interface AuthNeedProps {
     isOpen: boolean;
     onClose: () => void;
     featureName?: string; // Optional: Customize the text based on what they clicked (e.g. "Custom Domains")
 }
 
-export function UpsellModal({ isOpen, onClose, featureName = "This Feature" }: UpsellModalProps) {
+export function AuthNeed({ isOpen, onClose, featureName = "This Feature" }: AuthNeedProps) {
     const router = useRouter();
     const { data: session } = useSession();
 
@@ -32,8 +32,8 @@ export function UpsellModal({ isOpen, onClose, featureName = "This Feature" }: U
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[425px] text-center">
                 <div className="flex justify-center mb-4 mt-2">
-                    <div className="h-16 w-16 bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/30 dark:to-amber-800/30 rounded-full flex items-center justify-center">
-                        <Lock className="h-8 w-8 text-amber-600 dark:text-amber-500" />
+                    <div className="h-16 w-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900/30 dark:to-amber-800/30 rounded-full flex items-center justify-center">
+                        <Lock className="h-8 w-8 text-gray-600 dark:text-gray-500" />
                     </div>
                 </div>
                 
@@ -42,7 +42,7 @@ export function UpsellModal({ isOpen, onClose, featureName = "This Feature" }: U
                         Unlock {featureName}
                     </DialogTitle>
                     <DialogDescription className="text-center pt-2">
-                        {featureName} is available exclusively to <strong>Pro</strong> members. Upgrade today to remove limits and take control.
+                        {featureName} is available exclusively to <strong>Logged In</strong> users. Login now using Google, Github, or your email.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -62,11 +62,11 @@ export function UpsellModal({ isOpen, onClose, featureName = "This Feature" }: U
                 <DialogFooter className="flex-col gap-2 sm:gap-0 items-center">
                     <Button 
                         size="lg" 
-                        className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                        className="w-full bg-gradient-to-r from-gray-500 to-gray-500 hover:from-gray-600 hover:to-gray-600 text-white"
                         onClick={handleCta}
                     >
                         <Crown className="mr-2 h-4 w-4" />
-                        {session ? "View Upgrade Options" : "Login & Upgrade"}
+                        {session ? "View Upgrade Options" : "Login"}
                     </Button>
                     <Button variant="ghost" className="w-full" onClick={onClose}>
                         Maybe Later

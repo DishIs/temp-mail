@@ -58,7 +58,7 @@ export async function WhySection() {
         <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">{t('domain_list_title')}</h2>
         <p className="mt-2 text-gray-600 dark:text-gray-300">{t('domain_list_p')}</p>
         <ul className="mt-4 list-disc pl-5 text-gray-700 dark:text-gray-200 space-y-1">
-          {['saleis.live','arrangewith.me', 'areureally.info', 'ditapi.info', 'ditcloud.info', 'ditdrive.info', 'ditgame.info', 'ditlearn.info', 'ditpay.info', 'ditplay.info', 'ditube.info', 'junkstopper.info'].map(domain => (
+          {['areureally.info', 'ditapi.info', 'ditcloud.info', 'ditdrive.info', 'ditgame.info', 'ditlearn.info', 'ditpay.info', 'ditplay.info', 'ditube.info', 'junkstopper.info'].map(domain => (
             <li key={domain}>{domain}</li>
           ))}
         </ul>

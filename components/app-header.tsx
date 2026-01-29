@@ -1,29 +1,32 @@
 // components/app-header.tsx
 "use client";
 
-import { useTranslations } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
-import { Moon, Sun, Menu as MenuIconLucide, X as CloseIcon } from "lucide-react";
-import Link from 'next/link';
-import { FaDiscord, FaGithub, FaPatreon } from "react-icons/fa";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { Moon, Sun, Menu as MenuIconLucide } from "lucide-react";
+import Link from "next/link";
+import { FaDiscord, FaGithub } from "react-icons/fa";
+import { useState, useCallback } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { AuthPopup } from './AuthPopup';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuLabel } from './ui/dropdown-menu';
-import { signOut, useSession } from 'next-auth/react';
-import { Session } from 'next-auth';
-import { usePathname } from 'next/navigation';
+import { signOut, useSession } from "next-auth/react";
+import { Session } from "next-auth";
+import { usePathname } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import LocaleSwitcher from './LocaleSwitcher';
 
-export function AppHeader({ initialSession }: { initialSession: Session | null; }) {
-  const { data: _, status } = useSession()
-  const session = initialSession
-  const t = useTranslations('AppHeader');
+export function AppHeader({ initialSession }: { initialSession: Session | null }) {
+  const { data: _, status } = useSession();
+  // Use initialSession for server-side rendering support, but session status for client interactions
+  const session = initialSession; 
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
   const pathname = usePathname();
 
   const toggleTheme = useCallback(() => {
@@ -38,75 +41,71 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
     setMenuOpen(false);
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [menuOpen]);
-
   // Determine user status
   const isLoggedIn = status === 'authenticated' && !!session?.user;
-  // @ts-ignore
+  // @ts-ignore - Assuming 'plan' exists on user
   const userPlan = session?.user?.plan || 'free';
   const isPro = userPlan === 'pro';
 
-  const NavLinks = () => (
-    <>
-      <Link href="/dashboard" className={`text-sm font-medium transition-colors hover:text-primary ${pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}>
-        Dashboard
+  // Helper for Nav Links with Active State
+  const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
+    const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+    return (
+      <Link
+        href={href}
+        onClick={menuOpen ? handleMobileLinkClick : undefined}
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          isActive ? 'text-primary' : 'text-muted-foreground'
+        }`}
+      >
+        {children}
       </Link>
+    );
+  };
+
+  const NavLinksGroup = () => (
+    <>
+      <NavLink href="/dashboard">Dashboard</NavLink>
       
       {!isLoggedIn && (
-         <Link href="/blog" className={`text-sm font-medium transition-colors hover:text-primary ${pathname.startsWith('/blog') ? 'text-primary' : 'text-muted-foreground'}`}>
-            Blog
-         </Link>
+         <NavLink href="/blog">Blog</NavLink>
       )}
 
       {/* Show Pricing for Logged Out OR Free users. Hide for Pro. */}
       {(!isLoggedIn || !isPro) && (
-        <Link href="/pricing" className={`text-sm font-medium transition-colors hover:text-primary ${pathname === '/pricing' ? 'text-primary' : 'text-muted-foreground'}`}>
-          Pricing
-        </Link>
+        <NavLink href="/pricing">Pricing</NavLink>
       )}
     </>
   );
 
-  const renderAuthButton = () => {
+  const RenderAuthButton = () => {
     if (status === 'loading') {
-      return <div className="h-10 w-10 bg-muted rounded-full animate-pulse"></div>;
+      return <div className="h-9 w-9 bg-muted rounded-full animate-pulse"></div>;
     }
 
     if (isLoggedIn && session?.user) {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0">
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0 ml-2">
               {/* Avatar Container */}
               <div className={`relative h-full w-full rounded-full border-2 ${isPro ? 'border-yellow-400' : 'border-slate-300'}`}>
                 {session.user.image ? (
                   <img
                     src={session.user.image}
                     alt={session.user.name || 'User avatar'}
-                    className="rounded-full object-fill"
+                    className="rounded-full object-cover h-full w-full"
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full w-full bg-muted rounded-full text-muted-foreground">
+                  <div className="flex items-center justify-center h-full w-full bg-muted rounded-full text-muted-foreground text-xs">
                     {session.user.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
 
               {/* Plan Badge on Avatar */}
-              <div className="absolute -bottom-2 w-full flex justify-center">
-                <div className={`rounded-md px-1 py-[1px] text-[8px] font-bold border ${isPro ? 'bg-yellow-400 text-black' : 'bg-secondary text-secondary-foreground'}`}>
+              <div className="absolute -bottom-1.5 w-full flex justify-center">
+                <div className={`rounded-sm px-[3px] py-[0.5px] text-[8px] leading-none font-bold border ${isPro ? 'bg-yellow-400 text-black border-yellow-500' : 'bg-secondary text-secondary-foreground border-border'}`}>
                   {isPro ? 'PRO' : 'FREE'}
                 </div>
               </div>
@@ -125,91 +124,136 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
             <DropdownMenuSeparator />
             {!isPro && (
               <div className="p-1">
-                <Button asChild className="w-full" size="sm">
+                <Button asChild className="w-full h-8" size="sm">
                   <Link href="/pricing">Upgrade to Pro</Link>
                 </Button>
               </div>
             )}
-            <DropdownMenuItem onClick={() => signOut()}>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer">Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
     }
 
-    return <Button onClick={() => setIsPopupOpen(true)} className='md:p-4 p-2'>Login</Button>;
+    return (
+        <Button asChild size="sm" className="ml-2">
+            <Link href="/auth">Login</Link>
+        </Button>
+    );
   };
 
   return (
-    <>
-      <header className="border-b w-full relative z-50 bg-background">
-        <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2" aria-label="Home" onClick={menuOpen ? handleMobileLinkClick : undefined}>
+    <header className="border-b w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2" aria-label="Home" onClick={menuOpen ? handleMobileLinkClick : undefined}>
             <Image
               src="/logo.webp"
               alt="FreeCustom.Email Logo"
-              width={40}
-              height={40}
-              className="h-8 w-8 sm:h-10 sm:w-10"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+              priority
             />
-            <span className="text-base hidden xs:block sm:text-lg md:text-xl font-bold whitespace-nowrap">FreeCustom.Email</span>
-            <span className="text-base block xs:hidden font-bold whitespace-nowrap">FC.E</span>
-          </Link>
+          <span className="text-base sm:text-lg font-bold whitespace-nowrap hidden xs:block">
+            FreeCustom.Email
+          </span>
+           <span className="text-base font-bold whitespace-nowrap xs:hidden">
+            FC.E
+          </span>
+        </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6">
-            <nav className="flex items-center gap-6">
-                <NavLinks />
-            </nav>
-            <div className="flex items-center gap-2">
-                {renderAuthButton()}
-                <Button variant="ghost" size="icon" onClick={toggleTheme} className="p-2" aria-label={t('aria_toggle_theme')}>
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                <span className="sr-only">{t('aria_toggle_theme')}</span>
-                </Button>
-            </div>
-          </div>
-
-          {/* Mobile Actions */}
-          <div className="md:hidden flex items-center gap-2">
-            {renderAuthButton()}
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="p-2" aria-label={t('aria_toggle_theme')}>
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">{t('aria_toggle_theme')}</span>
-            </Button>
-            <Button variant="ghost" size="icon" onClick={toggleMobileMenu} className="p-2" aria-label={menuOpen ? t('aria_close_menu') : t('aria_open_menu')} aria-expanded={menuOpen}>
-              <MenuIconLucide className="h-5 w-5" />
-            </Button>
+        {/* Desktop Nav & Actions */}
+        <div className="hidden md:flex items-center gap-6">
+          <nav className="flex items-center gap-6">
+             <NavLinksGroup />
+          </nav>
+          
+          <div className="flex items-center border-l pl-4 ml-2 gap-2">
+             <LocaleSwitcher />
+             <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-9 w-9"
+                aria-label="Toggle theme"
+              >
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+              <RenderAuthButton />
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        <AnimatePresence>
-          {menuOpen && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} exit={{ opacity: 0 }} className="fixed inset-0 z-30 bg-black/40" onClick={() => setMenuOpen(false)} />
-              <motion.div ref={menuRef} initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "tween", duration: 0.3 }} className="fixed top-0 right-0 bottom-0 w-72 bg-background z-40 shadow-lg p-6 flex flex-col gap-4 md:hidden">
-                <button className="ml-auto mb-4 p-1 rounded hover:bg-accent" onClick={() => setMenuOpen(false)} aria-label={t('aria_close_menu')}>
-                  <CloseIcon className="h-5 w-5" />
-                </button>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-3 border-b pb-4">
-                    <NavLinks />
-                  </div>
-                  
-                  <div className="flex flex-col gap-2">
-                    <Link href="/docs" className="text-sm hover:underline py-1" onClick={handleMobileLinkClick}>{t('api_docs')}</Link>
-                    <a href="https://github.com/DishIs/temp-mail" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline flex items-center gap-2 py-1" onClick={handleMobileLinkClick}><FaGithub className="h-4 w-4" /> {t('github')}</a>
-                    <a href="https://discord.gg/Ztp7kT2QBz" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline flex items-center gap-2 py-1" onClick={handleMobileLinkClick}><FaDiscord className="h-4 w-4" /> {t('discord')}</a>
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </header>
-      <AuthPopup isOpen={isPopupOpen} onClose={() => setIsPopupOpen(false)} />
-    </>
+        {/* Mobile Menu Toggle & Actions */}
+        <div className="md:hidden flex items-center gap-2">
+          <RenderAuthButton />
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9"
+            aria-label="Toggle theme"
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMobileMenu}
+            className="h-9 w-9"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+          >
+            <MenuIconLucide className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Dropdown */}
+      {menuOpen && (
+        <nav className="md:hidden px-4 pb-4 pt-2 flex flex-col gap-4 bg-background border-b shadow-sm">
+          <div className="flex flex-col gap-3 pt-2">
+            <NavLinksGroup />
+          </div>
+          
+          <div className="border-t pt-3 flex flex-col gap-2">
+            <Link href="/docs" className="text-sm text-muted-foreground hover:text-primary transition-colors py-1" onClick={handleMobileLinkClick}>
+                API Documentation
+            </Link>
+            <div className="flex gap-4 pt-1">
+                <a
+                    href="https://github.com/DishIs/temp-mail"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    aria-label="GitHub"
+                >
+                    <FaGithub className="h-5 w-5" />
+                </a>
+                <a
+                    href="https://discord.gg/EDmxUbym"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    aria-label="Discord"
+                >
+                    <FaDiscord className="h-5 w-5" />
+                </a>
+            </div>
+            
+            <div className="pt-2">
+              <LocaleSwitcher />
+            </div>
+          </div>
+        </nav>
+      )}
+    </header>
   );
 }
