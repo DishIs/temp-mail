@@ -1,5 +1,13 @@
+import React from 'react';
+
+// Import Lucide icons
+import {
+    Sparkles, Crown, Server, Lock, LogIn, Mail, Paperclip, Clock,
+    Bot, Keyboard, BookOpen, GitBranch, Shield, LayoutList, MessageSquare, Globe
+} from 'lucide-react';
+
 export interface ChangelogFeature {
-    icon: React.ElementType; // We will use Lucide icons directly
+    icon: React.ElementType; 
     tag: 'New' | 'Improved' | 'Fixed' | 'Pro';
     title: string;
     description: string;
@@ -13,13 +21,47 @@ export interface ChangelogEntry {
     features: ChangelogFeature[];
 }
 
-// Import Lucide icons
-import {
-    Sparkles, Crown, Server, Lock, LogIn, Mail, Paperclip, Clock,
-    Bot, Keyboard, BookOpen, GitBranch
-} from 'lucide-react';
-
 export const changelogData: ChangelogEntry[] = [
+    {
+        version: "3.1.0",
+        date: "January 30, 2026",
+        title: "Social Auth, Security & UI Polish",
+        features: [
+            {
+                icon: Globe,
+                tag: 'New',
+                title: "Expanded Login Options",
+                description: "You can now sign in securely using Google, GitHub, or passwordless Email Magic Links.",
+                link: '/auth'
+            },
+            {
+                icon: LayoutList,
+                tag: 'Improved',
+                title: "Modern Inbox Experience",
+                description: "Redesigned inbox with a clean, card-based layout, bold unread indicators, and better readability.",
+                link: '/'
+            },
+            {
+                icon: Shield,
+                tag: 'New',
+                title: "Enhanced Security",
+                description: "Implemented Cloudflare Turnstile CAPTCHA on forms and stricter API rate limiting for public access.",
+            },
+            {
+                icon: MessageSquare,
+                tag: 'New',
+                title: "Feedback System",
+                description: "New dedicated pages for Contact and User Feedback to help us improve the platform.",
+                link: '/feedback'
+            },
+            {
+                icon: Server,
+                tag: 'Improved',
+                title: "API Architecture",
+                description: "Split Public and Private mailbox endpoints to ensure better performance and security for guest users.",
+            }
+        ]
+    },
     {
         version: "3.0.0",
         date: "August 2025",
@@ -30,7 +72,7 @@ export const changelogData: ChangelogEntry[] = [
                 tag: 'Pro',
                 title: "Pro & Free Tiers Introduced",
                 description: "Log in with your whatsyour.info account to unlock a suite of powerful new features.",
-                link: '/#pricing'
+                link: '/pricing'
             },
             {
                 icon: BookOpen,

@@ -155,6 +155,8 @@ export function EmailBox({
   const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const [dismissedMessageIds, setDismissedMessageIds] = useState<Set<string>>(new Set());
+  // Add a flag to ensure we don't overwrite localstorage with empty sets on initial mount
+  const [isStorageLoaded, setIsStorageLoaded] = useState(false);
 
   // --- UPSELL STATE ---
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
@@ -195,11 +197,18 @@ export function EmailBox({
       let historyToDisplay: string[] = [];
 
       // Load local Read/Dismissed state
-      const savedReadIds = JSON.parse(localStorage.getItem('readMessageIds') || '[]');
-      setReadMessageIds(new Set(savedReadIds));
+      try {
+        const savedReadIds = JSON.parse(localStorage.getItem('readMessageIds') || '[]');
+        setReadMessageIds(new Set(savedReadIds));
 
-      const savedDismissedIds = JSON.parse(localStorage.getItem('dismissedMessageIds') || '[]');
-      setDismissedMessageIds(new Set(savedDismissedIds));
+        const savedDismissedIds = JSON.parse(localStorage.getItem('dismissedMessageIds') || '[]');
+        setDismissedMessageIds(new Set(savedDismissedIds));
+      } catch (e) {
+        console.error("Error loading local storage state", e);
+      } finally {
+        // Mark storage as loaded so the saving effects can run safely
+        setIsStorageLoaded(true);
+      }
 
       if (initialInboxes.length > 0) {
         historyToDisplay = initialInboxes;
@@ -220,13 +229,18 @@ export function EmailBox({
   }, []);
 
   // Persist Read/Dismissed state changes
+  // Only save IF storage has been loaded initially to prevent overwriting with empty sets
   useEffect(() => {
-    localStorage.setItem('readMessageIds', JSON.stringify(Array.from(readMessageIds)));
-  }, [readMessageIds]);
+    if (isStorageLoaded) {
+      localStorage.setItem('readMessageIds', JSON.stringify(Array.from(readMessageIds)));
+    }
+  }, [readMessageIds, isStorageLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('dismissedMessageIds', JSON.stringify(Array.from(dismissedMessageIds)));
-  }, [dismissedMessageIds]);
+    if (isStorageLoaded) {
+      localStorage.setItem('dismissedMessageIds', JSON.stringify(Array.from(dismissedMessageIds)));
+    }
+  }, [dismissedMessageIds, isStorageLoaded]);
 
 
   useEffect(() => {
@@ -283,6 +297,7 @@ export function EmailBox({
     setSelectedDomain(domainToUse);
     setMessages([]);
     setReadMessageIds(new Set()); // Reset read status for new email
+    setDismissedMessageIds(new Set()); // Reset dismissed for new email
   };
 
   const handleDomainChange = (newDomain: string) => {
@@ -299,13 +314,24 @@ export function EmailBox({
       openUpsell(`Keyboard Shortcut: ${featureName}`);
     }
   };
+  const handleAuthNeededShortcut = (action: () => void, featureName: string) => {
+    if (isAuthenticated) {
+      action();
+    } else {
+      setAuthNeedFeature(`Keyboard Shortcut: ${featureName}`);
+      setIsAuthNeedOpen(true)
+    }
+  };
 
   const shortcuts = {
-    'r': () => refreshInbox(),
-    'c': () => copyEmail(),
+    'r': () => handleAuthNeededShortcut(refreshInbox, 'Refresh Inbox'),
+    'c': () => handleAuthNeededShortcut(copyEmail, 'Copy Email'),
     'd': () => handleProShortcut(deleteEmail, "Delete / Burn Email"),
     'n': () => handleProShortcut(changeEmail, "Quick Edit"),
+    'q': () => setIsQRModalOpen(!isQRModalOpen)
   };
+
+
 
   useKeyboardShortcuts(shortcuts, 'pro');
 
@@ -417,14 +443,8 @@ export function EmailBox({
       return;
     }
 
-    if (isAuthenticated) {
-      // Pro/Logged in users get permanent delete
-      setItemToDelete({ type: 'message', id: messageId });
-      setIsDeleteModalOpen(true);
-    } else {
-      // Guests get dismissal
-      setDismissedMessageIds(prev => new Set(prev).add(messageId));
-    }
+    // Guests get dismissal
+    setDismissedMessageIds(prev => new Set(prev).add(messageId));
   };
 
   const viewMessage = async (message: Message) => {
@@ -448,6 +468,7 @@ export function EmailBox({
       setSelectedDomain(domain);
       setMessages([]);
       setReadMessageIds(new Set()); // Reset read on email change
+      setDismissedMessageIds(new Set());
       if (email && (isAuthenticated ? token : true)) {
         refreshInbox();
       }
@@ -494,6 +515,7 @@ export function EmailBox({
         setEmail(`${prefix}@${selectedDomain}`);
         setIsEditing(false);
         setReadMessageIds(new Set()); // Reset read status
+        setDismissedMessageIds(new Set());
       } else {
         setError('Please enter a valid email prefix.');
       }
@@ -627,12 +649,12 @@ export function EmailBox({
                 <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => { changeEmail(); handleNewDomainUpdates(); }} aria-label={isEditing ? t('save') : t('change')}>
                   {isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
                   <span className="hidden sm:inline">{isEditing ? t('save') : t('change')}</span>
-                  {isAuthenticated && <Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>}
-                  <AnimatePresence>
+                  {<Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>}
+                  {/* <AnimatePresence>
                     {!discoveredUpdates.newDomains && (
                       <motion.span key="new-badge" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="text-[10px] bg-black text-white rounded-full px-1.5">{t('new')}</motion.span>
                     )}
-                  </AnimatePresence>
+                  </AnimatePresence> */}
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
@@ -672,12 +694,12 @@ export function EmailBox({
         </TooltipProvider>
 
         {/* TABS HEADER */}
-        <div className="flex items-center gap-4 mt-6 border-b pb-2">
+        <div className="flex items-center gap-4 w-full py-2">
           <button
             onClick={() => setActiveTab('all')}
             className={cn(
-              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-              activeTab === 'all' ? "text-primary border-b-2 border-primary pb-2 -mb-2.5" : "text-muted-foreground"
+              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center",
+              activeTab === 'all' ? "text-primary border-b-2 pb-2" : "text-muted-foreground"
             )}
           >
             <Mail className="h-4 w-4" /> All
@@ -685,12 +707,12 @@ export function EmailBox({
           <button
             onClick={() => setActiveTab('dismissed')}
             className={cn(
-              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-              activeTab === 'dismissed' ? "text-primary border-b-2 border-primary pb-2 -mb-2.5" : "text-muted-foreground"
+              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center",
+              activeTab === 'dismissed' ? "text-primary border-b-2 pb-2" : "text-muted-foreground"
             )}
           >
-            {isAuthenticated ? <Trash2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-            {isAuthenticated ? "Trash" : "Dismissed"}
+            {<Archive className="h-4 w-4" />}
+            {"Dismissed"}
           </button>
         </div>
 
@@ -758,7 +780,7 @@ export function EmailBox({
 
                       {/* Actions (visible on hover or mobile) */}
                       <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {(userPlan === 'free') && activeTab === 'all' && (
+                        {(userPlan === 'free') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -769,14 +791,29 @@ export function EmailBox({
                             <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
                           </Button>
                         )}
+                        {(userPlan === 'pro') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title={"Delete Permanently"}
+                            onClick={() => {
+                              setItemToDelete({ type: 'message', id: message.id });
+                              setIsDeleteModalOpen(true);
+
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          title={isAuthenticated ? "Delete Permanently" : activeTab === 'dismissed' ? "Restore" : "Dismiss"}
+                          title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
                           onClick={(e) => handleMessageAction(message.id, e)}
                         >
-                          {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : isAuthenticated ? <Trash2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                          {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                         </Button>
                       </div>
                     </div>

@@ -8,6 +8,8 @@ import { getPostBySlug } from '@/lib/posts'
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
 import Script from 'next/script'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { getServerSession } from 'next-auth'
 
 
 function truncate(text: string, maxLength: number): string {
@@ -47,6 +49,8 @@ export async function generateMetadata(
 
 export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
   let resolvedParams: { slug: string }
+  const session = await getServerSession(authOptions);
+
 
   try {
     resolvedParams = await params
@@ -85,7 +89,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="min-h-screen max-w-[100vw] bg-background">
-            <AppHeader />
+            <AppHeader initialSession={session} />
             <article className="max-w-full mx-auto px-4 py-12 bg-white dark:bg-zinc-900">
               <header className="mb-10">
                 <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight mb-4 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">

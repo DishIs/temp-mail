@@ -167,8 +167,15 @@ export const authOptions: NextAuthOptions = {
         }),
         // 🔹 4. Magic Link / Email (New)
         EmailProvider({
-            server: process.env.EMAIL_SERVER,
-            from: process.env.EMAIL_FROM,
+            server: {
+                host: process.env.EMAIL_HOST,
+                port: process.env.EMAIL_PORT || 587,
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASSWORD
+                }
+            },
+            from: process.env.EMAIL_FROM
             // Note: Since EmailProvider creates a user dynamically, 
             // the `plan` defaults are handled in the JWT callback below.
         }),
@@ -178,13 +185,12 @@ export const authOptions: NextAuthOptions = {
             // 🛑 Logic to Block Specific Temp Mail Domains for Magic Link
             if (account?.provider === 'email' && user.email) {
                 const blockedDomains = [
-                    'temp-mail.org',
-                    '10minutemail.com',
-                    'guerrillamail.com',
                     // TODO: Add your own temp mail domains here
-                    'your-temp-domain.com' 
+                    "areueally.info", "ditapi.info",
+                    "ditcloud.info", "ditdrive.info", "ditgame.info", "ditlearn.info",
+                    "ditpay.info", "ditplay.info", "ditube.info", "junkstopper.info"
                 ];
-                
+
                 const emailDomain = user.email.split('@')[1];
                 if (blockedDomains.includes(emailDomain)) {
                     return false; // Blocks sign-in
@@ -208,7 +214,7 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 // Use user.plan if available (WYI/Google/GitHub), otherwise default to 'free' (Email)
-                token.plan = user.plan || 'free'; 
+                token.plan = user.plan || 'free';
             }
             return token;
         },

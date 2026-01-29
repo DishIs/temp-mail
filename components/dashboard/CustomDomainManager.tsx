@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Copy, Trash2, CheckCircle, HelpCircle, RefreshCw, Lock, Crown } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { UpsellModal } from "@/components/upsell-modal"; // Ensure this path is correct
+import { UpsellModal } from "@/components/upsell-modal";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +31,9 @@ interface CustomDomainManagerProps {
   isPro: boolean;
 }
 
-// ... [DomainSetupGuide Component remains exactly the same as provided] ...
+// Separate component to handle its own translations and state
 function DomainSetupGuide({ domain }: { domain: string }) {
+  const t = useTranslations('Dashboard');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
@@ -65,21 +67,20 @@ function DomainSetupGuide({ domain }: { domain: string }) {
     if (open) {
       fetchProvider();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={(val) => setOpen(val)}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="w-full sm:w-auto">
-          Setup Guide
+          {t('guide_btn')}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Setup Guide for {domain}</DialogTitle>
+          <DialogTitle>{t('guide_title', { domain })}</DialogTitle>
           <DialogDescription>
-            Step-by-step instructions to add required DNS records and verify your domain.
+            {t('guide_desc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -87,14 +88,14 @@ function DomainSetupGuide({ domain }: { domain: string }) {
           {loading ? (
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Detecting DNS provider and nameservers...</span>
+              <span>{t('guide_loading')}</span>
             </div>
           ) : error ? (
             <p className="text-red-500">{error}</p>
           ) : (
             <>
               <p>
-                <strong>Detected DNS provider: </strong>
+                <strong>{t('guide_provider')} </strong>
                 {provider ?? "Not detected"}{" "}
                 {nameservers ? (
                   <span className="text-muted-foreground">({nameservers.join(", ")})</span>
@@ -103,28 +104,30 @@ function DomainSetupGuide({ domain }: { domain: string }) {
 
               <ol className="list-decimal list-inside space-y-2">
                 <li>
-                  Make sure your domain is already added in the dashboard (Add Domain).
+                  {t('guide_step_1')}
                 </li>
                 <li>
-                  Login to your DNS provider ({provider ?? "your registrar/DNS panel"}).
+                  {t.rich('guide_step_2', {
+                    provider: provider ?? "your registrar/DNS panel"
+                  })}
                 </li>
                 <li>
-                  Add or update the following DNS records:
+                  {t('guide_step_3')}
                   <ul className="list-disc ml-5 mt-1">
                     <li>
-                      <strong>MX:</strong> <code>mx.freecustom.email</code> (priority default)
+                      <strong>MX:</strong> <code>mx.freecustom.email</code> (priority default/10)
                     </li>
                     <li>
-                      <strong>TXT:</strong> The verification token shown in your dashboard for this domain (starts with <code>freecustomemail-verification=</code>)
+                      <strong>TXT:</strong> (Token starting with <code>freecustomemail-verification=</code>)
                     </li>
                   </ul>
                 </li>
-                <li>Wait for DNS propagation (can be a few minutes or up to 24 hours depending on provider).</li>
-                <li>Come back to this dashboard and click <strong>Verify</strong>.</li>
+                <li>{t('guide_step_4')}</li>
+                <li>{t('guide_step_5')}</li>
               </ol>
 
               <p className="text-muted-foreground text-xs mt-2">
-                Tip: If verification fails, ensure there are no conflicting TXT/MX entries and that you added the TXT for the root/apex (not a subdomain) unless instructed otherwise.
+                {t('guide_tip')}
               </p>
             </>
           )}
@@ -132,7 +135,7 @@ function DomainSetupGuide({ domain }: { domain: string }) {
 
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Close
+            {t('guide_close')}
           </Button>
         </div>
       </DialogContent>
@@ -140,7 +143,6 @@ function DomainSetupGuide({ domain }: { domain: string }) {
   );
 }
 
-// ... [normalizeDomain function remains exactly the same] ...
 function normalizeDomain(input: Partial<CustomDomain> & { domain?: string }): CustomDomain | null {
   if (!input || !input.domain) return null;
   return {
@@ -151,11 +153,8 @@ function normalizeDomain(input: Partial<CustomDomain> & { domain?: string }): Cu
   };
 }
 
-
-/**
- * Main component
- */
 export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManagerProps) {
+  const t = useTranslations('Dashboard');
   const { data: session } = useSession();
   const user = session?.user;
   const [domains, setDomains] = useState<CustomDomain[]>(
@@ -183,16 +182,16 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
     });
   }
 
-  // Add domain
   const handleAddDomain = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPro) {
-        openUpsell("Custom Domains");
+        openUpsell(t('domains_title'));
         return;
     }
     if (!newDomain || !user) return;
     setIsLoading(true);
-    const toastId = toast.loading("Adding domain...");
+    // Note: We use raw strings for loading toasts often, or translate them
+    const toastId = toast.loading(t('domains_add_btn') + "...");
     try {
       const response = await fetch("/api/user/domains", {
         method: "POST",
@@ -202,7 +201,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result?.message || "Failed to add domain.");
+        throw new Error(result?.message || t('domains_add_fail'));
       }
 
       const returned = result?.data ?? result?.domain ?? null;
@@ -221,16 +220,15 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
       }
 
       setNewDomain("");
-      toast.success("Domain added successfully!", { id: toastId });
+      toast.success(t('domains_add_success'), { id: toastId });
     } catch (error: any) {
       console.error("Add domain error:", error);
-      toast.error(error?.message ?? "Failed to add domain", { id: toastId });
+      toast.error(error?.message ?? t('domains_add_fail'), { id: toastId });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Delete domain
   const handleDeleteDomain = async (domainToDelete: string) => {
     if (!isPro) {
         openUpsell("Manage Domains");
@@ -247,20 +245,18 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result?.message || "Failed to delete domain.");
+        throw new Error(result?.message || t('domains_del_fail'));
       }
 
       setDomains((prev) => prev.filter((d) => d.domain !== domainToDelete));
-      toast.success("Domain deleted.", { id: toastId });
+      toast.success(t('domains_del_success'), { id: toastId });
     } catch (error: any) {
-      console.error("Delete domain error:", error);
-      toast.error(error?.message ?? "Failed to delete domain", { id: toastId });
+      toast.error(error?.message ?? t('domains_del_fail'), { id: toastId });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Verify domain
   const handleVerifyDomain = async (domainToVerify: string) => {
     if (!isPro) {
         openUpsell("Domain Verification");
@@ -268,7 +264,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
     }
     if (!user) return;
     setVerifyingDomain(domainToVerify);
-    const toastId = toast.loading(`Verifying ${domainToVerify}...`);
+    const toastId = toast.loading(`${t('domains_verifying')} ${domainToVerify}...`);
     try {
       const response = await fetch("/api/user/domains/verify", {
         method: "POST",
@@ -277,29 +273,27 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result?.message || "Verification failed.");
+        throw new Error(result?.message || t('domains_verify_fail'));
       }
 
       if (result?.success && result?.verified) {
         setDomains((prev) =>
           prev.map((d) => (d.domain === domainToVerify ? { ...d, verified: true } : d))
         );
-        toast.success("Domain verified successfully!", { id: toastId });
+        toast.success(t('domains_verify_success'), { id: toastId });
       } else {
         const returned = normalizeDomain(result?.data ?? {});
         if (returned && returned.domain === domainToVerify && returned.verified) {
           setDomains((prev) => prev.map((d) => (d.domain === domainToVerify ? returned : d)));
-          toast.success("Domain verified successfully!", { id: toastId });
+          toast.success(t('domains_verify_success'), { id: toastId });
         } else {
           throw new Error(
-            result?.message ||
-              "DNS record not found or not propagated yet. Please try again in a few minutes."
+            result?.message || t('domains_verify_fail')
           );
         }
       }
     } catch (error: any) {
-      console.error("Verify domain error:", error);
-      toast.error(error?.message ?? "Verification failed.", { id: toastId });
+      toast.error(error?.message ?? t('domains_verify_fail'), { id: toastId });
     } finally {
       setVerifyingDomain(null);
     }
@@ -307,15 +301,15 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
 
   const copyToClipboard = (text: string | undefined, label: string) => {
     if (!text) {
-      toast.error("Nothing to copy.");
+      toast.error(t('domains_copy_fail'));
       return;
     }
     try {
       navigator.clipboard.writeText(text);
-      toast.success(`${label} copied to clipboard!`);
+      toast.success(`${label} ${t('domains_copy_success')}`);
     } catch (err) {
       console.error("Copy failed", err);
-      toast.error("Failed to copy to clipboard");
+      toast.error(t('domains_copy_fail'));
     }
   };
 
@@ -325,14 +319,14 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
         <CardHeader className="flex flex-row items-center justify-between">
             <div className="space-y-1.5">
                 <CardTitle className="flex items-center gap-2">
-                    Manage Custom Domains
+                    {t('domains_title')}
                     {!isPro && <Lock className="h-4 w-4 text-muted-foreground" />}
                 </CardTitle>
-                <CardDescription>Add and verify your custom domains to receive emails.</CardDescription>
+                <CardDescription>{t('domains_desc')}</CardDescription>
             </div>
             {!isPro && (
                 <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                    <Crown className="w-3 h-3 mr-1" /> Pro Feature
+                    <Crown className="w-3 h-3 mr-1" /> {t('domains_pro_badge')}
                 </Badge>
             )}
         </CardHeader>
@@ -340,7 +334,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
             {/* ADD DOMAIN FORM */}
             <form onSubmit={handleAddDomain} className="flex flex-col sm:flex-row gap-2 mb-6">
             <Input
-                placeholder="your-domain.com"
+                placeholder={t('domains_placeholder')}
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
                 disabled={isLoading}
@@ -349,7 +343,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
             <div className="flex gap-2">
                 <Button type="submit" disabled={isLoading || !newDomain}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Domain
+                {t('domains_add_btn')}
                 </Button>
                 <Button
                 type="button"
@@ -362,18 +356,18 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                     if (!user) return;
                     setIsLoading(true);
                     try {
-                    const res = await fetch(`/api/user/dashboard-data`, { cache: "no-store" });
-                    const json = await res.json();
-                    const list = json?.customDomains ?? json?.data?.customDomains ?? [];
-                    const normalized = Array.isArray(list)
-                        ? list.map((d: any) => normalizeDomain(d)).filter(Boolean)
-                        : [];
-                    setDomains(normalized as CustomDomain[]);
-                    toast.success("Domains refreshed.");
+                        const res = await fetch(`/api/user/dashboard-data`, { cache: "no-store" });
+                        const json = await res.json();
+                        const list = json?.customDomains ?? json?.data?.customDomains ?? [];
+                        const normalized = Array.isArray(list)
+                            ? list.map((d: any) => normalizeDomain(d)).filter(Boolean)
+                            : [];
+                        setDomains(normalized as CustomDomain[]);
+                        toast.success(t('domains_refresh_success'));
                     } catch (err) {
-                    toast.error("Failed to refresh domains.");
+                        toast.error(t('domains_refresh_fail'));
                     } finally {
-                    setIsLoading(false);
+                        setIsLoading(false);
                     }
                 }}
                 >
@@ -396,7 +390,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                         }`}
                         >
                         {d.verified ? <CheckCircle className="mr-1 h-3 w-3" /> : <HelpCircle className="mr-1 h-3 w-3" />}
-                        {d.verified ? "Verified" : "Pending"}
+                        {d.verified ? t('domains_status_verified') : t('domains_status_pending')}
                         </CardDescription>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => handleDeleteDomain(d.domain)} disabled={isLoading} className="ml-2 flex-shrink-0">
@@ -406,7 +400,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
 
                     <CardContent className="flex-grow space-y-4">
                     <div className="text-sm text-muted-foreground space-y-2">
-                        <p className="font-semibold text-foreground">Required DNS Records</p>
+                        <p className="font-semibold text-foreground">{t('domains_records_title')}</p>
                         {/* MX Record */}
                         <div className="flex items-center justify-between gap-2">
                         <code className="text-xs p-1 bg-slate-100 rounded-sm break-all">
@@ -419,7 +413,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                         {/* TXT Record */}
                         <div className="flex items-center justify-between gap-2">
                         <code className="text-xs p-1 bg-slate-100 rounded-sm break-all">
-                            <span className="font-bold">TXT:</span> {d.txtRecord || <em>(will be generated)</em>}
+                            <span className="font-bold">TXT:</span> {d.txtRecord || <em>...</em>}
                         </code>
                         <Button variant="ghost" size="icon" onClick={() => copyToClipboard(d.txtRecord, "TXT Record")}>
                             <Copy className="h-3 w-3" />
@@ -440,7 +434,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                             {verifyingDomain === d.domain ? (
                             <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                             ) : null}
-                            Verify
+                            {t('domains_verify_btn')}
                         </Button>
                         )}
                         <DomainSetupGuide domain={d.domain} />
@@ -450,16 +444,14 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                 ))
             ) : (
                 <div className="text-center col-span-full py-12 border rounded-md border-dashed">
-                    <h3 className="text-lg font-medium">No custom domains added</h3>
+                    <h3 className="text-lg font-medium">{t('domains_empty_title')}</h3>
                     <p className="text-sm text-muted-foreground">
-                        {isPro ? "Add your first domain to get started." : "Upgrade to Pro to add your own domains."}
+                        {isPro ? t('domains_empty_desc_pro') : t('domains_empty_desc_free')}
                     </p>
                 </div>
             )}
             </div>
         </CardContent>
-        
-        {/* Helper overlay for non-pro if list is empty, optional style choice, currently handled by toast/modal interactions */}
         </Card>
         
         <UpsellModal 

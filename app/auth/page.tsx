@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Mail, Github, Chrome, ArrowRight, Loader2 } from "lucide-react";
 import { AppHeader } from "@/components/nLHeader";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export default function AuthPage() {
     const searchParams = useSearchParams();
@@ -32,7 +33,9 @@ export default function AuthPage() {
     };
 
     return (
-        <>
+        
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className="min-h-screen max-w-[100vw] bg-background">
             <AppHeader initialSession={session} />
 
             <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -107,6 +110,7 @@ export default function AuthPage() {
                     </CardContent>
                 </Card>
             </div>
-        </>
+        </div>
+        </ThemeProvider>
     );
 }
