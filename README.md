@@ -1,30 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📧 FreeCustom.Email (Temp Mail Service)
 
-## Getting Started
+![License](https://img.shields.io/github/license/DishIs/temp-mail)
+![Next.js](https://img.shields.io/badge/Next.js-15.0-black)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers-orange)
+![Status](https://img.shields.io/website?url=https%3A%2F%2Ffreecustom.email)
 
-First, run the development server:
+**The Fastest, Ad-Free Disposable Email Service.**  
+Built with Next.js, Cloudflare Workers, and Tailwind CSS.
 
-```bash
-npm run dev
-```
+🌐 **Live Site:** [FreeCustom.email](https://freecustom.email)  
+🚀 **Developer API:** [RapidAPI Link](https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ✨ Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- ** Instant Inbox:** No refresh needed (WebSockets).
+- ** Ad-Free:** Clean, modern UI without invasive popups.
+- ** Custom Domains:** Choose from multiple domain options.
+- ** Secure:** Emails are encrypted and auto-deleted.
+- ** API Access:** Developers can integrate using our API.
+- ** PWA Ready:** Installable on mobile and desktop.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠️ Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Frontend:** Next.js 15 (App Router), React 18, Tailwind CSS, Radix UI.
+- **Backend:** Cloudflare Workers (Edge), MongoDB (Storage).
+- **Realtime:** WebSockets (Cloudflare Durable Objects).
+- **Auth:** NextAuth.js (Google, GitHub, Magic Link).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🚀 Getting Started
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Prerequisites
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Node.js 18+
+- npm or pnpm
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/DishIs/temp-mail.git
+   cd temp-mail
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   # Ensure all UI components are installed
+   npm install @radix-ui/react-switch @radix-ui/react-dialog @radix-ui/react-tabs lucide-react framer-motion
+   ```
+
+3. **Set up Environment Variables:**
+   Copy `.env.example` to `.env.local` and fill in your keys.
+   ```bash
+   cp .env.example .env.local
+   ```
+   *Required variables: `MONGODB_URI`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_API_URL`.*
+
+4. **Run the Development Server:**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to see the app.
+
+---
+
+## 🔌 API Access for Developers
+
+Need to integrate temp mail into your own app?  
+We provide a high-performance API via RapidAPI.
+
+👉 **[Get API Key on RapidAPI](https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1)**
+
+**Features:**
+- Create unlimited inboxes.
+- Webhooks for new messages.
+- Custom domain support.
+- 99.9% Uptime SLA.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
