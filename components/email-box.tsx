@@ -164,6 +164,26 @@ export function EmailBox({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 
+  // --- SMART OTP EXTRACTION (Client Side) ---
+  const extractOtp = (message: Message): string | null => {
+    // Basic Regex for 4-8 digit codes
+    // Look for patterns like "code is 1234", "OTP: 123456", or just isolated digits in subject
+    if (!message.subject) return null;
+    
+    const subject = message.subject;
+    // Regex: Look for 4-8 digits that are either standalone or preceded by "code" keywords
+    const otpRegex = /(?:code|otp|verification|pin).*?(\b\d{4,8}\b)/i;
+    const match = subject.match(otpRegex);
+    
+    if (match && match[1]) return match[1];
+    
+    // Fallback: Just look for a standalone 6-digit code (most common)
+    const simple6 = subject.match(/\b\d{6}\b/);
+    if (simple6) return simple6[0];
+
+    return null;
+  };
+
   // --- NEW STATE FOR UI ---
   const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
@@ -642,6 +662,7 @@ export function EmailBox({
               const isSelected = selectedMessage?.id === message.id;
               
               const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
+              const otp = userSettings.smartOtp ? extractOtp(message) : null;
 
               return (
                 <div
@@ -671,14 +692,30 @@ export function EmailBox({
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className={cn("truncate text-xs", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("truncate text-xs flex-1", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
                         {message.subject || "(No Subject)"}
                       </span>
+                      
+                      {otp && (
+                        <div 
+                            className="shrink-0 flex items-center gap-1 bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20 text-[10px] font-mono cursor-pointer hover:bg-green-500/20 transition-colors z-10"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(otp);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                            }}
+                            title="Click to copy OTP"
+                        >
+                            <span className="font-bold tracking-wider">{otp}</span>
+                            <Copy className="h-2.5 w-2.5" />
+                        </div>
+                      )}
                     </div>
 
                     {!isCompact && (
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mt-1">
                         {/* Expiration Notice - Tiny & Upsell Trigger */}
                         <div
                             className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
@@ -739,8 +776,40 @@ export function EmailBox({
         </div>
   );
 
+  const isZen = userSettings.layout === 'zen';
+  const isMinimal = userSettings.layout === 'minimal';
+
+  useEffect(() => {
+      // Toggle global UI elements based on layout
+      const header = document.querySelector('header');
+      const footer = document.querySelector('footer');
+      const nav = document.querySelector('nav');
+      
+      if (isZen) {
+          if(header) header.style.display = 'none';
+          if(footer) footer.style.display = 'none';
+          if(nav) nav.style.display = 'none';
+      } else if (isMinimal) {
+          if(header) header.style.display = 'flex'; // Keep header for Minimal
+          if(footer) footer.style.display = 'none';
+      } else {
+          // Restore
+          if(header) header.style.display = '';
+          if(footer) footer.style.display = '';
+          if(nav) nav.style.display = '';
+      }
+      
+      return () => {
+          // Cleanup on unmount/change
+          if(header) header.style.display = '';
+          if(footer) footer.style.display = '';
+          if(nav) nav.style.display = '';
+      };
+  }, [userSettings.layout]);
+
   return (
-    <Card className="border-dashed">
+    <Card className={cn("border-dashed", isZen ? "border-0 shadow-none bg-transparent" : "")}>
+      {!isZen && (
       <CardContent className="space-y-2 pt-3 ">
         <div className="flex items-center gap-2">
           {isEditing ? (

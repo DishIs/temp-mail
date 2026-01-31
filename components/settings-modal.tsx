@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 export interface UserSettings {
   notifications: boolean;
   sound: boolean;
-  layout: 'classic' | 'split' | 'compact';
+  layout: 'classic' | 'split' | 'compact' | 'minimal' | 'zen'; // Added 'minimal' and 'zen'
   shortcuts: {
     refresh: string;
     copy: string;
@@ -22,6 +22,7 @@ export interface UserSettings {
     new: string;
     qr: string;
   };
+  smartOtp: boolean; // Added
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -34,7 +35,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
     delete: 'd',
     new: 'n',
     qr: 'q'
-  }
+  },
+  smartOtp: false // Default off, requires Pro
 };
 
 interface SettingsModalProps {
@@ -43,11 +45,14 @@ interface SettingsModalProps {
   settings: UserSettings;
   onUpdate: (newSettings: UserSettings) => void;
   isPro: boolean;
+  isAuthenticated: boolean; // Added
   onUpsell: (feature: string) => void;
+  onAuthNeed: (feature: string) => void; // Added
 }
 
-export function SettingsModal({ isOpen, onClose, settings, onUpdate, isPro, onUpsell }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, settings, onUpdate, isPro, isAuthenticated, onUpsell, onAuthNeed }: SettingsModalProps) {
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
+  const [activeTab, setActiveTab] = useState("general"); // Control active tab manually for sidebar
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -59,185 +64,236 @@ export function SettingsModal({ isOpen, onClose, settings, onUpdate, isPro, onUp
   };
 
   const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
+    // Auth Check for saving "permanent" settings? 
+    // For now, we allow guests to change basic stuff locally.
     setLocalSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  const requirePro = (action: () => void, feature: string) => {
+      if (!isPro) {
+          onUpsell(feature);
+      } else {
+          action();
+      }
+  };
+
+  const requireAuth = (action: () => void, feature: string) => {
+      if (!isAuthenticated) {
+          onAuthNeed(feature);
+      } else {
+          action();
+      }
+  };
+
   const updateShortcut = (action: keyof UserSettings['shortcuts'], key: string) => {
-    if (!isPro) {
-      onUpsell("Custom Shortcuts");
-      return;
-    }
-    setLocalSettings(prev => ({
-      ...prev,
-      shortcuts: { ...prev.shortcuts, [action]: key }
-    }));
+    requirePro(() => {
+        setLocalSettings(prev => ({
+            ...prev,
+            shortcuts: { ...prev.shortcuts, [action]: key }
+        }));
+    }, "Custom Shortcuts");
   };
 
   const handleLayoutChange = (layout: UserSettings['layout']) => {
-    if (layout === 'split' && !isPro) {
-      onUpsell("Split View Layout");
-      return;
+    const proLayouts = ['split', 'minimal', 'zen'];
+    if (proLayouts.includes(layout)) {
+         requirePro(() => updateSetting('layout', layout), `${layout.charAt(0).toUpperCase() + layout.slice(1)} Layout`);
+    } else {
+         updateSetting('layout', layout);
     }
-    updateSetting('layout', layout);
   };
+
+  // --- RESPONSIVE LAYOUT HELPERS ---
+  const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
+      <button
+        onClick={() => setActiveTab(id)}
+        className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors w-full text-left",
+            activeTab === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+        )}
+      >
+          <Icon className="w-4 h-4" />
+          {label}
+      </button>
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" /> Settings
-          </DialogTitle>
-          <DialogDescription>
-            Customize your inbox experience.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-[800px] h-[80vh] p-0 gap-0 overflow-hidden flex flex-col md:flex-row">
+        
+        {/* SIDEBAR (Desktop) */}
+        <div className="hidden md:flex flex-col w-64 border-r bg-muted/20 p-4 gap-1">
+            <div className="flex items-center gap-2 px-2 mb-6 text-lg font-semibold">
+                <Settings className="w-5 h-5" /> Settings
+            </div>
+            <SidebarItem id="general" label="General" icon={Settings} />
+            <SidebarItem id="notifications" label="Notifications" icon={Bell} />
+            <SidebarItem id="appearance" label="Appearance & Layout" icon={Layout} />
+            <SidebarItem id="shortcuts" label="Shortcuts" icon={Keyboard} />
+        </div>
 
-        <Tabs defaultValue="general" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="notifications">Notify</TabsTrigger>
-            <TabsTrigger value="appearance">Layout</TabsTrigger>
-            <TabsTrigger value="shortcuts">Shortcuts</TabsTrigger>
-          </TabsList>
+        {/* HEADER (Mobile) */}
+        <div className="md:hidden p-4 border-b flex items-center justify-between">
+             <div className="font-semibold flex items-center gap-2"><Settings className="w-4 h-4" /> Settings</div>
+             <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* GENERAL TAB */}
-            <TabsContent value="general" className="space-y-4 mt-0">
-               <div className="flex items-center justify-between space-x-2">
-                <div className="flex flex-col space-y-1">
-                  <Label>Auto-Save Contacts</Label>
-                  <span className="text-xs text-muted-foreground">Automatically save senders to contacts list.</span>
+        {/* CONTENT AREA */}
+        <div className="flex-1 flex flex-col min-h-0 bg-background">
+            {/* TABS (Mobile Only) */}
+            <div className="md:hidden border-b">
+                <div className="flex overflow-x-auto">
+                    {['general', 'notifications', 'appearance', 'shortcuts'].map(tab => (
+                        <button 
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={cn(
+                                "px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap",
+                                activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+                            )}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
                 </div>
-                <Switch disabled checked={false} />
-              </div>
-              <div className="p-3 bg-muted/50 rounded-md text-sm text-muted-foreground text-center">
-                 More general settings coming soon.
-              </div>
-            </TabsContent>
+            </div>
 
-            {/* NOTIFICATIONS TAB */}
-            <TabsContent value="notifications" className="space-y-6 mt-0">
-              <div className="flex items-center justify-between space-x-2">
-                <div className="flex flex-col space-y-1">
-                  <Label className="flex items-center gap-2">
-                     Browser Notifications <Bell className="w-3 h-3" />
-                  </Label>
-                  <span className="text-xs text-muted-foreground">Get notified when a new email arrives.</span>
-                </div>
-                <Switch 
-                  checked={localSettings.notifications} 
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                        Notification.requestPermission().then(p => {
-                            if (p === 'granted') updateSetting('notifications', true);
-                        });
-                    } else {
-                        updateSetting('notifications', false);
-                    }
-                  }} 
-                />
-              </div>
-              
-              <div className="flex items-center justify-between space-x-2">
-                <div className="flex flex-col space-y-1">
-                  <Label>Sound Alerts</Label>
-                  <span className="text-xs text-muted-foreground">Play a sound on new email.</span>
-                </div>
-                <Switch 
-                  checked={localSettings.sound} 
-                  onCheckedChange={(checked) => updateSetting('sound', checked)} 
-                />
-              </div>
-            </TabsContent>
-
-            {/* APPEARANCE TAB */}
-            <TabsContent value="appearance" className="space-y-6 mt-0">
-              <div className="grid grid-cols-3 gap-4">
-                {/* Classic Layout */}
-                <div 
-                  className={cn(
-                    "cursor-pointer border-2 rounded-lg p-2 hover:border-primary/50 transition-all",
-                    localSettings.layout === 'classic' ? "border-primary bg-primary/5" : "border-muted"
-                  )}
-                  onClick={() => handleLayoutChange('classic')}
-                >
-                  <div className="aspect-square bg-muted rounded mb-2 flex flex-col gap-1 p-1">
-                     <div className="h-1/3 bg-foreground/20 rounded"></div>
-                     <div className="h-1/3 bg-foreground/10 rounded"></div>
-                     <div className="h-1/3 bg-foreground/10 rounded"></div>
-                  </div>
-                  <div className="text-center text-sm font-medium">Classic</div>
-                </div>
-
-                {/* Compact Layout */}
-                <div 
-                  className={cn(
-                    "cursor-pointer border-2 rounded-lg p-2 hover:border-primary/50 transition-all",
-                    localSettings.layout === 'compact' ? "border-primary bg-primary/5" : "border-muted"
-                  )}
-                  onClick={() => handleLayoutChange('compact')}
-                >
-                  <div className="aspect-square bg-muted rounded mb-2 flex flex-col gap-0.5 p-1">
-                     <div className="h-1/4 bg-foreground/20 rounded"></div>
-                     <div className="h-1/4 bg-foreground/10 rounded"></div>
-                     <div className="h-1/4 bg-foreground/10 rounded"></div>
-                     <div className="h-1/4 bg-foreground/10 rounded"></div>
-                  </div>
-                  <div className="text-center text-sm font-medium">Compact</div>
-                </div>
-
-                {/* Split Layout (PRO) */}
-                <div 
-                  className={cn(
-                    "cursor-pointer border-2 rounded-lg p-2 hover:border-primary/50 transition-all relative",
-                    localSettings.layout === 'split' ? "border-primary bg-primary/5" : "border-muted"
-                  )}
-                  onClick={() => handleLayoutChange('split')}
-                >
-                  {!isPro && <div className="absolute top-1 right-1"><Crown className="w-3 h-3 text-amber-500 fill-amber-500" /></div>}
-                  <div className="aspect-square bg-muted rounded mb-2 flex gap-1 p-1">
-                     <div className="w-1/3 flex flex-col gap-1">
-                        <div className="h-2 bg-foreground/20 rounded"></div>
-                        <div className="h-2 bg-foreground/10 rounded"></div>
-                     </div>
-                     <div className="w-2/3 bg-background border border-border/50 rounded flex items-center justify-center">
-                        <div className="w-4 h-2 bg-foreground/10 rounded"></div>
-                     </div>
-                  </div>
-                  <div className="text-center text-sm font-medium">Split View</div>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* SHORTCUTS TAB */}
-            <TabsContent value="shortcuts" className="space-y-4 mt-0">
-               {!isPro && (
-                 <div className="bg-amber-500/10 text-amber-500 p-2 rounded text-xs flex items-center gap-2 mb-2">
-                    <Crown className="w-3 h-3" /> Upgrade to Pro to customize shortcuts.
-                 </div>
-               )}
-               {Object.entries(localSettings.shortcuts).map(([action, key]) => (
-                 <div key={action} className="flex items-center justify-between">
-                    <Label className="capitalize">{action.replace(/([A-Z])/g, ' $1').trim()}</Label>
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        value={key} 
-                        readOnly={!isPro}
-                        className="w-16 text-center font-mono uppercase h-8"
-                        onChange={(e) => updateShortcut(action as any, e.target.value.toLowerCase().slice(-1))}
-                      />
+            <ScrollArea className="flex-1 p-6">
+                
+                {activeTab === "general" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div>
+                            <h3 className="text-lg font-medium mb-4">General Preferences</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base">Auto-Save Contacts</Label>
+                                        <p className="text-sm text-muted-foreground">Automatically save senders to contacts list.</p>
+                                    </div>
+                                    <Switch disabled checked={false} />
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                            <Label className="text-base">Smart OTP Extractor</Label>
+                                            {!isPro && <Crown className="w-3 h-3 text-amber-500" />}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">Detect and show verification codes in the email list.</p>
+                                    </div>
+                                    <Switch 
+                                        checked={localSettings.smartOtp} 
+                                        onCheckedChange={(checked) => requirePro(() => updateSetting('smartOtp', checked), "Smart OTP Extractor")} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                 </div>
-               ))}
-            </TabsContent>
-          </div>
+                )}
 
-          <div className="p-4 border-t flex justify-end gap-2">
-             <Button variant="outline" onClick={onClose}>Cancel</Button>
-             <Button onClick={handleSave}>Save Changes</Button>
-          </div>
-        </Tabs>
+                {activeTab === "notifications" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                         <div>
+                            <h3 className="text-lg font-medium mb-4">Notifications</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base">Browser Notifications</Label>
+                                        <p className="text-sm text-muted-foreground">Get notified when a new email arrives.</p>
+                                    </div>
+                                    <Switch 
+                                        checked={localSettings.notifications} 
+                                        onCheckedChange={(checked) => {
+                                            if (checked) {
+                                                Notification.requestPermission().then(p => {
+                                                    if (p === 'granted') updateSetting('notifications', true);
+                                                });
+                                            } else {
+                                                updateSetting('notifications', false);
+                                            }
+                                        }} 
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base">Sound Alerts</Label>
+                                        <p className="text-sm text-muted-foreground">Play a sound on new email.</p>
+                                    </div>
+                                    <Switch 
+                                        checked={localSettings.sound} 
+                                        onCheckedChange={(checked) => updateSetting('sound', checked)} 
+                                    />
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                )}
+
+                {activeTab === "appearance" && (
+                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                         <div>
+                            <h3 className="text-lg font-medium mb-4">Inbox Layout</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {[
+                                    { id: 'classic', name: 'Classic', desc: 'Standard view' },
+                                    { id: 'compact', name: 'Compact', desc: 'Dense list' },
+                                    { id: 'split', name: 'Split View', desc: 'Side-by-side', pro: true },
+                                    { id: 'minimal', name: 'Minimalist', desc: 'Hide history & footer', pro: true },
+                                    { id: 'zen', name: 'Zen Mode', desc: 'Focus only', pro: true },
+                                ].map((layout) => (
+                                    <div 
+                                        key={layout.id}
+                                        className={cn(
+                                            "relative cursor-pointer border-2 rounded-xl p-4 hover:border-primary/50 transition-all flex flex-col gap-2",
+                                            localSettings.layout === layout.id ? "border-primary bg-primary/5" : "border-muted"
+                                        )}
+                                        onClick={() => handleLayoutChange(layout.id as any)}
+                                    >
+                                        {layout.pro && !isPro && <div className="absolute top-2 right-2"><Crown className="w-3 h-3 text-amber-500 fill-amber-500" /></div>}
+                                        <div className="font-semibold">{layout.name}</div>
+                                        <div className="text-xs text-muted-foreground">{layout.desc}</div>
+                                    </div>
+                                ))}
+                            </div>
+                         </div>
+                     </div>
+                )}
+
+                {activeTab === "shortcuts" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div>
+                             <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium">Keyboard Shortcuts</h3>
+                                {!isPro && (
+                                    <span className="text-xs bg-amber-500/10 text-amber-500 px-2 py-1 rounded flex items-center gap-1">
+                                        <Crown className="w-3 h-3" /> Edit requires Pro
+                                    </span>
+                                )}
+                             </div>
+                             <div className="space-y-2">
+                                {Object.entries(localSettings.shortcuts).map(([action, key]) => (
+                                    <div key={action} className="flex items-center justify-between p-2 rounded hover:bg-muted/50">
+                                        <span className="capitalize text-sm font-medium">{action.replace(/([A-Z])/g, ' $1')}</span>
+                                        <Input 
+                                            value={key} 
+                                            readOnly={!isPro}
+                                            className="w-16 text-center font-mono uppercase h-8"
+                                            onChange={(e) => updateShortcut(action as any, e.target.value.toLowerCase().slice(-1))}
+                                        />
+                                    </div>
+                                ))}
+                             </div>
+                        </div>
+                    </div>
+                )}
+
+            </ScrollArea>
+            
+            <div className="p-4 border-t bg-background flex justify-end gap-2">
+                <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button onClick={handleSave}>Save Changes</Button>
+            </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
