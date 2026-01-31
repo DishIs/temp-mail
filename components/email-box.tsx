@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { getCookie, setCookie } from "cookies-next";
-import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -150,6 +150,7 @@ export function EmailBox({
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false); // NEW
 
   // --- NEW STATE FOR UI ---
   const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
@@ -227,6 +228,29 @@ export function EmailBox({
     };
     initialize();
   }, []);
+
+  // --- NOTIFICATION HANDLER ---
+  const requestNotificationPermission = async () => {
+    if (!("Notification" in window)) return;
+    const permission = await Notification.requestPermission();
+    setNotificationsEnabled(permission === "granted");
+  };
+
+  const sendNotification = (title: string, body: string) => {
+    // Play Sound
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.play().catch(e => console.log("Audio play failed (user interaction needed first)", e));
+    } catch (e) {}
+
+    // Show Notification
+    if (notificationsEnabled && document.visibilityState !== "visible") {
+      new Notification(title, {
+        body,
+        icon: '/logo.webp'
+      });
+    }
+  };
 
   // Persist Read/Dismissed state changes
   // Only save IF storage has been loaded initially to prevent overwriting with empty sets
@@ -378,6 +402,13 @@ export function EmailBox({
       setShowAttachmentNotice(!!data.wasAttachmentStripped);
       const typedData = data as { success: boolean; data: Message[]; message?: string };
       if (typedData.success && Array.isArray(typedData.data)) {
+        // DETECT NEW MESSAGES FOR NOTIFICATION
+        const newMsgs = typedData.data.filter(m => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
+        if (newMsgs.length > 0 && messages.length > 0) { // Only notify if not initial load
+             const latest = newMsgs[0];
+             sendNotification(`New Email from ${latest.from}`, latest.subject || "(No Subject)");
+        }
+
         setMessages(typedData.data);
         checkSavedMessages(typedData.data);
       } else {
@@ -627,6 +658,16 @@ export function EmailBox({
               </Tooltip>
               <Button className="hidden xs:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
                 <QrCode className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="icon" 
+                onClick={requestNotificationPermission} 
+                disabled={blockButtons} 
+                title={notificationsEnabled ? "Notifications On" : "Enable Notifications"}
+                className={notificationsEnabled ? "text-primary bg-primary/10" : ""}
+              >
+                {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
               </Button>
               <ShareDropdown />
             </div>
