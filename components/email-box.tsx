@@ -1,9 +1,9 @@
 // components/email-box.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { getCookie, setCookie } from "cookies-next";
-import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Bell, BellOff } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,10 @@ import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { UpsellModal } from "./upsell-modal";
 import { AuthNeed } from "./auth-needed-moda";
+import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
+import { ScrollArea } from "@/components/ui/scroll-area";
+// import MessageContent component if we need to render it inline for Split view
+// For now, I'll extract a simplified view or assume we can reuse parts of MessageModal content
 
 const FREE_DOMAINS = [
   "areueally.info", "ditapi.info",
@@ -60,6 +64,11 @@ interface Message {
   to: string;
   subject: string;
   date: string;
+  // ... other fields if needed for full display (body, html, etc)
+  // Assuming fetch returns these or we fetch them on select
+  text?: string;
+  html?: string;
+  hasAttachments?: boolean;
 }
 
 interface EmailBoxProps {
@@ -150,7 +159,10 @@ export function EmailBox({
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false); // NEW
+  
+  // SETTINGS STATE
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 
   // --- NEW STATE FOR UI ---
   const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
@@ -197,6 +209,16 @@ export function EmailBox({
       let effectiveInitialEmail: string | null = null;
       let historyToDisplay: string[] = [];
 
+      // Load Settings
+      try {
+        const savedSettings = localStorage.getItem('userSettings');
+        if (savedSettings) {
+           setUserSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+        }
+      } catch (e) {
+        console.error("Error loading settings", e);
+      }
+
       // Load local Read/Dismissed state
       try {
         const savedReadIds = JSON.parse(localStorage.getItem('readMessageIds') || '[]');
@@ -229,22 +251,33 @@ export function EmailBox({
     initialize();
   }, []);
 
-  // --- NOTIFICATION HANDLER ---
-  const requestNotificationPermission = async () => {
-    if (!("Notification" in window)) return;
-    const permission = await Notification.requestPermission();
-    setNotificationsEnabled(permission === "granted");
-  };
+  // Sync Settings to LocalStorage & API
+  useEffect(() => {
+    if (!isStorageLoaded) return;
+    localStorage.setItem('userSettings', JSON.stringify(userSettings));
+
+    // Sync to API if authenticated (debounced slightly via logic or just direct)
+    if (isAuthenticated) {
+        fetch('/api/user/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userSettings)
+        }).catch(e => console.error("Sync settings failed", e));
+    }
+  }, [userSettings, isStorageLoaded, isAuthenticated]);
+
 
   const sendNotification = (title: string, body: string) => {
-    // Play Sound
-    try {
-      const audio = new Audio('/notification.mp3');
-      audio.play().catch(e => console.log("Audio play failed (user interaction needed first)", e));
-    } catch (e) {}
+    // Play Sound if enabled
+    if (userSettings.sound) {
+      try {
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(e => console.log("Audio play failed (user interaction needed first)", e));
+      } catch (e) {}
+    }
 
-    // Show Notification
-    if (notificationsEnabled && document.visibilityState !== "visible") {
+    // Show Notification if enabled
+    if (userSettings.notifications && document.visibilityState !== "visible") {
       new Notification(title, {
         body,
         icon: '/logo.webp'
@@ -348,14 +381,12 @@ export function EmailBox({
   };
 
   const shortcuts = {
-    'r': () => handleAuthNeededShortcut(refreshInbox, 'Refresh Inbox'),
-    'c': () => handleAuthNeededShortcut(copyEmail, 'Copy Email'),
-    'd': () => handleProShortcut(deleteEmail, "Delete / Burn Email"),
-    'n': () => handleProShortcut(changeEmail, "Quick Edit"),
-    'q': () => setIsQRModalOpen(!isQRModalOpen)
+    [userSettings.shortcuts.refresh]: () => handleAuthNeededShortcut(refreshInbox, 'Refresh Inbox'),
+    [userSettings.shortcuts.copy]: () => handleAuthNeededShortcut(copyEmail, 'Copy Email'),
+    [userSettings.shortcuts.delete]: () => handleProShortcut(deleteEmail, "Delete / Burn Email"),
+    [userSettings.shortcuts.new]: () => handleProShortcut(changeEmail, "Quick Edit"),
+    [userSettings.shortcuts.qr]: () => setIsQRModalOpen(!isQRModalOpen)
   };
-
-
 
   useKeyboardShortcuts(shortcuts, 'pro');
 
@@ -494,7 +525,9 @@ export function EmailBox({
     }
 
     setSelectedMessage(message);
-    setIsMessageModalOpen(true);
+    if (userSettings.layout !== 'split') {
+        setIsMessageModalOpen(true);
+    }
   };
 
   const handleDeleteConfirmation = async () => {
@@ -588,6 +621,124 @@ export function EmailBox({
     return messages.filter(m => !dismissedMessageIds.has(m.id));
   }, [messages, activeTab, dismissedMessageIds]);
 
+  // Layout Renders
+  const isSplit = userSettings.layout === 'split' && isPro;
+  const isCompact = userSettings.layout === 'compact';
+
+  const renderMessageList = () => (
+     <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
+          {filteredMessages.length === 0 ? (
+            <div className="py-16 flex flex-col items-center justify-center text-center px-4">
+              <div className="bg-muted/30 p-4 rounded-full mb-4">
+                {activeTab === 'all' ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}
+              </div>
+              <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
+              <div className="text-sm text-muted-foreground max-w-xs">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
+            </div>
+          ) : (
+            filteredMessages.map((message) => {
+              const isRead = readMessageIds.has(message.id);
+              const isUnread = !isRead;
+              const isSelected = selectedMessage?.id === message.id;
+              
+              const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
+
+              return (
+                <div
+                  key={message.id}
+                  onClick={() => viewMessage(message)}
+                  className={cn(
+                    "group relative flex flex-col gap-1 sm:flex-row sm:items-center px-4 border-b last:border-0 cursor-pointer transition-all hover:bg-muted/40",
+                    isCompact ? "py-1" : "py-2",
+                    isSelected && isSplit ? "bg-primary/5 border-l-4 border-l-primary" : "",
+                    isUnread && !isSelected ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
+                  )}
+                >
+                  {/* Avatar / Icon Placeholder */}
+                  {!isCompact && (
+                      <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                        {message.from.charAt(1).toUpperCase()}
+                      </div>
+                  )}
+
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="flex items-center justify-between ">
+                      <span className={cn("truncate text-sm", isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
+                        {message.from}
+                      </span>
+                      <span className={cn("text-xs whitespace-nowrap shrink-0", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                        {formatDate(message.date)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className={cn("truncate text-xs", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                        {message.subject || "(No Subject)"}
+                      </span>
+                    </div>
+
+                    {!isCompact && (
+                        <div className="flex items-center justify-between">
+                        {/* Expiration Notice - Tiny & Upsell Trigger */}
+                        <div
+                            className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                            onClick={(e) => {
+                            e.stopPropagation();
+                            openUpsell("Permanent Storage");
+                            }}
+                        >
+                            <Clock className="h-3 w-3" />
+                            <span>{expirationText}</span>
+                        </div>
+
+                        {/* Actions (visible on hover or mobile) */}
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            {(userPlan === 'free') && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
+                                onClick={(e) => toggleSaveMessage(message, e)}
+                            >
+                                <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
+                            </Button>
+                            )}
+                            {(userPlan === 'pro') && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title={"Delete Permanently"}
+                                onClick={() => {
+                                setItemToDelete({ type: 'message', id: message.id });
+                                setIsDeleteModalOpen(true);
+
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                            )}
+                            <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
+                            onClick={(e) => handleMessageAction(message.id, e)}
+                            >
+                            {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+  );
+
   return (
     <Card className="border-dashed">
       <CardContent className="space-y-2 pt-3 ">
@@ -668,15 +819,15 @@ export function EmailBox({
               <Button className="hidden xs:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
                 <QrCode className="h-4 w-4" />
               </Button>
+              {/* SETTINGS BUTTON */}
               <Button 
                 variant="secondary" 
                 size="icon" 
-                onClick={requestNotificationPermission} 
+                onClick={() => setIsSettingsOpen(true)} 
                 disabled={blockButtons} 
-                title={notificationsEnabled ? "Notifications On" : "Enable Notifications"}
-                className={notificationsEnabled ? "text-primary bg-primary/10" : ""}
+                title={"Settings"}
               >
-                {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                <Settings className="h-4 w-4" />
               </Button>
               <ShareDropdown />
             </div>
@@ -700,11 +851,6 @@ export function EmailBox({
                   {isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
                   <span className="hidden sm:inline">{isEditing ? t('save') : t('change')}</span>
                   {<Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>}
-                  {/* <AnimatePresence>
-                    {!discoveredUpdates.newDomains && (
-                      <motion.span key="new-badge" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="text-[10px] bg-black text-white rounded-full px-1.5">{t('new')}</motion.span>
-                    )}
-                  </AnimatePresence> */}
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
@@ -766,113 +912,48 @@ export function EmailBox({
           </button>
         </div>
 
-        {/* MESSAGE LIST - GMAIL STYLE */}
-        <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
-          {filteredMessages.length === 0 ? (
-            <div className="py-16 flex flex-col items-center justify-center text-center px-4">
-              <div className="bg-muted/30 p-4 rounded-full mb-4">
-                {activeTab === 'all' ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}
-              </div>
-              <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
-              <div className="text-sm text-muted-foreground max-w-xs">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
-            </div>
-          ) : (
-            filteredMessages.map((message) => {
-              const isRead = readMessageIds.has(message.id);
-              const isUnread = !isRead;
-              // Pro users usually have longer retention, Free users 24h.
-              // If pro, we show "Permanent" or nothing, if Free we show expiration.
-              // Prompt requested tiny text for upsell.
-              const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
-
-              return (
-                <div
-                  key={message.id}
-                  onClick={() => viewMessage(message)}
-                  className={cn(
-                    "group relative flex flex-col sm:flex-row gap-2 sm:items-center py-2 px-4 border-b last:border-0 cursor-pointer transition-all hover:bg-muted/40",
-                    isUnread ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
-                  )}
-                >
-                  {/* Avatar / Icon Placeholder */}
-                  <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                    {message.from.charAt(1).toUpperCase()}
-                  </div>
-
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <div className="flex items-center justify-between ">
-                      <span className={cn("truncate text-sm", isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
-                        {message.from}
-                      </span>
-                      <span className={cn("text-xs whitespace-nowrap shrink-0", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                        {formatDate(message.date)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className={cn("truncate text-xs", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                        {message.subject || "(No Subject)"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      {/* Expiration Notice - Tiny & Upsell Trigger */}
-                      <div
-                        className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openUpsell("Permanent Storage");
-                        }}
-                      >
-                        <Clock className="h-3 w-3" />
-                        <span>Auto deletes: {expirationText}</span>
-                      </div>
-
-                      {/* Actions (visible on hover or mobile) */}
-                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {(userPlan === 'free') && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
-                            onClick={(e) => toggleSaveMessage(message, e)}
-                          >
-                            <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
-                          </Button>
-                        )}
-                        {(userPlan === 'pro') && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title={"Delete Permanently"}
-                            onClick={() => {
-                              setItemToDelete({ type: 'message', id: message.id });
-                              setIsDeleteModalOpen(true);
-
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
-                          onClick={(e) => handleMessageAction(message.id, e)}
-                        >
-                          {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+        {/* MESSAGE AREA */}
+        {isSplit ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]">
+                <div className="border rounded-xl overflow-hidden overflow-y-auto">
+                    {renderMessageList()}
                 </div>
-              );
-            })
-          )}
-        </div>
+                <div className="border rounded-xl p-4 overflow-y-auto bg-muted/10">
+                    {selectedMessage ? (
+                         // Reusing existing logic by rendering modal content inline would be best, 
+                         // but for now I'll use a simplified display or the modal logic adapted.
+                         // For MVP I will just show basic content or prompt to use modal logic if complex.
+                         // Actually, I can just use the MessageModal's content if I extract it.
+                         // For now, placeholder to verify layout switch.
+                         <div className="space-y-4">
+                            <h2 className="text-xl font-bold">{selectedMessage.subject}</h2>
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>{selectedMessage.from}</span>
+                                <span>{formatDate(selectedMessage.date)}</span>
+                            </div>
+                            <hr />
+                            <div className="prose dark:prose-invert max-w-none">
+                                {/* We don't have body content in the 'Message' interface used in state yet, 
+                                    usually it's fetched on click. 
+                                    I'll add a 'View Full Email' button that opens the modal for now to be safe/fast */}
+                                <div className="text-center py-10">
+                                    <p>Select an email to view.</p>
+                                    <Button onClick={() => setIsMessageModalOpen(true)} className="mt-4">Open Full View</Button>
+                                </div>
+                            </div>
+                         </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                            <Mail className="w-12 h-12 mb-4 opacity-20" />
+                            <p>Select an email to read</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        ) : (
+            // CLASSIC / COMPACT VIEW
+            renderMessageList()
+        )}
 
         <div className="mt-8 flex flex-col md:flex-row gap-8">
           <div className="flex-1">
@@ -918,6 +999,15 @@ export function EmailBox({
         isPro={isPro}
         onUpsell={() => openUpsell("Attachments")}
         apiEndpoint={API_ENDPOINT}
+      />
+      
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={userSettings}
+        onUpdate={setUserSettings}
+        isPro={isPro}
+        onUpsell={openUpsell}
       />
 
       <UpsellModal
