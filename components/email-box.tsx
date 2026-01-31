@@ -404,6 +404,15 @@ export function EmailBox({
       if (typedData.success && Array.isArray(typedData.data)) {
         // DETECT NEW MESSAGES FOR NOTIFICATION
         const newMsgs = typedData.data.filter(m => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
+        
+        // Update unread count for Title
+        const unreadCount = typedData.data.filter(m => !readMessageIds.has(m.id)).length;
+        if (unreadCount > 0) {
+            document.title = `(${unreadCount}) ${email} - Free Custom Email`;
+        } else {
+             document.title = `${email} - Free Custom Email`;
+        }
+
         if (newMsgs.length > 0 && messages.length > 0) { // Only notify if not initial load
              const latest = newMsgs[0];
              sendNotification(`New Email from ${latest.from}`, latest.subject || "(No Subject)");
