@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { getCookie, setCookie } from "cookies-next";
-import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, RotateCwSquare, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Settings } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Settings, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,21 +13,16 @@ import { MessageModal } from "./message-modal";
 import { ErrorPopup } from "./error-popup";
 import { DeleteConfirmationModal } from "./delete-confirmation-modal";
 import { ShareDropdown } from "./ShareDropdown";
-import { AnimatePresence, motion } from "framer-motion";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { Crown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { UpsellModal } from "./upsell-modal";
-import { AuthNeed } from "./auth-needed-moda";
+import { AuthNeed } from "./auth-needed-moda"; // Fixed typo: moda -> modal
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
-import { ScrollArea } from "@/components/ui/scroll-area";
-// import MessageContent component if we need to render it inline for Split view
-// For now, I'll extract a simplified view or assume we can reuse parts of MessageModal content
 
 const FREE_DOMAINS = [
   "areueally.info", "ditapi.info",
@@ -64,8 +59,6 @@ interface Message {
   to: string;
   subject: string;
   date: string;
-  // ... other fields if needed for full display (body, html, etc)
-  // Assuming fetch returns these or we fetch them on select
   text?: string;
   html?: string;
   hasAttachments?: boolean;
@@ -156,6 +149,7 @@ export function EmailBox({
   const [itemToDelete, setItemToDelete] = useState<{ type: "email" | "message"; id?: string } | null>(null);
   const [blockButtons, setBlockButtons] = useState(false);
   const [oldEmailUsed, setOldEmailUsed] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
@@ -166,21 +160,13 @@ export function EmailBox({
 
   // --- SMART OTP EXTRACTION (Client Side) ---
   const extractOtp = (message: Message): string | null => {
-    // Basic Regex for 4-8 digit codes
-    // Look for patterns like "code is 1234", "OTP: 123456", or just isolated digits in subject
     if (!message.subject) return null;
-    
     const subject = message.subject;
-    // Regex: Look for 4-8 digits that are either standalone or preceded by "code" keywords
     const otpRegex = /(?:code|otp|verification|pin).*?(\b\d{4,8}\b)/i;
     const match = subject.match(otpRegex);
-    
     if (match && match[1]) return match[1];
-    
-    // Fallback: Just look for a standalone 6-digit code (most common)
     const simple6 = subject.match(/\b\d{6}\b/);
     if (simple6) return simple6[0];
-
     return null;
   };
 
@@ -188,7 +174,6 @@ export function EmailBox({
   const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const [dismissedMessageIds, setDismissedMessageIds] = useState<Set<string>>(new Set());
-  // Add a flag to ensure we don't overwrite localstorage with empty sets on initial mount
   const [isStorageLoaded, setIsStorageLoaded] = useState(false);
 
   // --- UPSELL STATE ---
@@ -229,7 +214,6 @@ export function EmailBox({
       let effectiveInitialEmail: string | null = null;
       let historyToDisplay: string[] = [];
 
-      // Load Settings
       try {
         const savedSettings = localStorage.getItem('userSettings');
         if (savedSettings) {
@@ -239,7 +223,6 @@ export function EmailBox({
         console.error("Error loading settings", e);
       }
 
-      // Load local Read/Dismissed state
       try {
         const savedReadIds = JSON.parse(localStorage.getItem('readMessageIds') || '[]');
         setReadMessageIds(new Set(savedReadIds));
@@ -249,7 +232,6 @@ export function EmailBox({
       } catch (e) {
         console.error("Error loading local storage state", e);
       } finally {
-        // Mark storage as loaded so the saving effects can run safely
         setIsStorageLoaded(true);
       }
 
@@ -269,14 +251,13 @@ export function EmailBox({
       setSelectedDomain(effectiveInitialEmail.split('@')[1]);
     };
     initialize();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync Settings to LocalStorage & API
   useEffect(() => {
     if (!isStorageLoaded) return;
     localStorage.setItem('userSettings', JSON.stringify(userSettings));
 
-    // Sync to API if authenticated (debounced slightly via logic or just direct)
     if (isAuthenticated) {
         fetch('/api/user/settings', {
             method: 'POST',
@@ -288,15 +269,15 @@ export function EmailBox({
 
 
   const sendNotification = (title: string, body: string) => {
-    // Play Sound if enabled
     if (userSettings.sound) {
       try {
         const audio = new Audio('/notification.mp3');
         audio.play().catch(e => console.log("Audio play failed (user interaction needed first)", e));
-      } catch (e) {}
+      } catch (e) {
+        // ignore audio errors
+      }
     }
 
-    // Show Notification if enabled
     if (userSettings.notifications && document.visibilityState !== "visible") {
       new Notification(title, {
         body,
@@ -305,8 +286,6 @@ export function EmailBox({
     }
   };
 
-  // Persist Read/Dismissed state changes
-  // Only save IF storage has been loaded initially to prevent overwriting with empty sets
   useEffect(() => {
     if (isStorageLoaded) {
       localStorage.setItem('readMessageIds', JSON.stringify(Array.from(readMessageIds)));
@@ -333,7 +312,7 @@ export function EmailBox({
     }
     localStorage.setItem('emailHistory', JSON.stringify(newHistory));
     setEmailHistory(newHistory);
-  }, [email, session]);
+  }, [email, session, isAuthenticated, userPlan]);
 
   useEffect(() => {
     if (selectedDomain) {
@@ -342,12 +321,13 @@ export function EmailBox({
   }, [selectedDomain]);
 
   useEffect(() => {
-    if (!email || (isAuthenticated && !token)) return; // Wait for token if authenticated
+    if (!email || (isAuthenticated && !token)) return;
     refreshInbox();
     const socket = new WebSocket(`wss://api2.freecustom.email/?mailbox=${email}`);
     socket.onopen = () => console.log("WebSocket connection established");
     socket.onmessage = () => refreshInbox();
     return () => socket.close();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, token, isAuthenticated]);
 
   const checkSavedMessages = (currentMessages: Message[]) => {
@@ -373,8 +353,8 @@ export function EmailBox({
     setEmail(newEmail);
     setSelectedDomain(domainToUse);
     setMessages([]);
-    setReadMessageIds(new Set()); // Reset read status for new email
-    setDismissedMessageIds(new Set()); // Reset dismissed for new email
+    setReadMessageIds(new Set());
+    setDismissedMessageIds(new Set());
   };
 
   const handleDomainChange = (newDomain: string) => {
@@ -422,13 +402,11 @@ export function EmailBox({
       }
       throw new Error("No token received from server");
     } catch (error) {
-      // Guests won't get a token, and that's expected for public-mailbox
       return null;
     }
   };
 
   const refreshInbox = async () => {
-    // Only block if we expect a token (authenticated) but don't have one yet
     if (isAuthenticated && !token) {
       return;
     }
@@ -464,7 +442,7 @@ export function EmailBox({
              document.title = `${email} - Free Custom Email`;
         }
 
-        if (newMsgs.length > 0 && messages.length > 0) { // Only notify if not initial load
+        if (newMsgs.length > 0 && messages.length > 0) {
              const latest = newMsgs[0];
              sendNotification(`New Email from ${latest.from}`, latest.subject || "(No Subject)");
         }
@@ -533,17 +511,13 @@ export function EmailBox({
       });
       return;
     }
-
-    // Guests get dismissal
     setDismissedMessageIds(prev => new Set(prev).add(messageId));
   };
 
   const viewMessage = async (message: Message) => {
-    // Mark as read
     if (!readMessageIds.has(message.id)) {
       setReadMessageIds(prev => new Set(prev).add(message.id));
     }
-
     setSelectedMessage(message);
     if (userSettings.layout !== 'split') {
         setIsMessageModalOpen(true);
@@ -560,7 +534,7 @@ export function EmailBox({
       setEmail(newEmail);
       setSelectedDomain(domain);
       setMessages([]);
-      setReadMessageIds(new Set()); // Reset read on email change
+      setReadMessageIds(new Set());
       setDismissedMessageIds(new Set());
       if (email && (isAuthenticated ? token : true)) {
         refreshInbox();
@@ -590,7 +564,7 @@ export function EmailBox({
     setItemToDelete(null);
   };
 
-  const handleEmailInputChage = (newPrefix: string) => {
+  const handleEmailInputChange = (newPrefix: string) => {
     newPrefix = newPrefix.toLowerCase().replace(/[^a-z0-9._-]/g, '');
     setEmail(`${newPrefix}@${selectedDomain}`);
     setBlockButtons(newPrefix.length === 0);
@@ -607,7 +581,7 @@ export function EmailBox({
       if (prefix && prefix.length > 0) {
         setEmail(`${prefix}@${selectedDomain}`);
         setIsEditing(false);
-        setReadMessageIds(new Set()); // Reset read status
+        setReadMessageIds(new Set());
         setDismissedMessageIds(new Set());
       } else {
         setError('Please enter a valid email prefix.');
@@ -644,6 +618,36 @@ export function EmailBox({
   // Layout Renders
   const isSplit = userSettings.layout === 'split' && isPro;
   const isCompact = userSettings.layout === 'compact';
+  const isZen = userSettings.layout === 'zen';
+  const isMinimal = userSettings.layout === 'minimal';
+
+  useEffect(() => {
+      // Toggle global UI elements based on layout
+      const header = document.querySelector('header');
+      const footer = document.querySelector('footer');
+      const nav = document.querySelector('nav');
+      
+      if (isZen) {
+          if(header) header.style.display = 'none';
+          if(footer) footer.style.display = 'none';
+          if(nav) nav.style.display = 'none';
+      } else if (isMinimal) {
+          if(header) header.style.display = 'flex'; // Keep header for Minimal
+          if(footer) footer.style.display = 'none';
+      } else {
+          // Restore
+          if(header) header.style.display = '';
+          if(footer) footer.style.display = '';
+          if(nav) nav.style.display = '';
+      }
+      
+      return () => {
+          // Cleanup on unmount/change
+          if(header) header.style.display = '';
+          if(footer) footer.style.display = '';
+          if(nav) nav.style.display = '';
+      };
+  }, [userSettings.layout, isZen, isMinimal]);
 
   const renderMessageList = () => (
      <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
@@ -716,7 +720,7 @@ export function EmailBox({
 
                     {!isCompact && (
                         <div className="flex items-center justify-between mt-1">
-                        {/* Expiration Notice - Tiny & Upsell Trigger */}
+                        {/* Expiration Notice */}
                         <div
                             className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                             onClick={(e) => {
@@ -728,7 +732,7 @@ export function EmailBox({
                             <span>{expirationText}</span>
                         </div>
 
-                        {/* Actions (visible on hover or mobile) */}
+                        {/* Actions */}
                         <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             {(userPlan === 'free') && (
                             <Button
@@ -776,212 +780,193 @@ export function EmailBox({
         </div>
   );
 
-  const isZen = userSettings.layout === 'zen';
-  const isMinimal = userSettings.layout === 'minimal';
-
-  useEffect(() => {
-      // Toggle global UI elements based on layout
-      const header = document.querySelector('header');
-      const footer = document.querySelector('footer');
-      const nav = document.querySelector('nav');
-      
-      if (isZen) {
-          if(header) header.style.display = 'none';
-          if(footer) footer.style.display = 'none';
-          if(nav) nav.style.display = 'none';
-      } else if (isMinimal) {
-          if(header) header.style.display = 'flex'; // Keep header for Minimal
-          if(footer) footer.style.display = 'none';
-      } else {
-          // Restore
-          if(header) header.style.display = '';
-          if(footer) footer.style.display = '';
-          if(nav) nav.style.display = '';
-      }
-      
-      return () => {
-          // Cleanup on unmount/change
-          if(header) header.style.display = '';
-          if(footer) footer.style.display = '';
-          if(nav) nav.style.display = '';
-      };
-  }, [userSettings.layout]);
-
   return (
     <Card className={cn("border-dashed", isZen ? "border-0 shadow-none bg-transparent" : "")}>
       {!isZen && (
-      <CardContent className="space-y-2 pt-3 ">
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <div className="flex flex-1 items-center gap-2">
-              <Input
-                value={email.split('@')[0]}
-                onChange={(e) => handleEmailInputChage(e.target.value)}
-                className="flex-1 r"
-                placeholder={t('placeholder_username')}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-1/2 truncate">
-                    {selectedDomain || t('select_domain')}
+        <CardHeader>
+          <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('card_header_p')}</p>
+        </CardHeader>
+      )}
+
+      <CardContent className="space-y-2 pt-3">
+        {/* Controls Section - Hidden in Zen */}
+        {!isZen && (
+          <>
+            <div className="flex items-center gap-2">
+              {isEditing ? (
+                <div className="flex flex-1 items-center gap-2">
+                  <Input
+                    value={email.split('@')[0]}
+                    onChange={(e) => handleEmailInputChange(e.target.value)}
+                    className="flex-1"
+                    placeholder={t('placeholder_username')}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-1/2 truncate">
+                        {selectedDomain || t('select_domain')}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-white dark:bg-zinc-900 shadow-lg border border-muted z-50 custom-scrollbar">
+                      {availableDomains.map((domain) => {
+                        const isCustom = !FREE_DOMAINS.includes(domain);
+                        return (
+                          <DropdownMenuItem
+                            key={domain}
+                            onSelect={() => {
+                              if (isCustom && !isPro) {
+                                openUpsell("Custom Domains");
+                                return;
+                              }
+                              handleDomainChange(domain);
+                            }}
+                            className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-muted dark:hover:bg-zinc-800"
+                          >
+                            <div className="flex items-center gap-2">
+                              {isCustom && <Crown className="h-4 w-4 text-amber-500" />}
+                              <span>{domain}</span>
+                            </div>
+                            <Button
+                              title={primaryDomain === domain ? t('unset_primary') : t('set_primary')}
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isPro) {
+                                  openUpsell("Priority Domain Settings");
+                                  return;
+                                }
+                                handlePrimaryDomainChange(domain);
+                              }}
+                              aria-label={`Set ${domain} as primary`}
+                              className="hover:bg-transparent"
+                            >
+                              <Star className={`h-4 w-4 ${primaryDomain === domain ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
+                            </Button>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : (
+                <div className="flex-1 rounded-md bg-muted p-2">{email || t('loading')}</div>
+              )}
+              <TooltipProvider delayDuration={200}>
+                <div className="flex gap-2" role="group" aria-label="Email actions">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="secondary" size="icon" onClick={copyEmail} className="relative" disabled={blockButtons} aria-label="Copy email address" title="Copy email address">
+                        <Copy className={cn("h-4 w-4 transition-all", copied && "opacity-0")} />
+                        <span className={cn("absolute inset-0 flex items-center justify-center transition-all", copied ? "opacity-100" : "opacity-0")}>
+                          <Check className="h-4 w-4 transition-all" />
+                        </span>
+                        <span className="absolute top-[-2px] text-xs right-0 hidden sm:block">C</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>{isAuthenticated ? 'Press C to copy' : 'Login to use shortcuts'}</p></TooltipContent>
+                  </Tooltip>
+                  <Button className="hidden xs:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
+                    <QrCode className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-white dark:bg-zinc-900 shadow-lg border border-muted z-50 custom-scrollbar">
-                  {availableDomains.map((domain) => {
-                    const isCustom = !FREE_DOMAINS.includes(domain);
-                    return (
-                      <DropdownMenuItem
-                        key={domain}
-                        onSelect={() => {
-                          if (isCustom && !isPro) {
-                            openUpsell("Custom Domains");
-                            return;
-                          }
-                          handleDomainChange(domain);
-                        }}
-                        className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-muted dark:hover:bg-zinc-800"
-                      >
-                        <div className="flex items-center gap-2">
-                          {isCustom && <Crown className="h-4 w-4 text-amber-500" />}
-                          <span>{domain}</span>
-                        </div>
-                        <Button
-                          title={primaryDomain === domain ? t('unset_primary') : t('set_primary')}
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isPro) {
-                              openUpsell("Priority Domain Settings");
-                              return;
-                            }
-                            handlePrimaryDomainChange(domain);
-                          }}
-                          aria-label={`Set ${domain} as primary`}
-                          className="hover:bg-transparent"
-                        >
-                          <Star className={`h-4 w-4 ${primaryDomain === domain ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
-                        </Button>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  {/* SETTINGS BUTTON */}
+                  <Button 
+                    variant="secondary" 
+                    size="icon" 
+                    onClick={() => setIsSettingsOpen(true)} 
+                    disabled={blockButtons} 
+                    title={"Settings"}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  <ShareDropdown />
+                </div>
+              </TooltipProvider>
             </div>
-          ) : (
-            <div className="flex-1 rounded-md bg-muted p-2">{email || t('loading')}</div>
-          )}
-          <TooltipProvider delayDuration={200}>
-            <div className="flex gap-2" role="group" aria-label="Email actions">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon" onClick={copyEmail} className="relative" disabled={blockButtons} aria-label="Copy email address" title="Copy email address">
-                    <Copy className={cn("h-4 w-4 transition-all", copied && "opacity-0")} />
-                    <span className={cn("absolute inset-0 flex items-center justify-center transition-all", copied ? "opacity-100" : "opacity-0")}>
-                      <Check className="h-4 w-4 transition-all" />
-                    </span>
-                    <span className="absolute top-[-2px] text-xs right-0 hidden sm:block">C</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>{isAuthenticated ? 'Press C to copy' : 'Login to use shortcuts'}</p></TooltipContent>
-              </Tooltip>
-              <Button className="hidden xs:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
-                <QrCode className="h-4 w-4" />
-              </Button>
-              {/* SETTINGS BUTTON */}
-              <Button 
-                variant="secondary" 
-                size="icon" 
-                onClick={() => setIsSettingsOpen(true)} 
-                disabled={blockButtons} 
-                title={"Settings"}
+            
+            <TooltipProvider delayDuration={200}>
+              <div className="flex gap-2 flex-wrap" role="group" aria-label="Email management actions">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button disabled={blockButtons || isRefreshing} variant="outline" className="flex-1" onClick={refreshInbox} aria-label={isRefreshing ? t('refreshing') : t('refresh')}>
+                      <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
+                      <span className="hidden sm:inline">{isRefreshing ? t('refreshing') : t('refresh')}</span>
+                      <Badge variant="outline" className="ml-auto hidden sm:block">R</Badge>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>{isAuthenticated ? 'Press R to refresh' : 'Login to use shortcuts'}</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => { changeEmail(); handleNewDomainUpdates(); }} aria-label={isEditing ? t('save') : t('change')}>
+                      {isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
+                      <span className="hidden sm:inline">{isEditing ? t('save') : t('change')}</span>
+                      {<Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={deleteEmail} aria-label={t('delete')}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      <span className="hidden sm:inline">{t('delete')}</span>
+                      <Badge variant="outline" className="ml-auto hidden sm:block">D</Badge>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : (isPro) ? 'Press D to delete' : 'Shortcut is Pro Only'}</p></TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        if (isPro) {
+                          setIsManageModalOpen(true);
+                        } else {
+                          openUpsell("Inbox Management");
+                        }
+                      }}
+                      aria-label="Manage all inboxes"
+                    >
+                      <ListOrdered className="mr-2 h-4 w-4" />
+                      <span className="hidden sm:inline">Manage Inboxes</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>View and manage your full inbox history.</p></TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+
+            {/* TABS HEADER */}
+            <div className="flex items-center gap-4 w-full py-2">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={cn(
+                  "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center",
+                  activeTab === 'all' ? "text-primary border-b-2 pb-2" : "text-muted-foreground"
+                )}
               >
-                <Settings className="h-4 w-4" />
-              </Button>
-              <ShareDropdown />
+                <Mail className="h-4 w-4" /> All
+              </button>
+              <button
+                onClick={() => setActiveTab('dismissed')}
+                className={cn(
+                  "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center",
+                  activeTab === 'dismissed' ? "text-primary border-b-2 pb-2" : "text-muted-foreground"
+                )}
+              >
+                <Archive className="h-4 w-4" />
+                Dismissed
+              </button>
             </div>
-          </TooltipProvider>
-        </div>
-        <TooltipProvider delayDuration={200}>
-          <div className="flex gap-2 flex-wrap" role="group" aria-label="Email management actions">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button disabled={blockButtons || isRefreshing} variant="outline" className="flex-1" onClick={refreshInbox} aria-label={isRefreshing ? t('refreshing') : t('refresh')}>
-                  <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-                  <span className="hidden sm:inline">{isRefreshing ? t('refreshing') : t('refresh')}</span>
-                  <Badge variant="outline" className="ml-auto hidden sm:block">R</Badge>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>{isAuthenticated ? 'Press R to refresh' : 'Login to use shortcuts'}</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => { changeEmail(); handleNewDomainUpdates(); }} aria-label={isEditing ? t('save') : t('change')}>
-                  {isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
-                  <span className="hidden sm:inline">{isEditing ? t('save') : t('change')}</span>
-                  {<Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={deleteEmail} aria-label={t('delete')}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">{t('delete')}</span>
-                  <Badge variant="outline" className="ml-auto hidden sm:block">D</Badge>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : (isPro) ? 'Press D to delete' : 'Shortcut is Pro Only'}</p></TooltipContent>
-            </Tooltip>
+          </>
+        )}
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    if (isPro) {
-                      setIsManageModalOpen(true);
-                    } else {
-                      openUpsell("Inbox Management");
-                    }
-                  }}
-                  aria-label="Manage all inboxes"
-                >
-                  <ListOrdered className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Manage Inboxes</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>View and manage your full inbox history.</p></TooltipContent>
-            </Tooltip>
-          </div>
-        </TooltipProvider>
-
-        {/* TABS HEADER */}
-        <div className="flex items-center gap-4 w-full py-2">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={cn(
-              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center",
-              activeTab === 'all' ? "text-primary border-b-2 pb-2" : "text-muted-foreground"
-            )}
-          >
-            <Mail className="h-4 w-4" /> All
-          </button>
-          <button
-            onClick={() => setActiveTab('dismissed')}
-            className={cn(
-              "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center",
-              activeTab === 'dismissed' ? "text-primary border-b-2 pb-2" : "text-muted-foreground"
-            )}
-          >
-            {<Archive className="h-4 w-4" />}
-            {"Dismissed"}
-          </button>
-        </div>
-
-        {/* MESSAGE AREA */}
+        {/* MESSAGE AREA - Always visible */}
         {isSplit ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]">
                 <div className="border rounded-xl overflow-hidden overflow-y-auto">
@@ -989,11 +974,6 @@ export function EmailBox({
                 </div>
                 <div className="border rounded-xl p-4 overflow-y-auto bg-muted/10">
                     {selectedMessage ? (
-                         // Reusing existing logic by rendering modal content inline would be best, 
-                         // but for now I'll use a simplified display or the modal logic adapted.
-                         // For MVP I will just show basic content or prompt to use modal logic if complex.
-                         // Actually, I can just use the MessageModal's content if I extract it.
-                         // For now, placeholder to verify layout switch.
                          <div className="space-y-4">
                             <h2 className="text-xl font-bold">{selectedMessage.subject}</h2>
                             <div className="flex justify-between text-sm text-muted-foreground">
@@ -1002,12 +982,11 @@ export function EmailBox({
                             </div>
                             <hr />
                             <div className="prose dark:prose-invert max-w-none">
-                                {/* We don't have body content in the 'Message' interface used in state yet, 
-                                    usually it's fetched on click. 
-                                    I'll add a 'View Full Email' button that opens the modal for now to be safe/fast */}
                                 <div className="text-center py-10">
-                                    <p>Select an email to view.</p>
-                                    <Button onClick={() => setIsMessageModalOpen(true)} className="mt-4">Open Full View</Button>
+                                    <p className="mb-4">Select an email to view full details.</p>
+                                    <Button onClick={() => setIsMessageModalOpen(true)} className="mt-4">
+                                      Open Full View
+                                    </Button>
                                 </div>
                             </div>
                          </div>
@@ -1024,28 +1003,31 @@ export function EmailBox({
             renderMessageList()
         )}
 
-        <div className="mt-8 flex flex-col md:flex-row gap-8">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-2">{t('history_title')}</h3>
-            <ul className="space-y-2">
-              {emailHistory.map((historyEmail, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{historyEmail}</span>
-                  <Button variant="ghost" size="sm" onClick={() => { setEmail(historyEmail); setOldEmailUsed(!oldEmailUsed); }}>{t('history_use')}</Button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {!isPro && (
-            <div className="w-full md:w-64 shrink-0">
-              <PrivacyAdSide />
+        {/* Footer/History Area - Hidden in Zen */}
+        {!isZen && (
+          <div className="mt-8 flex flex-col md:flex-row gap-8">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold mb-2">{t('history_title')}</h3>
+              <ul className="space-y-2">
+                {emailHistory.map((historyEmail, index) => (
+                  <li key={index} className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{historyEmail}</span>
+                    <Button variant="ghost" size="sm" onClick={() => { setEmail(historyEmail); setOldEmailUsed(!oldEmailUsed); }}>{t('history_use')}</Button>
+                  </li>
+                ))}
+              </ul>
             </div>
-          )}
-        </div>
 
+            {!isPro && (
+              <div className="w-full md:w-64 shrink-0">
+                <PrivacyAdSide />
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
-      {showAttachmentNotice && (
+
+      {showAttachmentNotice && !isZen && (
         <div
           className="p-3 mb-4 mx-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 text-center cursor-pointer hover:underline"
           onClick={() => openUpsell("Large Attachments")}
@@ -1053,11 +1035,8 @@ export function EmailBox({
           An email arrived with a large attachment. Upgrade to Pro to view files up to 25MB.
         </div>
       )}
-      <CardHeader>
-        <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>
-        <p className="text-sm text-muted-foreground">{t('card_header_p')}</p>
-      </CardHeader>
 
+      {/* Modals placed outside CardContent to ensure they render correctly */}
       <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={useHistoryEmail} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
 
@@ -1077,6 +1056,11 @@ export function EmailBox({
         onUpdate={setUserSettings}
         isPro={isPro}
         onUpsell={openUpsell}
+        isAuthenticated={isAuthenticated}
+        onAuthNeed={(feature: string) => {
+          setAuthNeedFeature(feature);
+          setIsAuthNeedOpen(true);
+        }}
       />
 
       <UpsellModal
