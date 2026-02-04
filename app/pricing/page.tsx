@@ -1,3 +1,4 @@
+// app/pricing/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -13,11 +14,11 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toaster"; // Ensure you have this component
-import { useToast } from "@/components/ui/use-toast"; // Ensure you have this hook
+import toast from "react-hot-toast"; // ✅ Using React Hot Toast
 
 type BillingCycle = "weekly" | "monthly" | "yearly";
 
+// --- PRIVACY AD COMPONENT ---
 const PrivacyAd = ({ location }: { location: string }) => (
   <div className="mt-4 p-3 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 text-center group cursor-pointer hover:bg-muted/50 transition-colors">
     <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
@@ -33,7 +34,6 @@ const PrivacyAd = ({ location }: { location: string }) => (
 export default function PricingPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const { toast } = useToast();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -44,14 +44,15 @@ export default function PricingPage() {
     } else {
       // PRO FLOW
       if (!session) {
+        toast.error("Please login to subscribe");
         router.push('/auth?callbackUrl=/pricing');
         return;
       }
 
-      try {
-        setIsProcessing(true);
-        toast({ title: "Initializing Payment", description: "Connecting to PayPal..." });
+      setIsProcessing(true);
+      const toastId = toast.loading("Initializing secure payment...");
 
+      try {
         const res = await fetch('/api/paypal/create-subscription', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -61,24 +62,22 @@ export default function PricingPage() {
         const data = await res.json();
 
         if (data.error) {
-            toast({ 
-                variant: "destructive", 
-                title: "Payment Error", 
-                description: data.error 
-            });
+            toast.error(data.error || "Payment failed", { id: toastId });
             setIsProcessing(false);
             return;
         }
 
         if (data.url) {
+            toast.success("Redirecting to PayPal...", { id: toastId });
             window.location.href = data.url;
+        } else {
+            toast.error("No redirect URL received", { id: toastId });
+            setIsProcessing(false);
         }
+
       } catch (error) {
-        toast({ 
-            variant: "destructive", 
-            title: "System Error", 
-            description: "Could not connect to payment server." 
-        });
+        console.error(error);
+        toast.error("Could not connect to payment server", { id: toastId });
         setIsProcessing(false);
       }
     }
@@ -94,7 +93,8 @@ export default function PricingPage() {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen max-w-[100vw] bg-background">
         <AppHeader initialSession={session} />
-        <Toaster />
+        {/* Toast is handled by Global Provider */}
+        
         <div className="min-h-screen bg-background text-foreground py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center">
 
           {/* Header */}
@@ -216,12 +216,21 @@ export default function PricingPage() {
             </div>
           </TooltipProvider>
 
-          {/* ... Feature Deep Dive (kept same) ... */}
+          {/* Feature Deep Dive */}
           <div className="max-w-4xl w-full mt-8">
+            <h2 className="text-2xl font-bold text-center mb-8">Why Upgrade? A Deep Dive.</h2>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="item-1">
                 <AccordionTrigger>Custom Domains</AccordionTrigger>
-                <AccordionContent>Bring your own domain for a professional look.</AccordionContent>
+                <AccordionContent>
+                    Link your own domain (e.g., @mycompany.com). You get the privacy of our system with the professional look of your own brand.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger>Permanent Storage</AccordionTrigger>
+                <AccordionContent>
+                   We allocate 5GB of private cloud storage. Your emails stay until you delete them.
+                </AccordionContent>
               </AccordionItem>
             </Accordion>
           </div>
@@ -236,6 +245,16 @@ function Feature({ text, unavailable, tooltip }: { text: string, unavailable?: b
     <li className={cn("flex items-center gap-3", unavailable && "text-muted-foreground opacity-70")}>
       {unavailable ? <X className="w-5 h-5 text-muted-foreground shrink-0" /> : <Check className="w-5 h-5 text-green-500 shrink-0" />}
       <span className={cn("text-sm flex-1", unavailable && "line-through")}>{text}</span>
+      {tooltip && (
+        <Tooltip>
+          <TooltipTrigger>
+            <Info className="w-4 h-4 text-muted-foreground/50 hover:text-primary transition-colors" />
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p className="max-w-xs">{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </li>
   );
 }

@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   // 3. Generate Guest Token
   const signedToken = jwt.sign(
     { plan: 'guest' },
-    process.env.NEXTAUTH_SECRET as string,
+    process.env.JWT_SECRET as string,
     { algorithm: "HS256", expiresIn: "5m" }
   );
 

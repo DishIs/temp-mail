@@ -1,3 +1,4 @@
+// app/payment/success/page.tsx
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -6,14 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSession } from "next-auth/react";
-import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast"; // ✅ Using React Hot Toast
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { update } = useSession();
-  const { toast } = useToast();
   
   // PayPal Subscription returns 'subscription_id'
   const subscriptionId = searchParams.get('subscription_id'); 
@@ -25,6 +24,8 @@ export default function PaymentSuccessPage() {
     hasRun.current = true;
 
     const verifySubscription = async () => {
+      const toastId = toast.loading("Verifying subscription...");
+
       try {
         const res = await fetch('/api/paypal/verify-subscription', {
           method: 'POST',
@@ -37,9 +38,9 @@ export default function PaymentSuccessPage() {
         if (data.success) {
           // Trigger session update to get 'pro' status immediately
           await update();
-          setStatus('success');
           
-          toast({ title: "Welcome to Pro!", description: "Your subscription is active." });
+          setStatus('success');
+          toast.success("Welcome to Pro! Subscription active.", { id: toastId });
           
           setTimeout(() => {
             window.location.href = '/dashboard';
@@ -47,20 +48,20 @@ export default function PaymentSuccessPage() {
         } else {
           console.error("Verification failed:", data);
           setStatus('error');
-          toast({ variant: "destructive", title: "Activation Failed", description: data.error });
+          toast.error("Activation Failed: " + (data.error || "Unknown error"), { id: toastId });
         }
       } catch (error) {
         console.error("Payment verification error:", error);
         setStatus('error');
+        toast.error("Network error during verification", { id: toastId });
       }
     };
 
     verifySubscription();
-  }, [subscriptionId, router, update, toast]);
+  }, [subscriptionId, router, update]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Toaster />
       <Card className="w-full max-w-md text-center shadow-lg">
         <CardHeader>
           <CardTitle>Activating Subscription</CardTitle>

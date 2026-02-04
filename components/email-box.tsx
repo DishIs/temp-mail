@@ -153,7 +153,7 @@ export function EmailBox({
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
-  
+
   // SETTINGS STATE
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
@@ -217,7 +217,7 @@ export function EmailBox({
       try {
         const savedSettings = localStorage.getItem('userSettings');
         if (savedSettings) {
-           setUserSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+          setUserSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
         }
       } catch (e) {
         console.error("Error loading settings", e);
@@ -251,7 +251,7 @@ export function EmailBox({
       setSelectedDomain(effectiveInitialEmail.split('@')[1]);
     };
     initialize();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -259,11 +259,11 @@ export function EmailBox({
     localStorage.setItem('userSettings', JSON.stringify(userSettings));
 
     if (isAuthenticated) {
-        fetch('/api/user/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userSettings)
-        }).catch(e => console.error("Sync settings failed", e));
+      fetch('/api/user/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userSettings)
+      }).catch(e => console.error("Sync settings failed", e));
     }
   }, [userSettings, isStorageLoaded, isAuthenticated]);
 
@@ -327,7 +327,7 @@ export function EmailBox({
     socket.onopen = () => console.log("WebSocket connection established");
     socket.onmessage = () => refreshInbox();
     return () => socket.close();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, token, isAuthenticated]);
 
   const checkSavedMessages = (currentMessages: Message[]) => {
@@ -433,18 +433,18 @@ export function EmailBox({
       if (typedData.success && Array.isArray(typedData.data)) {
         // DETECT NEW MESSAGES FOR NOTIFICATION
         const newMsgs = typedData.data.filter(m => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
-        
+
         // Update unread count for Title
         const unreadCount = typedData.data.filter(m => !readMessageIds.has(m.id)).length;
         if (unreadCount > 0) {
-            document.title = `(${unreadCount}) ${email} - Free Custom Email`;
+          document.title = `(${unreadCount}) ${email} - Free Custom Email`;
         } else {
-             document.title = `${email} - Free Custom Email`;
+          document.title = `${email} - Free Custom Email`;
         }
 
         if (newMsgs.length > 0 && messages.length > 0) {
-             const latest = newMsgs[0];
-             sendNotification(`New Email from ${latest.from}`, latest.subject || "(No Subject)");
+          const latest = newMsgs[0];
+          sendNotification(`New Email from ${latest.from}`, latest.subject || "(No Subject)");
         }
 
         setMessages(typedData.data);
@@ -520,7 +520,7 @@ export function EmailBox({
     }
     setSelectedMessage(message);
     if (userSettings.layout !== 'split') {
-        setIsMessageModalOpen(true);
+      setIsMessageModalOpen(true);
     }
   };
 
@@ -622,172 +622,166 @@ export function EmailBox({
   const isMinimal = userSettings.layout === 'minimal';
 
   useEffect(() => {
-      // Toggle global UI elements based on layout
-      const header = document.querySelector('header');
-      const footer = document.querySelector('footer');
-      const nav = document.querySelector('nav');
-      
-      if (isZen) {
-          if(header) header.style.display = 'none';
-          if(footer) footer.style.display = 'none';
-          if(nav) nav.style.display = 'none';
-      } else if (isMinimal) {
-          if(header) header.style.display = 'flex'; // Keep header for Minimal
-          if(footer) footer.style.display = 'none';
-      } else {
-          // Restore
-          if(header) header.style.display = '';
-          if(footer) footer.style.display = '';
-          if(nav) nav.style.display = '';
-      }
-      
-      return () => {
-          // Cleanup on unmount/change
-          if(header) header.style.display = '';
-          if(footer) footer.style.display = '';
-          if(nav) nav.style.display = '';
-      };
+    // Toggle global UI elements based on layout
+    const header = document.querySelector('header');
+    const footer = document.querySelector('footer');
+    const nav = document.querySelector('nav');
+
+    if (isZen) {
+      if (header) header.style.display = 'none';
+      if (footer) footer.style.display = 'none';
+      if (nav) nav.style.display = 'none';
+    } else if (isMinimal) {
+      if (header) header.style.display = 'flex'; // Keep header for Minimal
+      if (footer) footer.style.display = 'none';
+    } else {
+      // Restore
+      if (header) header.style.display = '';
+      if (footer) footer.style.display = '';
+      if (nav) nav.style.display = '';
+    }
+
+    return () => {
+      // Cleanup on unmount/change
+      if (header) header.style.display = '';
+      if (footer) footer.style.display = '';
+      if (nav) nav.style.display = '';
+    };
   }, [userSettings.layout, isZen, isMinimal]);
 
   const renderMessageList = () => (
-     <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
-          {filteredMessages.length === 0 ? (
-            <div className="py-16 flex flex-col items-center justify-center text-center px-4">
-              <div className="bg-muted/30 p-4 rounded-full mb-4">
-                {activeTab === 'all' ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}
-              </div>
-              <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
-              <div className="text-sm text-muted-foreground max-w-xs">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
-            </div>
-          ) : (
-            filteredMessages.map((message) => {
-              const isRead = readMessageIds.has(message.id);
-              const isUnread = !isRead;
-              const isSelected = selectedMessage?.id === message.id;
-              
-              const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
-              const otp = userSettings.smartOtp ? extractOtp(message) : null;
-
-              return (
-                <div
-                  key={message.id}
-                  onClick={() => viewMessage(message)}
-                  className={cn(
-                    "group relative flex flex-col gap-1 sm:flex-row sm:items-center px-4 border-b last:border-0 cursor-pointer transition-all hover:bg-muted/40",
-                    isCompact ? "py-1" : "py-2",
-                    isSelected && isSplit ? "bg-primary/5 border-l-4 border-l-primary" : "",
-                    isUnread && !isSelected ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
-                  )}
-                >
-                  {/* Avatar / Icon Placeholder */}
-                  {!isCompact && (
-                      <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                        {message.from.charAt(1).toUpperCase()}
-                      </div>
-                  )}
-
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <div className="flex items-center justify-between ">
-                      <span className={cn("truncate text-sm", isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
-                        {message.from}
-                      </span>
-                      <span className={cn("text-xs whitespace-nowrap shrink-0", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                        {formatDate(message.date)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={cn("truncate text-xs flex-1", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                        {message.subject || "(No Subject)"}
-                      </span>
-                      
-                      {otp && (
-                        <div 
-                            className="shrink-0 flex items-center gap-1 bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20 text-[10px] font-mono cursor-pointer hover:bg-green-500/20 transition-colors z-10"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(otp);
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 2000);
-                            }}
-                            title="Click to copy OTP"
-                        >
-                            <span className="font-bold tracking-wider">{otp}</span>
-                            <Copy className="h-2.5 w-2.5" />
-                        </div>
-                      )}
-                    </div>
-
-                    {!isCompact && (
-                        <div className="flex items-center justify-between mt-1">
-                        {/* Expiration Notice */}
-                        <div
-                            className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                            onClick={(e) => {
-                            e.stopPropagation();
-                            openUpsell("Permanent Storage");
-                            }}
-                        >
-                            <Clock className="h-3 w-3" />
-                            <span>{expirationText}</span>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            {(userPlan === 'free') && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
-                                onClick={(e) => toggleSaveMessage(message, e)}
-                            >
-                                <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
-                            </Button>
-                            )}
-                            {(userPlan === 'pro') && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                title={"Delete Permanently"}
-                                onClick={() => {
-                                setItemToDelete({ type: 'message', id: message.id });
-                                setIsDeleteModalOpen(true);
-
-                                }}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                            )}
-                            <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
-                            onClick={(e) => handleMessageAction(message.id, e)}
-                            >
-                            {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                            </Button>
-                        </div>
-                        </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
+    <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
+      {filteredMessages.length === 0 ? (
+        <div className="py-16 flex flex-col items-center justify-center text-center px-4">
+          <div className="bg-muted/30 p-4 rounded-full mb-4">
+            {activeTab === 'all' ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}
+          </div>
+          <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
+          <div className="text-sm text-muted-foreground max-w-xs">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
         </div>
+      ) : (
+        filteredMessages.map((message) => {
+          const isRead = readMessageIds.has(message.id);
+          const isUnread = !isRead;
+          const isSelected = selectedMessage?.id === message.id;
+
+          const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
+          const otp = userSettings.smartOtp ? extractOtp(message) : null;
+
+          return (
+            <div
+              key={message.id}
+              onClick={() => viewMessage(message)}
+              className={cn(
+                "group relative flex flex-col gap-1 sm:flex-row sm:items-center px-4 border-b last:border-0 cursor-pointer transition-all hover:bg-muted/40",
+                isCompact ? "py-1" : "py-2",
+                isSelected && isSplit ? "bg-primary/5 border-l-4 border-l-primary" : "",
+                isUnread && !isSelected ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
+              )}
+            >
+              {/* Avatar / Icon Placeholder */}
+              {!isCompact && (
+                <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                  {message.from.charAt(1).toUpperCase()}
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0 flex flex-col">
+                <div className="flex items-center justify-between ">
+                  <span className={cn("truncate text-sm", isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
+                    {message.from}
+                  </span>
+                  <span className={cn("text-xs whitespace-nowrap shrink-0", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                    {formatDate(message.date)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className={cn("truncate text-xs flex-1", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                    {message.subject || "(No Subject)"}
+                  </span>
+
+                  {otp && (
+                    <div
+                      className="shrink-0 flex items-center gap-1 bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20 text-[10px] font-mono cursor-pointer hover:bg-green-500/20 transition-colors z-10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(otp);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      title="Click to copy OTP"
+                    >
+                      <span className="font-bold tracking-wider">{otp}</span>
+                      <Copy className="h-2.5 w-2.5" />
+                    </div>
+                  )}
+                </div>
+
+                {!isCompact && (
+                  <div className="flex items-center justify-between mt-1">
+                    {/* Expiration Notice */}
+                    <div
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openUpsell("Permanent Storage");
+                      }}
+                    >
+                      <Clock className="h-3 w-3" />
+                      <span>{expirationText}</span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      {(userPlan === 'free') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
+                          onClick={(e) => toggleSaveMessage(message, e)}
+                        >
+                          <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
+                        </Button>
+                      )}
+                      {(userPlan === 'pro') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={"Delete Permanently"}
+                          onClick={() => {
+                            setItemToDelete({ type: 'message', id: message.id });
+                            setIsDeleteModalOpen(true);
+
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
+                        onClick={(e) => handleMessageAction(message.id, e)}
+                      >
+                        {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
   );
 
   return (
     <Card className={cn("border-dashed", isZen ? "border-0 shadow-none bg-transparent" : "")}>
-      {!isZen && (
-        <CardHeader>
-          <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>
-          <p className="text-sm text-muted-foreground">{t('card_header_p')}</p>
-        </CardHeader>
-      )}
 
       <CardContent className="space-y-2 pt-3">
         {/* Controls Section - Hidden in Zen */}
@@ -871,11 +865,11 @@ export function EmailBox({
                     <QrCode className="h-4 w-4" />
                   </Button>
                   {/* SETTINGS BUTTON */}
-                  <Button 
-                    variant="secondary" 
-                    size="icon" 
-                    onClick={() => setIsSettingsOpen(true)} 
-                    disabled={blockButtons} 
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => setIsSettingsOpen(true)}
+                    disabled={blockButtons}
                     title={"Settings"}
                   >
                     <Settings className="h-4 w-4" />
@@ -884,7 +878,7 @@ export function EmailBox({
                 </div>
               </TooltipProvider>
             </div>
-            
+
             <TooltipProvider delayDuration={200}>
               <div className="flex gap-2 flex-wrap" role="group" aria-label="Email management actions">
                 <Tooltip>
@@ -968,39 +962,39 @@ export function EmailBox({
 
         {/* MESSAGE AREA - Always visible */}
         {isSplit ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]">
-                <div className="border rounded-xl overflow-hidden overflow-y-auto">
-                    {renderMessageList()}
-                </div>
-                <div className="border rounded-xl p-4 overflow-y-auto bg-muted/10">
-                    {selectedMessage ? (
-                         <div className="space-y-4">
-                            <h2 className="text-xl font-bold">{selectedMessage.subject}</h2>
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>{selectedMessage.from}</span>
-                                <span>{formatDate(selectedMessage.date)}</span>
-                            </div>
-                            <hr />
-                            <div className="prose dark:prose-invert max-w-none">
-                                <div className="text-center py-10">
-                                    <p className="mb-4">Select an email to view full details.</p>
-                                    <Button onClick={() => setIsMessageModalOpen(true)} className="mt-4">
-                                      Open Full View
-                                    </Button>
-                                </div>
-                            </div>
-                         </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                            <Mail className="w-12 h-12 mb-4 opacity-20" />
-                            <p>Select an email to read</p>
-                        </div>
-                    )}
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]">
+            <div className="border rounded-xl overflow-hidden overflow-y-auto">
+              {renderMessageList()}
             </div>
+            <div className="border rounded-xl p-4 overflow-y-auto bg-muted/10">
+              {selectedMessage ? (
+                <div className="space-y-4">
+                  <h2 className="text-xl font-bold">{selectedMessage.subject}</h2>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{selectedMessage.from}</span>
+                    <span>{formatDate(selectedMessage.date)}</span>
+                  </div>
+                  <hr />
+                  <div className="prose dark:prose-invert max-w-none">
+                    <div className="text-center py-10">
+                      <p className="mb-4">Select an email to view full details.</p>
+                      <Button onClick={() => setIsMessageModalOpen(true)} className="mt-4">
+                        Open Full View
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <Mail className="w-12 h-12 mb-4 opacity-20" />
+                  <p>Select an email to read</p>
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
-            // CLASSIC / COMPACT VIEW
-            renderMessageList()
+          // CLASSIC / COMPACT VIEW
+          renderMessageList()
         )}
 
         {/* Footer/History Area - Hidden in Zen */}
@@ -1026,6 +1020,14 @@ export function EmailBox({
           </div>
         )}
       </CardContent>
+      
+      {!isZen && (
+        <CardHeader>
+          <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('card_header_p')}</p>
+        </CardHeader>
+      )}
+
 
       {showAttachmentNotice && !isZen && (
         <div
@@ -1048,8 +1050,8 @@ export function EmailBox({
         onUpsell={() => openUpsell("Attachments")}
         apiEndpoint={API_ENDPOINT}
       />
-      
-      <SettingsModal 
+
+      <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={userSettings}
