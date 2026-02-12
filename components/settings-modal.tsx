@@ -1,4 +1,3 @@
-// components/settings-modal.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -14,10 +13,13 @@ import {
   Layout, 
   Bell, 
   Settings, 
-  Smartphone, 
   Zap, 
   ShieldCheck,
-  MousePointer2
+  MousePointer2,
+  Table as TableIcon,
+  Monitor,
+  Smartphone,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "./ui/badge";
@@ -25,8 +27,8 @@ import { Badge } from "./ui/badge";
 export interface UserSettings {
   notifications: boolean;
   sound: boolean;
-  // classic: default | split: email + content | compact: dense list | minimal: no history | zen: no UI/Header
-  layout: 'classic' | 'split' | 'compact' | 'minimal' | 'zen'; 
+  // new: modern list (earlier classic) | classic: tables (default) | split: email + content | compact: dense list | minimal: no history | zen: no UI | retro: html 1.0 | mobile: small screens
+  layout: 'new' | 'classic' | 'split' | 'compact' | 'minimal' | 'zen' | 'retro' | 'mobile'; 
   shortcuts: {
     refresh: string;
     copy: string;
@@ -40,7 +42,7 @@ export interface UserSettings {
 export const DEFAULT_SETTINGS: UserSettings = {
   notifications: false,
   sound: true,
-  layout: 'classic',
+  layout: 'classic', // Table view is default
   shortcuts: {
     refresh: 'r',
     copy: 'c',
@@ -59,7 +61,7 @@ interface SettingsModalProps {
   isPro: boolean;
   isAuthenticated: boolean;
   onUpsell: (feature: string) => void;
-  onAuthNeed: (feature: string) => void; // Callback to open Auth Modal
+  onAuthNeed: (feature: string) => void;
 }
 
 export function SettingsModal({ 
@@ -75,7 +77,6 @@ export function SettingsModal({
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
   const [activeTab, setActiveTab] = useState("general"); 
 
-  // Reset local state when modal opens or settings change externally
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings, isOpen]);
@@ -85,19 +86,9 @@ export function SettingsModal({
     onClose();
   };
 
-  // --- ACCESS CONTROL HELPERS ---
   const requirePro = (action: () => void, feature: string) => {
     if (!isPro) {
       onUpsell(feature);
-    } else {
-      action();
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const requireAuth = (action: () => void, feature: string) => {
-    if (!isAuthenticated) {
-      onAuthNeed(feature);
     } else {
       action();
     }
@@ -117,7 +108,9 @@ export function SettingsModal({
   };
 
   const handleLayoutChange = (layout: UserSettings['layout']) => {
-    const proLayouts = ['split', 'minimal', 'zen'];
+    // Pro layouts
+    const proLayouts = ['split', 'minimal', 'zen', 'retro', 'mobile'];
+    
     if (proLayouts.includes(layout)) {
          requirePro(() => updateSetting('layout', layout), `${layout.charAt(0).toUpperCase() + layout.slice(1)} Layout`);
     } else {
@@ -125,7 +118,6 @@ export function SettingsModal({
     }
   };
 
-  // --- RESPONSIVE SIDEBAR ITEM ---
   const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
       <button
         onClick={() => setActiveTab(id)}
@@ -143,7 +135,6 @@ export function SettingsModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[800px] h-[85vh] md:h-[70vh] p-0 gap-0 overflow-hidden flex flex-col md:flex-row border-0 md:border sm:rounded-xl">
         
-        {/* SIDEBAR (Desktop) */}
         <div className="hidden md:flex flex-col w-64 border-r bg-muted/20 p-4 gap-1 shrink-0">
             <div className="flex items-center gap-2 px-2 mb-6 text-lg font-semibold tracking-tight">
                 <Settings className="w-5 h-5" /> Settings
@@ -154,16 +145,12 @@ export function SettingsModal({
             <SidebarItem id="shortcuts" label="Shortcuts" icon={Keyboard} />
         </div>
 
-        {/* HEADER (Mobile) */}
         <div className="md:hidden p-4 border-b flex items-center justify-between bg-background shrink-0 z-10">
              <div className="font-semibold flex items-center gap-2"><Settings className="w-4 h-4" /> Settings</div>
              <Button variant="ghost" size="sm" onClick={onClose} className="h-8">Close</Button>
         </div>
 
-        {/* CONTENT AREA WRAPPER */}
         <div className="flex-1 flex flex-col min-h-0 bg-background">
-            
-            {/* TABS (Mobile Only) - Horizontal Scroll */}
             <div className="md:hidden border-b shrink-0 bg-muted/10">
                 <div className="flex overflow-x-auto no-scrollbar py-1 px-2 gap-2">
                     {[
@@ -208,29 +195,12 @@ export function SettingsModal({
                                         </div>
                                         <p className="text-sm text-muted-foreground leading-relaxed">
                                             Automatically detect 4-8 digit verification codes in incoming emails and show a "Copy" button in the list.
-                                            <br/><span className="text-xs opacity-70 italic">Client-side processing (Privacy friendly).</span>
                                         </p>
                                     </div>
                                     <Switch 
                                         checked={localSettings.smartOtp} 
                                         onCheckedChange={(checked) => requirePro(() => updateSetting('smartOtp', checked), "Smart OTP Extractor")} 
                                     />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-lg font-medium mb-1">Privacy & Data</h3>
-                            <div className="space-y-4 border rounded-xl p-4">
-                                <div className="flex items-center justify-between opacity-50 cursor-not-allowed" title="Coming Soon">
-                                    <div className="space-y-0.5">
-                                        <div className="flex items-center gap-2">
-                                            <Label className="text-base">Auto-Delete History</Label>
-                                            <Badge variant="outline" className="text-[10px] h-4">Soon</Badge>
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">Automatically clear local browser history on exit.</p>
-                                    </div>
-                                    <Switch disabled checked={false} />
                                 </div>
                             </div>
                         </div>
@@ -242,8 +212,6 @@ export function SettingsModal({
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                          <div>
                             <h3 className="text-lg font-medium mb-1">Alerts</h3>
-                            <p className="text-sm text-muted-foreground mb-4">Manage how you are notified.</p>
-                            
                             <div className="space-y-4 border rounded-xl p-4">
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
@@ -288,7 +256,7 @@ export function SettingsModal({
                             <p className="text-sm text-muted-foreground mb-4">Customize the look and feel of your inbox.</p>
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {/* Classic */}
+                                {/* Classic (Table) - DEFAULT */}
                                 <div 
                                     onClick={() => handleLayoutChange('classic')}
                                     className={cn(
@@ -297,12 +265,30 @@ export function SettingsModal({
                                     )}
                                 >
                                     <div className="flex justify-between items-start">
-                                        <Smartphone className="w-5 h-5 opacity-70" />
+                                        <TableIcon className="w-5 h-5 opacity-70" />
                                         {localSettings.layout === 'classic' && <div className="h-2 w-2 rounded-full bg-primary" />}
                                     </div>
                                     <div>
                                         <div className="font-semibold">Classic</div>
-                                        <div className="text-xs text-muted-foreground mt-1">Standard view with history, header, and controls visible.</div>
+                                        <div className="text-xs text-muted-foreground mt-1">Table view with details. The default experience.</div>
+                                    </div>
+                                </div>
+
+                                {/* New (Old Standard) */}
+                                <div 
+                                    onClick={() => handleLayoutChange('new')}
+                                    className={cn(
+                                        "relative cursor-pointer border-2 rounded-xl p-4 hover:border-primary/50 transition-all flex flex-col gap-2",
+                                        localSettings.layout === 'new' ? "border-primary bg-primary/5" : "border-muted"
+                                    )}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <Sparkles className="w-5 h-5 opacity-70" />
+                                        {localSettings.layout === 'new' && <div className="h-2 w-2 rounded-full bg-primary" />}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold">New</div>
+                                        <div className="text-xs text-muted-foreground mt-1">Modern list view with avatars.</div>
                                     </div>
                                 </div>
 
@@ -342,24 +328,6 @@ export function SettingsModal({
                                     </div>
                                 </div>
 
-                                {/* Minimal */}
-                                <div 
-                                    onClick={() => handleLayoutChange('minimal')}
-                                    className={cn(
-                                        "relative cursor-pointer border-2 rounded-xl p-4 hover:border-primary/50 transition-all flex flex-col gap-2",
-                                        localSettings.layout === 'minimal' ? "border-primary bg-primary/5" : "border-muted"
-                                    )}
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <MousePointer2 className="w-5 h-5 opacity-70" />
-                                        {!isPro && <Crown className="w-3 h-3 text-amber-500 fill-amber-500" />}
-                                    </div>
-                                    <div>
-                                        <div className="font-semibold">Minimalist</div>
-                                        <div className="text-xs text-muted-foreground mt-1">Hides history, footer, and extra descriptions.</div>
-                                    </div>
-                                </div>
-
                                 {/* Zen Mode */}
                                 <div 
                                     onClick={() => handleLayoutChange('zen')}
@@ -375,6 +343,42 @@ export function SettingsModal({
                                     <div>
                                         <div className="font-semibold">Zen Mode</div>
                                         <div className="text-xs text-muted-foreground mt-1">No navigation, no header. Just the email box.</div>
+                                    </div>
+                                </div>
+
+                                {/* Mobile Optimized */}
+                                <div 
+                                    onClick={() => handleLayoutChange('mobile')}
+                                    className={cn(
+                                        "relative cursor-pointer border-2 rounded-xl p-4 hover:border-primary/50 transition-all flex flex-col gap-2",
+                                        localSettings.layout === 'mobile' ? "border-primary bg-primary/5" : "border-muted"
+                                    )}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <Smartphone className="w-5 h-5 opacity-70" />
+                                        {!isPro && <Crown className="w-3 h-3 text-amber-500 fill-amber-500" />}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold">Mobile Focus</div>
+                                        <div className="text-xs text-muted-foreground mt-1">Large touch targets for very small screens.</div>
+                                    </div>
+                                </div>
+
+                                {/* Retro / HTML 1.0 */}
+                                <div 
+                                    onClick={() => handleLayoutChange('retro')}
+                                    className={cn(
+                                        "relative cursor-pointer border-2 rounded-xl p-4 hover:border-primary/50 transition-all flex flex-col gap-2",
+                                        localSettings.layout === 'retro' ? "border-primary bg-primary/5" : "border-muted"
+                                    )}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <Monitor className="w-5 h-5 opacity-70" />
+                                        {!isPro && <Crown className="w-3 h-3 text-amber-500 fill-amber-500" />}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold">Retro HTML</div>
+                                        <div className="text-xs text-muted-foreground mt-1">Least CSS. 1990s style raw HTML interface.</div>
                                     </div>
                                 </div>
 
@@ -423,7 +427,6 @@ export function SettingsModal({
                 </div>
             </ScrollArea>
             
-            {/* FOOTER ACTIONS */}
             <div className="p-4 border-t bg-background flex justify-end gap-2 shrink-0 z-20">
                 <Button variant="ghost" onClick={onClose}>Cancel</Button>
                 <Button onClick={handleSave} className="min-w-[100px]">Save</Button>

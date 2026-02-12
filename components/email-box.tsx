@@ -3,10 +3,11 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { getCookie, setCookie } from "cookies-next";
-import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Settings, Crown } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Settings, Crown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { QRCodeModal } from "./qr-code-modal";
 import { cn } from "@/lib/utils";
 import { MessageModal } from "./message-modal";
@@ -21,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { UpsellModal } from "./upsell-modal";
-import { AuthNeed } from "./auth-needed-moda"; // Fixed typo: moda -> modal
+import { AuthNeed } from "./auth-needed-moda"; 
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 
 const FREE_DOMAINS = [
@@ -149,7 +150,6 @@ export function EmailBox({
   const [itemToDelete, setItemToDelete] = useState<{ type: "email" | "message"; id?: string } | null>(null);
   const [blockButtons, setBlockButtons] = useState(false);
   const [oldEmailUsed, setOldEmailUsed] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
@@ -170,7 +170,6 @@ export function EmailBox({
     return null;
   };
 
-  // --- NEW STATE FOR UI ---
   const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const [dismissedMessageIds, setDismissedMessageIds] = useState<Set<string>>(new Set());
@@ -251,7 +250,6 @@ export function EmailBox({
       setSelectedDomain(effectiveInitialEmail.split('@')[1]);
     };
     initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -274,7 +272,6 @@ export function EmailBox({
         const audio = new Audio('/notification.mp3');
         audio.play().catch(e => console.log("Audio play failed (user interaction needed first)", e));
       } catch (e) {
-        // ignore audio errors
       }
     }
 
@@ -327,7 +324,6 @@ export function EmailBox({
     socket.onopen = () => console.log("WebSocket connection established");
     socket.onmessage = () => refreshInbox();
     return () => socket.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, token, isAuthenticated]);
 
   const checkSavedMessages = (currentMessages: Message[]) => {
@@ -363,7 +359,28 @@ export function EmailBox({
     setEmail(`${prefix}@${newDomain}`);
   };
 
-  // --- KEYBOARD SHORTCUTS HANDLER ---
+  // --- DELETE & PERMISSION HANDLERS ---
+  const handleDeleteAction = (type: 'inbox' | 'message', id?: string) => {
+    // 1. Check Authentication
+    if (!isAuthenticated) {
+        setAuthNeedFeature(type === 'inbox' ? 'Delete / Burn Inbox' : 'Delete Message Permanently');
+        setIsAuthNeedOpen(true);
+        return;
+    }
+    // 2. Check Pro (Delete Permanently is a Pro feature)
+    if (!isPro) {
+        openUpsell(type === 'inbox' ? 'Burn Inbox' : 'Permanent Deletion');
+        return;
+    }
+    // 3. Execute
+    if (type === 'inbox') {
+        deleteEmail(); // Actually burns it (resets it)
+    } else if (type === 'message' && id) {
+        setItemToDelete({ type: 'message', id });
+        setIsDeleteModalOpen(true);
+    }
+  };
+
   const handleProShortcut = (action: () => void, featureName: string) => {
     if (isPro) {
       action();
@@ -383,7 +400,7 @@ export function EmailBox({
   const shortcuts = {
     [userSettings.shortcuts.refresh]: () => handleAuthNeededShortcut(refreshInbox, 'Refresh Inbox'),
     [userSettings.shortcuts.copy]: () => handleAuthNeededShortcut(copyEmail, 'Copy Email'),
-    [userSettings.shortcuts.delete]: () => handleProShortcut(deleteEmail, "Delete / Burn Email"),
+    [userSettings.shortcuts.delete]: () => handleDeleteAction('inbox'), // Gated inside
     [userSettings.shortcuts.new]: () => handleProShortcut(changeEmail, "Quick Edit"),
     [userSettings.shortcuts.qr]: () => setIsQRModalOpen(!isQRModalOpen)
   };
@@ -431,10 +448,8 @@ export function EmailBox({
       setShowAttachmentNotice(!!data.wasAttachmentStripped);
       const typedData = data as { success: boolean; data: Message[]; message?: string };
       if (typedData.success && Array.isArray(typedData.data)) {
-        // DETECT NEW MESSAGES FOR NOTIFICATION
         const newMsgs = typedData.data.filter(m => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
 
-        // Update unread count for Title
         const unreadCount = typedData.data.filter(m => !readMessageIds.has(m.id)).length;
         if (unreadCount > 0) {
           document.title = `(${unreadCount}) ${email} - Free Custom Email`;
@@ -503,7 +518,6 @@ export function EmailBox({
   const handleMessageAction = (messageId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (activeTab === 'dismissed') {
-      // Restore action
       setDismissedMessageIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(messageId);
@@ -607,7 +621,6 @@ export function EmailBox({
     localStorage.setItem('discoveredUpdates', JSON.stringify({ newDomains: true }));
   };
 
-  // Filter messages based on tab
   const filteredMessages = useMemo(() => {
     if (activeTab === 'dismissed') {
       return messages.filter(m => dismissedMessageIds.has(m.id));
@@ -615,41 +628,167 @@ export function EmailBox({
     return messages.filter(m => !dismissedMessageIds.has(m.id));
   }, [messages, activeTab, dismissedMessageIds]);
 
-  // Layout Renders
+  // Layout Checks
   const isSplit = userSettings.layout === 'split' && isPro;
   const isCompact = userSettings.layout === 'compact';
   const isZen = userSettings.layout === 'zen';
   const isMinimal = userSettings.layout === 'minimal';
+  const isClassic = userSettings.layout === 'classic'; // Table
+  const isNew = userSettings.layout === 'new'; // Old standard list
+  const isMobile = userSettings.layout === 'mobile' && isPro;
+  const isRetro = userSettings.layout === 'retro' && isPro;
 
   useEffect(() => {
-    // Toggle global UI elements based on layout
     const header = document.querySelector('header');
     const footer = document.querySelector('footer');
     const nav = document.querySelector('nav');
 
-    if (isZen) {
+    if (isZen || isRetro) {
       if (header) header.style.display = 'none';
       if (footer) footer.style.display = 'none';
       if (nav) nav.style.display = 'none';
     } else if (isMinimal) {
-      if (header) header.style.display = 'flex'; // Keep header for Minimal
+      if (header) header.style.display = 'flex'; 
       if (footer) footer.style.display = 'none';
     } else {
-      // Restore
       if (header) header.style.display = '';
       if (footer) footer.style.display = '';
       if (nav) nav.style.display = '';
     }
 
     return () => {
-      // Cleanup on unmount/change
       if (header) header.style.display = '';
       if (footer) footer.style.display = '';
       if (nav) nav.style.display = '';
     };
-  }, [userSettings.layout, isZen, isMinimal]);
+  }, [userSettings.layout, isZen, isMinimal, isRetro]);
 
-  const renderMessageList = () => (
+  // --- RENDERERS ---
+
+  // 1. CLASSIC / TABLE RENDERER (Default)
+  const renderClassicMessageList = () => (
+    <div className="overflow-x-auto">
+      <Table>
+        {/* <TableHeader>
+          <TableRow>
+            <TableHead>{t('table_sender')}</TableHead>
+            <TableHead>{t('table_subject')}</TableHead>
+            <TableHead>{t('table_date')}</TableHead>
+            <TableHead>{t('table_actions')}</TableHead>
+          </TableRow>
+        </TableHeader> */}
+        <TableBody>
+          {filteredMessages.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center">
+                <div className="py-12">
+                  <div className="mb-4 flex justify-center"><Mail className="h-12 w-12 text-muted-foreground" /></div>
+                  <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
+                  <div className="text-sm text-muted-foreground">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredMessages.map((message, index) => {
+               const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
+               return (
+                <TableRow key={message.id} className={index % 2 === 0 ? 'bg-muted/20' : 'bg-background'}>
+                  <TableCell className="font-medium">{message.from}</TableCell>
+                  <TableCell>
+                      <div className="flex flex-col">
+                        <span>{message.subject}</span>
+                        {!isPro && <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1 mt-0.5"><Clock className="w-2 h-2"/> Expires: {expirationText}</span>}
+                      </div>
+                  </TableCell>
+                  <TableCell>{new Date(message.date).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                        <Button variant="link" size="sm" onClick={() => viewMessage(message)}>{t('view')}</Button>
+                        <Button variant="link" size="sm" className="text-destructive" onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAction('message', message.id);
+                        }}>{t('delete')}</Button>
+                        {(userPlan === 'free') && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
+                            onClick={(e) => toggleSaveMessage(message, e)}
+                        >
+                            <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
+                        </Button>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
+                            onClick={(e) => handleMessageAction(message.id, e)}
+                        >
+                            {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                        </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+               );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
+  // 2. MOBILE (PRO) RENDERER
+  const renderMobileMessageList = () => (
+    <div className="flex flex-col gap-3 py-2">
+        {filteredMessages.map(msg => (
+            <div 
+                key={msg.id}
+                onClick={() => viewMessage(msg)}
+                className="bg-card border rounded-lg p-4 shadow-sm active:scale-95 transition-transform flex items-center justify-between"
+            >
+                <div className="flex flex-col gap-1 overflow-hidden">
+                    <span className="font-bold text-lg truncate">{msg.from}</span>
+                    <span className="text-sm text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>
+                    <span className="text-xs text-muted-foreground/50">{formatDate(msg.date)}</span>
+                </div>
+                <ChevronRight className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+        ))}
+        {filteredMessages.length === 0 && <div className="text-center p-10 text-muted-foreground">Empty Inbox</div>}
+    </div>
+  );
+
+  // 3. RETRO (PRO) RENDERER
+  const renderRetroMessageList = () => (
+      <div style={{ fontFamily: '"Times New Roman", Times, serif', backgroundColor: 'white', color: 'black', padding: '20px', minHeight: '100vh' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>Email Box 1.0</h1>
+          <div style={{ marginBottom: '20px' }}>
+              Welcome, <b>{email}</b>. [<a href="#" onClick={(e) => { e.preventDefault(); refreshInbox(); }} style={{ color: 'blue', textDecoration: 'underline'}}>Refresh</a>] [<a href="#" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }} style={{ color: 'blue', textDecoration: 'underline'}}>Settings</a>]
+          </div>
+          <hr style={{ borderTop: '1px solid black', borderBottom: 'none' }} />
+          <ul style={{ listStyleType: 'disc', paddingLeft: '20px', marginTop: '10px' }}>
+             {filteredMessages.length === 0 ? (
+                 <li>No messages found on server.</li>
+             ) : (
+                 filteredMessages.map(msg => (
+                     <li key={msg.id} style={{ marginBottom: '5px' }}>
+                         <a href="#" onClick={(e) => { e.preventDefault(); viewMessage(msg); }} style={{ color: 'blue', textDecoration: 'underline', fontSize: '16px' }}>
+                            {msg.subject || "(No Subject)"}
+                         </a>
+                         <span style={{ fontSize: '12px', color: '#555' }}> - From: {msg.from} ({formatDate(msg.date)})</span>
+                     </li>
+                 ))
+             )}
+          </ul>
+          <hr style={{ borderTop: '1px solid black', borderBottom: 'none', marginTop: '20px' }} />
+          <div style={{ fontSize: '10px', marginTop: '10px' }}>Generated by Server at {new Date().toTimeString()}</div>
+      </div>
+  );
+
+  // 4. NEW (Used to be Standard) RENDERER
+  const renderNewMessageList = () => (
     <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
       {filteredMessages.length === 0 ? (
         <div className="py-16 flex flex-col items-center justify-center text-center px-4">
@@ -679,7 +818,6 @@ export function EmailBox({
                 isUnread && !isSelected ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
               )}
             >
-              {/* Avatar / Icon Placeholder */}
               {!isCompact && (
                 <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">
                   {message.from.charAt(1).toUpperCase()}
@@ -720,7 +858,6 @@ export function EmailBox({
 
                 {!isCompact && (
                   <div className="flex items-center justify-between mt-1">
-                    {/* Expiration Notice */}
                     <div
                       className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                       onClick={(e) => {
@@ -732,7 +869,6 @@ export function EmailBox({
                       <span>{expirationText}</span>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       {(userPlan === 'free') && (
                         <Button
@@ -745,21 +881,20 @@ export function EmailBox({
                           <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
                         </Button>
                       )}
-                      {(userPlan === 'pro') && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          title={"Delete Permanently"}
-                          onClick={() => {
-                            setItemToDelete({ type: 'message', id: message.id });
-                            setIsDeleteModalOpen(true);
-
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      {/* DELETE MESSAGE BUTTON - Protected */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title={"Delete Permanently"}
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           handleDeleteAction('message', message.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      
                       <Button
                         variant="ghost"
                         size="icon"
@@ -779,6 +914,36 @@ export function EmailBox({
       )}
     </div>
   );
+
+  // If Retro layout, return early with full page takeover
+  if (isRetro) {
+      return (
+          <>
+            {renderRetroMessageList()}
+            <MessageModal
+                message={selectedMessage}
+                isOpen={isMessageModalOpen}
+                onClose={() => setIsMessageModalOpen(false)}
+                isPro={isPro}
+                onUpsell={() => openUpsell("Attachments")}
+                apiEndpoint={API_ENDPOINT}
+            />
+             <SettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                settings={userSettings}
+                onUpdate={setUserSettings}
+                isPro={isPro}
+                onUpsell={openUpsell}
+                isAuthenticated={isAuthenticated}
+                onAuthNeed={(feature: string) => {
+                setAuthNeedFeature(feature);
+                setIsAuthNeedOpen(true);
+                }}
+            />
+          </>
+      )
+  }
 
   return (
     <Card className={cn("border-dashed", isZen ? "border-0 shadow-none bg-transparent" : "")}>
@@ -901,9 +1066,17 @@ export function EmailBox({
                   </TooltipTrigger>
                   <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
                 </Tooltip>
+                
+                {/* DELETE / BURN INBOX BUTTON - Protected */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={deleteEmail} aria-label={t('delete')}>
+                    <Button 
+                        disabled={blockButtons} 
+                        variant="outline" 
+                        className="flex-1" 
+                        onClick={() => handleDeleteAction('inbox')} 
+                        aria-label={t('delete')}
+                    >
                       <Trash2 className="mr-2 h-4 w-4" />
                       <span className="hidden sm:inline">{t('delete')}</span>
                       <Badge variant="outline" className="ml-auto hidden sm:block">D</Badge>
@@ -960,11 +1133,11 @@ export function EmailBox({
           </>
         )}
 
-        {/* MESSAGE AREA - Always visible */}
+        {/* MESSAGE AREA */}
         {isSplit ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]">
             <div className="border rounded-xl overflow-hidden overflow-y-auto">
-              {renderMessageList()}
+              {renderNewMessageList()}
             </div>
             <div className="border rounded-xl p-4 overflow-y-auto bg-muted/10">
               {selectedMessage ? (
@@ -992,9 +1165,13 @@ export function EmailBox({
               )}
             </div>
           </div>
+        ) : isClassic ? (
+            renderClassicMessageList()
+        ) : isMobile ? (
+            renderMobileMessageList()
         ) : (
-          // CLASSIC / COMPACT VIEW
-          renderMessageList()
+            // NEW / COMPACT / STANDARD VIEW
+            renderNewMessageList()
         )}
 
         {/* Footer/History Area - Hidden in Zen */}
@@ -1038,7 +1215,7 @@ export function EmailBox({
         </div>
       )}
 
-      {/* Modals placed outside CardContent to ensure they render correctly */}
+      {/* Modals */}
       <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={useHistoryEmail} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
 

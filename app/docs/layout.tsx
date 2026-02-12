@@ -1,14 +1,14 @@
 import { AppFooter } from '@/components/app-footer';
 import { AppHeader } from '@/components/nLHeader'
+import { getServerSession } from 'next-auth';
 import React from 'react';
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const Layout: React.FC<{ children: React.ReactNode }> = async ({ children }) => {
+    const session = await getServerSession();
     return (
-        <div className="flex flex-col min-h-screen">
-            <AppHeader />
-            <main className="flex-1 w-full px-4 py-6 md:px-8 lg:px-16">
-                {children}
-            </main>
+        <div className="">
+            <AppHeader initialSession={session} />
+            {children}
             <AppFooter />
         </div>
     );

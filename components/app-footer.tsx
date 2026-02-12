@@ -63,6 +63,12 @@ export function AppFooter() {
                 Terms of Service
               </Link>
               <Link
+                href="/policies/refund"
+                className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                Refund Policy
+              </Link>
+              <Link
                 href="/contact"
                 className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
               >

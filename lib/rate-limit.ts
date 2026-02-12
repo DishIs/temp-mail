@@ -49,7 +49,7 @@ export function isValidPublicRequest(reqHeaders: Headers): boolean {
   if (customHeader !== 'web-client') return false;
 
   // 2. Check Origin/Referer
-  const allowedHost = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'https://shiny-carnival-5659pvv7pwg27wgj-3000.app.github.dev';
+  const allowedHost = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'https://shiny-carnival-5659pvv7pwg27wgj-3000.app.github.dev';
   
   const validOrigin = origin ? origin.includes(allowedHost) : true; 
   const validReferer = referer ? referer.includes(allowedHost) : false;
