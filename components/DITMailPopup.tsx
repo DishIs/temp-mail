@@ -11,10 +11,10 @@ import { AuthPopup } from './AuthPopup';
 
 // A small, reusable component for feature highlights
 const FeatureHighlight = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
-    <li className="flex items-center gap-3 text-sm text-muted-foreground">
-        <div className="flex-shrink-0 text-primary">{icon}</div>
-        <span>{children}</span>
-    </li>
+  <li className="flex items-center gap-3 text-sm text-muted-foreground">
+    <div className="flex-shrink-0 text-primary">{icon}</div>
+    <span>{children}</span>
+  </li>
 );
 
 export function DITMailPopup() {
@@ -42,62 +42,63 @@ export function DITMailPopup() {
 
   return (
     <>
-    <AnimatePresence>
-      {isPopupVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: 50, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="fixed bottom-5 right-5 z-50 p-6 w-[calc(100%-2.5rem)] sm:w-auto sm:max-w-sm bg-background rounded-xl shadow-2xl border"
-        >
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between">
-              <div className="flex flex-col">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Unlock Your Pro Features
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Sign in to get more from your mailbox.
-                </p>
+      <AnimatePresence>
+        {isPopupVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="fixed bottom-5 right-5 z-50 p-6 w-[calc(100%-2.5rem)] sm:w-auto sm:max-w-sm bg-background rounded-xl shadow-2xl border"
+          >
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Unlock Your Pro Features
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Sign in to get more from your mailbox.
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDismissPopup}
+                  className="flex-shrink-0 -mr-2 -mt-2"
+                  aria-label="Dismiss"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleDismissPopup}
-                className="flex-shrink-0 -mr-2 -mt-2"
-                aria-label="Dismiss"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
 
-            <ul className="space-y-2">
-              <FeatureHighlight icon={<Star className="h-4 w-4" />}>
-                Save important emails forever
-              </FeatureHighlight>
-              <FeatureHighlight icon={<Zap className="h-4 w-4" />}>
-                Use your own custom domains
-              </FeatureHighlight>
-              <FeatureHighlight icon={<Layers className="h-4 w-4" />}>
-                Get 25MB attachment limits
-              </FeatureHighlight>
-            </ul>
+              <ul className="space-y-2">
+                <FeatureHighlight icon={<Star className="h-4 w-4" />}>
+                  Save important emails forever
+                </FeatureHighlight>
+                <FeatureHighlight icon={<Zap className="h-4 w-4" />}>
+                  Use your own custom domains
+                </FeatureHighlight>
+                <FeatureHighlight icon={<Layers className="h-4 w-4" />}>
+                  Get 25MB attachment limits
+                </FeatureHighlight>
+              </ul>
 
-            <div className="flex flex-col sm:flex-row gap-2 mt-2">
-              {/* This button could open your AuthPopup */}
-              <Button className="w-full" onClick={() => setIsPopupOpen(true) }>
-                Compare Plans
-              </Button>
-              <Button variant="secondary" asChild className="w-full">
-                <Link href="/blog">See What's New</Link>
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                {/* This button could open your AuthPopup */}
+                <Link href={'/pricing'}>
+                  <Button className="w-full">
+                    Compare Plans
+                  </Button>
+                </Link>
+                <Button variant="secondary" asChild className="w-full">
+                  <Link href="/blog">See What's New</Link>
+                </Button>
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-    <AuthPopup isOpen={isPopupOpen} onClose={() => setIsPopupOpen(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

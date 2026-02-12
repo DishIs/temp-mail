@@ -18,7 +18,7 @@ export default function AuthPage() {
 
     const handleLogin = async (provider: string, options: any = {}) => {
         setIsLoading(provider);
-        await signIn(provider, { callbackUrl, ...options });
+        await signIn(provider, { callbackUrl, ...options, redirect: true });
     };
 
     return (

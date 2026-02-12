@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { UpsellModal } from "./upsell-modal";
-import { AuthNeed } from "./auth-needed-moda"; 
+import { AuthNeed } from "./auth-needed-moda";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 
 const FREE_DOMAINS = [
@@ -363,21 +363,21 @@ export function EmailBox({
   const handleDeleteAction = (type: 'inbox' | 'message', id?: string) => {
     // 1. Check Authentication
     if (!isAuthenticated) {
-        setAuthNeedFeature(type === 'inbox' ? 'Delete / Burn Inbox' : 'Delete Message Permanently');
-        setIsAuthNeedOpen(true);
-        return;
+      setAuthNeedFeature(type === 'inbox' ? 'Delete / Burn Inbox' : 'Delete Message Permanently');
+      setIsAuthNeedOpen(true);
+      return;
     }
     // 2. Check Pro (Delete Permanently is a Pro feature)
     if (!isPro) {
-        openUpsell(type === 'inbox' ? 'Burn Inbox' : 'Permanent Deletion');
-        return;
+      openUpsell(type === 'inbox' ? 'Burn Inbox' : 'Permanent Deletion');
+      return;
     }
     // 3. Execute
     if (type === 'inbox') {
-        deleteEmail(); // Actually burns it (resets it)
+      deleteEmail(); // Actually burns it (resets it)
     } else if (type === 'message' && id) {
-        setItemToDelete({ type: 'message', id });
-        setIsDeleteModalOpen(true);
+      setItemToDelete({ type: 'message', id });
+      setIsDeleteModalOpen(true);
     }
   };
 
@@ -648,7 +648,7 @@ export function EmailBox({
       if (footer) footer.style.display = 'none';
       if (nav) nav.style.display = 'none';
     } else if (isMinimal) {
-      if (header) header.style.display = 'flex'; 
+      if (header) header.style.display = 'flex';
       if (footer) footer.style.display = 'none';
     } else {
       if (header) header.style.display = '';
@@ -690,48 +690,48 @@ export function EmailBox({
             </TableRow>
           ) : (
             filteredMessages.map((message, index) => {
-               const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
-               return (
+              const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
+              return (
                 <TableRow key={message.id} className={index % 2 === 0 ? 'bg-muted/20' : 'bg-background'}>
                   <TableCell className="font-medium">{message.from}</TableCell>
                   <TableCell>
-                      <div className="flex flex-col">
-                        <span>{message.subject}</span>
-                        {!isPro && <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1 mt-0.5"><Clock className="w-2 h-2"/> Expires: {expirationText}</span>}
-                      </div>
+                    <div className="flex flex-col">
+                      <span>{message.subject}</span>
+                      {!isPro && <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1 mt-0.5"><Clock className="w-2 h-2" /> Expires: {expirationText}</span>}
+                    </div>
                   </TableCell>
                   <TableCell>{new Date(message.date).toLocaleString()}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                        <Button variant="link" size="sm" onClick={() => viewMessage(message)}>{t('view')}</Button>
-                        <Button variant="link" size="sm" className="text-destructive" onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteAction('message', message.id);
-                        }}>{t('delete')}</Button>
-                        {(userPlan === 'free') && (
+                      <Button variant="link" size="sm" onClick={() => viewMessage(message)}>{t('view')}</Button>
+                      <Button variant="link" size="sm" className="text-destructive" onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteAction('message', message.id);
+                      }}>{t('delete')}</Button>
+                      {(userPlan === 'free') && (
                         <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
-                            onClick={(e) => toggleSaveMessage(message, e)}
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"}
+                          onClick={(e) => toggleSaveMessage(message, e)}
                         >
-                            <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
+                          <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
                         </Button>
-                        )}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
-                            onClick={(e) => handleMessageAction(message.id, e)}
-                        >
-                            {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title={activeTab === 'dismissed' ? "Restore" : "Dismiss"}
+                        onClick={(e) => handleMessageAction(message.id, e)}
+                      >
+                        {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-               );
+              );
             })
           )}
         </TableBody>
@@ -742,49 +742,49 @@ export function EmailBox({
   // 2. MOBILE (PRO) RENDERER
   const renderMobileMessageList = () => (
     <div className="flex flex-col gap-3 py-2">
-        {filteredMessages.map(msg => (
-            <div 
-                key={msg.id}
-                onClick={() => viewMessage(msg)}
-                className="bg-card border rounded-lg p-4 shadow-sm active:scale-95 transition-transform flex items-center justify-between"
-            >
-                <div className="flex flex-col gap-1 overflow-hidden">
-                    <span className="font-bold text-lg truncate">{msg.from}</span>
-                    <span className="text-sm text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>
-                    <span className="text-xs text-muted-foreground/50">{formatDate(msg.date)}</span>
-                </div>
-                <ChevronRight className="w-6 h-6 text-muted-foreground/50" />
-            </div>
-        ))}
-        {filteredMessages.length === 0 && <div className="text-center p-10 text-muted-foreground">Empty Inbox</div>}
+      {filteredMessages.map(msg => (
+        <div
+          key={msg.id}
+          onClick={() => viewMessage(msg)}
+          className="bg-card border rounded-lg p-4 shadow-sm active:scale-95 transition-transform flex items-center justify-between"
+        >
+          <div className="flex flex-col gap-1 overflow-hidden">
+            <span className="font-bold text-lg truncate">{msg.from}</span>
+            <span className="text-sm text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>
+            <span className="text-xs text-muted-foreground/50">{formatDate(msg.date)}</span>
+          </div>
+          <ChevronRight className="w-6 h-6 text-muted-foreground/50" />
+        </div>
+      ))}
+      {filteredMessages.length === 0 && <div className="text-center p-10 text-muted-foreground">Empty Inbox</div>}
     </div>
   );
 
   // 3. RETRO (PRO) RENDERER
   const renderRetroMessageList = () => (
-      <div style={{ fontFamily: '"Times New Roman", Times, serif', backgroundColor: 'white', color: 'black', padding: '20px', minHeight: '100vh' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>Email Box 1.0</h1>
-          <div style={{ marginBottom: '20px' }}>
-              Welcome, <b>{email}</b>. [<a href="#" onClick={(e) => { e.preventDefault(); refreshInbox(); }} style={{ color: 'blue', textDecoration: 'underline'}}>Refresh</a>] [<a href="#" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }} style={{ color: 'blue', textDecoration: 'underline'}}>Settings</a>]
-          </div>
-          <hr style={{ borderTop: '1px solid black', borderBottom: 'none' }} />
-          <ul style={{ listStyleType: 'disc', paddingLeft: '20px', marginTop: '10px' }}>
-             {filteredMessages.length === 0 ? (
-                 <li>No messages found on server.</li>
-             ) : (
-                 filteredMessages.map(msg => (
-                     <li key={msg.id} style={{ marginBottom: '5px' }}>
-                         <a href="#" onClick={(e) => { e.preventDefault(); viewMessage(msg); }} style={{ color: 'blue', textDecoration: 'underline', fontSize: '16px' }}>
-                            {msg.subject || "(No Subject)"}
-                         </a>
-                         <span style={{ fontSize: '12px', color: '#555' }}> - From: {msg.from} ({formatDate(msg.date)})</span>
-                     </li>
-                 ))
-             )}
-          </ul>
-          <hr style={{ borderTop: '1px solid black', borderBottom: 'none', marginTop: '20px' }} />
-          <div style={{ fontSize: '10px', marginTop: '10px' }}>Generated by Server at {new Date().toTimeString()}</div>
+    <div style={{ fontFamily: '"Times New Roman", Times, serif', backgroundColor: 'white', color: 'black', padding: '20px', minHeight: '100vh' }}>
+      <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>Email Box 1.0</h1>
+      <div style={{ marginBottom: '20px' }}>
+        Welcome, <b>{email}</b>. [<a href="#" onClick={(e) => { e.preventDefault(); refreshInbox(); }} style={{ color: 'blue', textDecoration: 'underline' }}>Refresh</a>] [<a href="#" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }} style={{ color: 'blue', textDecoration: 'underline' }}>Settings</a>]
       </div>
+      <hr style={{ borderTop: '1px solid black', borderBottom: 'none' }} />
+      <ul style={{ listStyleType: 'disc', paddingLeft: '20px', marginTop: '10px' }}>
+        {filteredMessages.length === 0 ? (
+          <li>No messages found on server.</li>
+        ) : (
+          filteredMessages.map(msg => (
+            <li key={msg.id} style={{ marginBottom: '5px' }}>
+              <a href="#" onClick={(e) => { e.preventDefault(); viewMessage(msg); }} style={{ color: 'blue', textDecoration: 'underline', fontSize: '16px' }}>
+                {msg.subject || "(No Subject)"}
+              </a>
+              <span style={{ fontSize: '12px', color: '#555' }}> - From: {msg.from} ({formatDate(msg.date)})</span>
+            </li>
+          ))
+        )}
+      </ul>
+      <hr style={{ borderTop: '1px solid black', borderBottom: 'none', marginTop: '20px' }} />
+      <div style={{ fontSize: '10px', marginTop: '10px' }}>Generated by Server at {new Date().toTimeString()}</div>
+    </div>
   );
 
   // 4. NEW (Used to be Standard) RENDERER
@@ -888,13 +888,13 @@ export function EmailBox({
                         className="h-8 w-8"
                         title={"Delete Permanently"}
                         onClick={(e) => {
-                           e.stopPropagation();
-                           handleDeleteAction('message', message.id);
+                          e.stopPropagation();
+                          handleDeleteAction('message', message.id);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      
+
                       <Button
                         variant="ghost"
                         size="icon"
@@ -917,32 +917,32 @@ export function EmailBox({
 
   // If Retro layout, return early with full page takeover
   if (isRetro) {
-      return (
-          <>
-            {renderRetroMessageList()}
-            <MessageModal
-                message={selectedMessage}
-                isOpen={isMessageModalOpen}
-                onClose={() => setIsMessageModalOpen(false)}
-                isPro={isPro}
-                onUpsell={() => openUpsell("Attachments")}
-                apiEndpoint={API_ENDPOINT}
-            />
-             <SettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                settings={userSettings}
-                onUpdate={setUserSettings}
-                isPro={isPro}
-                onUpsell={openUpsell}
-                isAuthenticated={isAuthenticated}
-                onAuthNeed={(feature: string) => {
-                setAuthNeedFeature(feature);
-                setIsAuthNeedOpen(true);
-                }}
-            />
-          </>
-      )
+    return (
+      <>
+        {renderRetroMessageList()}
+        <MessageModal
+          message={selectedMessage}
+          isOpen={isMessageModalOpen}
+          onClose={() => setIsMessageModalOpen(false)}
+          isPro={isPro}
+          onUpsell={() => openUpsell("Attachments")}
+          apiEndpoint={API_ENDPOINT}
+        />
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          settings={userSettings}
+          onUpdate={setUserSettings}
+          isPro={isPro}
+          onUpsell={openUpsell}
+          isAuthenticated={isAuthenticated}
+          onAuthNeed={(feature: string) => {
+            setAuthNeedFeature(feature);
+            setIsAuthNeedOpen(true);
+          }}
+        />
+      </>
+    )
   }
 
   return (
@@ -950,100 +950,100 @@ export function EmailBox({
 
       <CardContent className="space-y-2 pt-3">
         {/* Controls Section - Hidden in Zen */}
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <div className="flex flex-1 items-center gap-2">
+              <Input
+                value={email.split('@')[0]}
+                onChange={(e) => handleEmailInputChange(e.target.value)}
+                className="flex-1"
+                placeholder={t('placeholder_username')}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-1/2 truncate">
+                    {selectedDomain || t('select_domain')}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-white dark:bg-zinc-900 shadow-lg border border-muted z-50 custom-scrollbar">
+                  {availableDomains.map((domain) => {
+                    const isCustom = !FREE_DOMAINS.includes(domain);
+                    return (
+                      <DropdownMenuItem
+                        key={domain}
+                        onSelect={() => {
+                          if (isCustom && !isPro) {
+                            openUpsell("Custom Domains");
+                            return;
+                          }
+                          handleDomainChange(domain);
+                        }}
+                        className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-muted dark:hover:bg-zinc-800"
+                      >
+                        <div className="flex items-center gap-2">
+                          {isCustom && <Crown className="h-4 w-4 text-amber-500" />}
+                          <span>{domain}</span>
+                        </div>
+                        <Button
+                          title={primaryDomain === domain ? t('unset_primary') : t('set_primary')}
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isPro) {
+                              openUpsell("Priority Domain Settings");
+                              return;
+                            }
+                            handlePrimaryDomainChange(domain);
+                          }}
+                          aria-label={`Set ${domain} as primary`}
+                          className="hover:bg-transparent"
+                        >
+                          <Star className={`h-4 w-4 ${primaryDomain === domain ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
+                        </Button>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <div className="flex-1 rounded-md bg-muted p-2">{email || t('loading')}</div>
+          )}
+          <TooltipProvider delayDuration={200}>
+            <div className="flex gap-2" role="group" aria-label="Email actions">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" size="icon" onClick={copyEmail} className="relative" disabled={blockButtons} aria-label="Copy email address" title="Copy email address">
+                    <Copy className={cn("h-4 w-4 transition-all", copied && "opacity-0")} />
+                    <span className={cn("absolute inset-0 flex items-center justify-center transition-all", copied ? "opacity-100" : "opacity-0")}>
+                      <Check className="h-4 w-4 transition-all" />
+                    </span>
+                    <span className="absolute top-[-2px] text-xs right-0 hidden sm:block">C</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>{isAuthenticated ? 'Press C to copy' : 'Login to use shortcuts'}</p></TooltipContent>
+              </Tooltip>
+              <Button className="hidden xs:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
+                <QrCode className="h-4 w-4" />
+              </Button>
+              {/* SETTINGS BUTTON */}
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => setIsSettingsOpen(true)}
+                disabled={blockButtons}
+                title={"Settings"}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              <ShareDropdown />
+            </div>
+          </TooltipProvider>
+        </div>
+
         {!isZen && (
           <>
-            <div className="flex items-center gap-2">
-              {isEditing ? (
-                <div className="flex flex-1 items-center gap-2">
-                  <Input
-                    value={email.split('@')[0]}
-                    onChange={(e) => handleEmailInputChange(e.target.value)}
-                    className="flex-1"
-                    placeholder={t('placeholder_username')}
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-1/2 truncate">
-                        {selectedDomain || t('select_domain')}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-white dark:bg-zinc-900 shadow-lg border border-muted z-50 custom-scrollbar">
-                      {availableDomains.map((domain) => {
-                        const isCustom = !FREE_DOMAINS.includes(domain);
-                        return (
-                          <DropdownMenuItem
-                            key={domain}
-                            onSelect={() => {
-                              if (isCustom && !isPro) {
-                                openUpsell("Custom Domains");
-                                return;
-                              }
-                              handleDomainChange(domain);
-                            }}
-                            className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-muted dark:hover:bg-zinc-800"
-                          >
-                            <div className="flex items-center gap-2">
-                              {isCustom && <Crown className="h-4 w-4 text-amber-500" />}
-                              <span>{domain}</span>
-                            </div>
-                            <Button
-                              title={primaryDomain === domain ? t('unset_primary') : t('set_primary')}
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!isPro) {
-                                  openUpsell("Priority Domain Settings");
-                                  return;
-                                }
-                                handlePrimaryDomainChange(domain);
-                              }}
-                              aria-label={`Set ${domain} as primary`}
-                              className="hover:bg-transparent"
-                            >
-                              <Star className={`h-4 w-4 ${primaryDomain === domain ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
-                            </Button>
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ) : (
-                <div className="flex-1 rounded-md bg-muted p-2">{email || t('loading')}</div>
-              )}
-              <TooltipProvider delayDuration={200}>
-                <div className="flex gap-2" role="group" aria-label="Email actions">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="secondary" size="icon" onClick={copyEmail} className="relative" disabled={blockButtons} aria-label="Copy email address" title="Copy email address">
-                        <Copy className={cn("h-4 w-4 transition-all", copied && "opacity-0")} />
-                        <span className={cn("absolute inset-0 flex items-center justify-center transition-all", copied ? "opacity-100" : "opacity-0")}>
-                          <Check className="h-4 w-4 transition-all" />
-                        </span>
-                        <span className="absolute top-[-2px] text-xs right-0 hidden sm:block">C</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>{isAuthenticated ? 'Press C to copy' : 'Login to use shortcuts'}</p></TooltipContent>
-                  </Tooltip>
-                  <Button className="hidden xs:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
-                    <QrCode className="h-4 w-4" />
-                  </Button>
-                  {/* SETTINGS BUTTON */}
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={() => setIsSettingsOpen(true)}
-                    disabled={blockButtons}
-                    title={"Settings"}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                  <ShareDropdown />
-                </div>
-              </TooltipProvider>
-            </div>
-
             <TooltipProvider delayDuration={200}>
               <div className="flex gap-2 flex-wrap" role="group" aria-label="Email management actions">
                 <Tooltip>
@@ -1066,16 +1066,16 @@ export function EmailBox({
                   </TooltipTrigger>
                   <TooltipContent><p>{!isAuthenticated ? 'Login to edit and use its shortcut' : (isPro) ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
                 </Tooltip>
-                
+
                 {/* DELETE / BURN INBOX BUTTON - Protected */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                        disabled={blockButtons} 
-                        variant="outline" 
-                        className="flex-1" 
-                        onClick={() => handleDeleteAction('inbox')} 
-                        aria-label={t('delete')}
+                    <Button
+                      disabled={blockButtons}
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleDeleteAction('inbox')}
+                      aria-label={t('delete')}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       <span className="hidden sm:inline">{t('delete')}</span>
@@ -1131,8 +1131,8 @@ export function EmailBox({
               </button>
             </div>
           </>
-        )}
 
+        )}
         {/* MESSAGE AREA */}
         {isSplit ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]">
@@ -1166,12 +1166,12 @@ export function EmailBox({
             </div>
           </div>
         ) : isClassic ? (
-            renderClassicMessageList()
+          renderClassicMessageList()
         ) : isMobile ? (
-            renderMobileMessageList()
+          renderMobileMessageList()
         ) : (
-            // NEW / COMPACT / STANDARD VIEW
-            renderNewMessageList()
+          // NEW / COMPACT / STANDARD VIEW
+          renderNewMessageList()
         )}
 
         {/* Footer/History Area - Hidden in Zen */}
@@ -1197,7 +1197,7 @@ export function EmailBox({
           </div>
         )}
       </CardContent>
-      
+
       {!isZen && (
         <CardHeader>
           <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>

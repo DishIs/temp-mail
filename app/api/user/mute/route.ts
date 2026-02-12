@@ -1,15 +1,21 @@
 // app/api/user/mute/route.ts
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
 import { fetchFromServiceAPI } from '@/lib/api';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { getToken } from 'next-auth/jwt';
 
 // MUTE a sender
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.plan !== 'pro') {
-        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    if (!token?.id) {
+        return NextResponse.json(
+            { success: false, message: 'Unauthorized' },
+            { status: 401 }
+        );
     }
 
     const { senderToMute } = await request.json();
@@ -20,7 +26,7 @@ export async function POST(request: Request) {
     try {
         const serviceResponse = await fetchFromServiceAPI(`/user/mute`, {
             method: 'POST',
-            body: JSON.stringify({ senderToMute, wyiUserId: session.user.id }),
+            body: JSON.stringify({ senderToMute, wyiUserId: token.id }),
         });
         return NextResponse.json(serviceResponse);
     } catch (error: any) {
@@ -30,9 +36,16 @@ export async function POST(request: Request) {
 
 // UNMUTE a sender
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    if (!token?.id) {
+        return NextResponse.json(
+            { success: false, message: 'Unauthorized' },
+            { status: 401 }
+        );
     }
 
     const { senderToUnmute } = await request.json();
@@ -42,7 +55,7 @@ export async function DELETE(request: Request) {
         // The HTTP method and path should match the Express route definition.
         const serviceResponse = await fetchFromServiceAPI(`/user/mute`, {
             method: 'DELETE',
-            body: JSON.stringify({ senderToUnmute, wyiUserId: session.user.id }),
+            body: JSON.stringify({ senderToUnmute, wyiUserId: token.id }),
         });
         return NextResponse.json(serviceResponse);
     } catch (error: any) {

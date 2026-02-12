@@ -3,19 +3,25 @@
 // It verifies the subscription is ACTIVE and tells your backend to upgrade the user.
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { fetchFromServiceAPI } from '@/lib/api';
 import { getPayPalAccessToken } from '@/lib/paypal';
+import { getToken } from 'next-auth/jwt';
 
 const PAYPAL_API = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com';
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+    });
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!token?.id) {
+        return NextResponse.json(
+            { success: false, message: 'Unauthorized' },
+            { status: 401 }
+        );
+    }
+
 
   try {
     const { subscriptionId } = await request.json();
@@ -42,8 +48,8 @@ export async function POST(request: Request) {
     }
 
     // 2. Verify the subscription belongs to the logged-in user via custom_id
-    if (subData.custom_id !== session.user.id) {
-      console.error(`[Verify Sub] custom_id mismatch: ${subData.custom_id} !== ${session.user.id}`);
+    if (subData.custom_id !== token.id) {
+      console.error(`[Verify Sub] custom_id mismatch: ${subData.custom_id} !== ${token.id}`);
       return NextResponse.json({ error: 'Subscription does not belong to this user' }, { status: 403 });
     }
 
@@ -60,7 +66,7 @@ export async function POST(request: Request) {
     await fetchFromServiceAPI('/user/upgrade', {
       method: 'POST',
       body: JSON.stringify({
-        userId:         session.user.id,
+        userId:         token.id,
         subscriptionId: subData.id,
         planId:         subData.plan_id,
         status:         subData.status,

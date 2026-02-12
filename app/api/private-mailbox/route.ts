@@ -1,27 +1,34 @@
 // app/api/private-mailbox/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { fetchFromServiceAPI } from '@/lib/api';
-import { authOptions } from '../auth/[...nextauth]/route'; // Adjust path if needed
 import jwt from "jsonwebtoken";
 import { rateLimit } from '@/lib/rate-limit';
+import { getToken } from 'next-auth/jwt';
 
 // Rate limiter instance
 const limiter = rateLimit({
-  interval: 60 * 1000, 
-  uniqueTokenPerInterval: 500, 
+  interval: 60 * 1000,
+  uniqueTokenPerInterval: 500,
 });
 
 export async function GET(request: Request) {
   // 1. Auth Check
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const token = await getToken({
+    req: request as any,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
+  if (!token?.id) {
+    return NextResponse.json(
+      { success: false, message: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
-  const userId = session.user.id;
+
+  const userId = token?.id;
   // @ts-ignore
-  const plan = session.user.plan || 'free';
+  const plan = token.plan || 'free';
 
   // 2. Tier-based Rate Limits
   const limit = plan === 'pro' ? 300 : 60; // 300 req/min for Pro, 60 for Free
@@ -48,7 +55,7 @@ export async function GET(request: Request) {
   try {
     let data;
     const options = { headers: { 'Authorization': `Bearer ${signedToken}` } };
-    
+
     if (messageId) {
       data = await fetchFromServiceAPI(`/mailbox/${mailbox}/message/${messageId}`, options);
     } else {
@@ -61,20 +68,28 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const token = await getToken({
+    req: request as any,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
+  if (!token?.id) {
+    return NextResponse.json(
+      { success: false, message: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
+
   // @ts-ignore
-  const plan = session.user.plan || 'free';
-  
+  const plan = token.plan || 'free';
+
   // Rate limit DELETE actions specifically if you want, or share the limit
   try {
-     // Optional: Stricter delete limit?
-     await limiter.check(plan === 'pro' ? 100 : 20, session.user.id + '_DELETE'); 
+    // Optional: Stricter delete limit?
+    await limiter.check(plan === 'pro' ? 100 : 20, token.id + '_DELETE');
   } catch {
-     return NextResponse.json({ error: 'Action limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: 'Action limit exceeded' }, { status: 429 });
   }
 
   const signedToken = jwt.sign(

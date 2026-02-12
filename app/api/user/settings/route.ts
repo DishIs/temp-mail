@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { fetchFromServiceAPI } from '@/lib/api';
+import { getToken } from 'next-auth/jwt';
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+    });
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!token?.id) {
+        return NextResponse.json(
+            { success: false, message: 'Unauthorized' },
+            { status: 401 }
+        );
+    }
+
 
   try {
     const settings = await request.json();
@@ -22,12 +28,43 @@ export async function POST(request: Request) {
     await fetchFromServiceAPI('/user/settings', {
       method: 'POST',
       body: JSON.stringify({
-        wyiUserId: session.user.id,
+        wyiUserId: token.id,
         settings
       })
     });
 
     return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to sync settings:', error);
+    return NextResponse.json({ error: 'Failed to sync settings' }, { status: 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    if (!token?.id) {
+        return NextResponse.json(
+            { success: false, message: 'Unauthorized' },
+            { status: 401 }
+        );
+    }
+
+
+  try {
+
+    // Forward to backend service
+    const res = await fetchFromServiceAPI('/user/get-settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        wyiUserId: token.id
+      })
+    });
+
+    return NextResponse.json(res);
   } catch (error) {
     console.error('Failed to sync settings:', error);
     return NextResponse.json({ error: 'Failed to sync settings' }, { status: 500 });

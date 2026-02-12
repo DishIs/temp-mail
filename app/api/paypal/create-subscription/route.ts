@@ -1,17 +1,22 @@
 // app/api/paypal/create-subscription/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getPayPalAccessToken, PAYPAL_PLANS } from '@/lib/paypal';
+import { getToken } from 'next-auth/jwt';
 
 const PAYPAL_API = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com';
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+    });
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!token?.id) {
+        return NextResponse.json(
+            { success: false, message: 'Unauthorized' },
+            { status: 401 }
+        );
+    }
 
   try {
     const { cycle } = await request.json();
@@ -38,7 +43,7 @@ export async function POST(request: Request) {
     // PayPal Subscriptions V1 Payload
     const subscriptionPayload = {
       plan_id: planId,
-      custom_id: session.user.id,
+      custom_id: token.id,
       application_context: {
         brand_name: "Free Custom Email",
         locale: "en-US",

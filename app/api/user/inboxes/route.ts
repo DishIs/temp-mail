@@ -1,46 +1,48 @@
-// app/api/user/inboxes/route.ts
-
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getToken } from 'next-auth/jwt';
 import { fetchFromServiceAPI } from '@/lib/api';
 
-/**
- * Handles POST requests to add or update a user's inbox in the database.
- * This acts as a secure proxy to the backend service.
- */
 export async function POST(request: Request) {
-    // 1. Authenticate the request and get user data
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    // ---- Extract JWT from cookie
+    const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    if (!token?.id) {
+        return NextResponse.json(
+            { success: false, message: 'Unauthorized' },
+            { status: 401 }
+        );
     }
 
-    console.log("user", session.user)
+    console.log("user", token);
 
     try {
-        // 2. Get the new inbox name from the request body
         const { inboxName } = await request.json();
+
         if (!inboxName) {
-            return NextResponse.json({ success: false, message: 'Inbox name is required.' }, { status: 400 });
+            return NextResponse.json(
+                { success: false, message: 'Inbox name is required.' },
+                { status: 400 }
+            );
         }
 
-        // 3. Proxy the request to your backend service API
-        // This calls the `addInboxHandler` you created on the Express server.
         const serviceResponse = await fetchFromServiceAPI('/user/inboxes', {
             method: 'POST',
             body: JSON.stringify({
-                wyiUserId: session.user.id,
-                inboxName: inboxName,
+                wyiUserId: token.id,
+                inboxName,
             }),
         });
 
-        // 4. Return the response from the service to the client
         return NextResponse.json(serviceResponse);
 
     } catch (error) {
         console.error('Error in /api/user/inboxes:', error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return NextResponse.json({ success: false, message: 'Failed to update inbox.', error: errorMessage }, { status: 500 });
+        return NextResponse.json(
+            { success: false, message: 'Failed to update inbox.' },
+            { status: 500 }
+        );
     }
 }

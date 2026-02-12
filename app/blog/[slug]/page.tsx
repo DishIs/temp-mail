@@ -1,171 +1,138 @@
 // app/blog/[slug]/page.tsx
-import MarkdownRenderer from '@/components/md-renderer'
-import Link from 'next/link'
-import Image from 'next/image'
-import { ThemeProvider } from '@/components/theme-provider'
-import { AppHeader } from '@/components/nLHeader'
-import { getPostBySlug } from '@/lib/posts'
-import { notFound } from 'next/navigation'
-import { Metadata } from 'next'
-import Script from 'next/script'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { getServerSession } from 'next-auth'
+import { blogClient } from "@/lib/blog-client";
+import { notFound } from "next/navigation";
+import { CommentForm } from "@/components/blog/CommentForm";
+import { Comment } from "@dishistech/blogs-sdk";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Calendar, User, Tag as TagIcon } from "lucide-react";
+import Link from "next/link";
+import './blog.scss'
+import { AppHeader } from "@/components/nLHeader";
+import { AppFooter } from "@/components/app-footer";
+import { ThemeProvider } from "@/components/theme-provider";
 
-
-function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength).replace(/\s+\S*$/, '') + '...';
+function formatDate(dateString: string) {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
 }
 
-export async function generateMetadata(
-  { params }: { params: Promise<{ slug: string }> }
-): Promise<Metadata> {
-  try {
-    const resolvedParams = await params;
-    const { data } = await getPostBySlug(resolvedParams.slug);
-
-    if (!data) {
-      return {
-        title: 'Post Not Found',
-        description: 'The requested blog post could not be found.',
-      };
-    }
-
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+    const post = await blogClient.getPost(params.slug);
+    if (!post) return { title: 'Post Not Found' };
     return {
-      title: truncate(data.title, 60),
-      description: truncate(data.description, 150),
-      alternates: {
-        canonical: `https://www.freecustom.email/blog/${resolvedParams.slug}`,
-      },
+        title: `${post.title} | FreeCustom.Email Blog`,
+        description: post.excerpt,
+        keywords: post.tags?.map(t => t.name) || []
     };
-  } catch {
-    return {
-      title: 'Post Not Found',
-      description: 'The requested blog post could not be found.',
-    };
-  }
 }
 
+function CommentItem({ comment }: { comment: Comment }) {
+    return (
+        <div className="flex items-start space-x-4 py-6">
+            <Avatar className="h-10 w-10 border">
+                <AvatarImage src={`https://ui-avatars.com/api/?name=${comment.user.name}&background=random`} alt={comment.user.name || ''} />
+                <AvatarFallback>{comment.user.name?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-foreground">{comment.user.name}</h4>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{comment.content}</p>
+            </div>
+        </div>
+    );
+}
 
-export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
-  let resolvedParams: { slug: string }
-  const session = await getServerSession(authOptions);
+export default async function SinglePostPage({ params }: { params: { slug: string } }) {
+    const [post, comments] = await Promise.all([
+        blogClient.getPost(params.slug),
+        blogClient.getComments(params.slug)
+    ]);
 
-
-  try {
-    resolvedParams = await params
-    const { data, content } = await getPostBySlug(resolvedParams.slug)
-
-    const jsonLd = {
-      "@context": "https://schema.org",
-      "@type": "BlogPosting",
-      "headline": data.title,
-      "datePublished": data.date,
-      "author": {
-        "@type": "Organization",
-        "name": "FreeCustom.Email"
-      },
-      "publisher": {
-        "@type": "Organization",
-        "name": "FreeCustom.Email",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://www.freecustom.email/logo.webp"
-        }
-      },
-      "description": data.description,
-      "mainEntityOfPage": `https://www.freecustom.email/blog/${resolvedParams.slug}`
-    }
-
-    if (!data || !content) {
-      throw new Error('Post not found')
+    if (!post) {
+        notFound();
     }
 
     return (
-      <>
-        <Script
-          id="json-ld"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="min-h-screen max-w-[100vw] bg-background">
-            <AppHeader initialSession={session} />
-            <article className="max-w-full mx-auto px-4 py-12 bg-white dark:bg-zinc-900">
-              <header className="mb-10">
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight mb-4 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                  {data.title}
-                </h1>
-                <div className="flex items-center gap-4 mb-2">
-                  {Array.isArray(data.author) ? (
-                    data.author.map((author: { name: string; avatar?: string; bio: string }) => (
-                      <div key={author.name} className="flex items-center gap-2">
-                        {author.avatar && (
-                          <Image
-                            width={32}
-                            height={32}
-                            src={author.avatar}
-                            alt={author.name}
-                            className="w-8 h-8 rounded-full border-2 border-blue-400" />
-                        )}
-                        <div className='gap-1'>
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{author.name}</span>
-                          <p className='text-xs text-gray-600 dark:text-gray-400'>{author.bio}</p>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className="min-h-screen max-w-[100vw] bg-background text-foreground flex flex-col">
+            <AppHeader initialSession={null} />
+            
+            <main className="flex-1 w-full max-w-4xl mx-auto py-16 px-6">
+                <article>
+                    <header className="mb-10 text-center space-y-6">
+                        <div className="space-y-4">
+                            {post.category && (
+                                <Link href={`/blog/categories/${post.category.slug}`}>
+                                    <Badge variant="secondary" className="mb-2 hover:bg-secondary/80 transition-colors">
+                                        {post.category.name}
+                                    </Badge>
+                                </Link>
+                            )}
+                            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground">{post.title}</h1>
                         </div>
-                      </div>
-                    ))
-                  ) : data.author ? (
-                    <div className="flex items-center gap-2">
-                      {data.author.avatar && (
-                        <Image
-                          width={32}
-                          height={32}
-                          src={data.author.avatar}
-                          alt={data.author.name}
-                          className="w-8 h-8 rounded-full border-2 border-blue-400" />
-                      )}
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{data.author.name}</span>
-                    </div>
-                  ) : null}
-                  <span className="text-xs text-gray-600 dark:text-gray-400">
-                    {new Date(data.date).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </div>
-                {data.tags && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {data.tags.map((tag: string) => (
-                      <span
-                        key={tag}
-                        className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs font-semibold"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </header>
-              <section className="prose prose-lg dark:prose-invert">
-                <MarkdownRenderer content={content} />
-              </section>
-              <footer className="mt-12 border-t pt-6 flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                <span>© {new Date().getFullYear()} DishIs Technologies</span>
-                <Link
-                  href="/blog"
-                  className="text-blue-600 dark:text-blue-400 hover:underline transition-colors"
-                >
-                  ← Back to Blog
-                </Link>
-              </footer>
-            </article>
-          </div>
-        </ThemeProvider>
-      </>
-    )
-  } catch {
-    // Redirect to 404 page
-    notFound()
-  }
+                        
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
+                                <div className="flex items-center space-x-2">
+                                    <User className="h-4 w-4" />
+                                    <span>{post.author.name}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Calendar className="h-4 w-4" />
+                                    <span>{formatDate(post.publishedAt)}</span>
+                                </div>
+                            </div>
+
+                            {/* Tags Display */}
+                            {post.tags && post.tags.length > 0 && (
+                                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                                    <TagIcon className="h-3 w-3 text-muted-foreground" />
+                                    {post.tags.map(tag => (
+                                        <Link key={tag.slug} href={`/blog/tags/${tag.slug}`}>
+                                            <Badge variant="outline" className="text-xs hover:bg-muted cursor-pointer">
+                                                {tag.name}
+                                            </Badge>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </header>
+                    
+                    {/* Render post content */}
+                    <div
+                        className="prose prose-lg dark:prose-invert mx-auto ditb text-foreground leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: post.content || '' }}
+                    />
+
+                    {/* --- COMMENTS SECTION --- */}
+                    <section id="comments" className="mt-20 max-w-3xl mx-auto">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-2xl font-bold tracking-tight">
+                                Discussion ({comments.length})
+                            </h2>
+                        </div>
+                        
+                        <div className="space-y-2 divide-y divide-border rounded-lg border bg-card px-6">
+                            {comments.length > 0 ? (
+                               comments.map(comment => <CommentItem key={comment.id} comment={comment} />)
+                            ) : (
+                               <p className="text-muted-foreground py-8 text-center italic">No comments yet. Be the first to share your thoughts.</p>
+                            )}
+                        </div>
+                        
+                        <CommentForm postSlug={params.slug} />
+                    </section>
+                </article>
+            </main>
+            
+            <AppFooter />
+        </div>
+    </ThemeProvider>
+    );
 }
