@@ -1,8 +1,37 @@
-import NextAuth, { type NextAuthOptions } from 'next-auth';
+import NextAuth, { DefaultSession, User, type NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import GithubProvider from 'next-auth/providers/github';
 
 export const runtime = 'nodejs';
+
+interface WYIProfile {
+    _id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    isProUser: boolean;
+    username: string;
+}
+
+declare module 'next-auth' {
+    interface Session {
+        user: {
+            id: string;
+            plan: 'free' | 'pro';
+        } & DefaultSession['user'];
+    }
+    interface User {
+        id: string;
+        plan: 'free' | 'pro';
+    }
+}
+
+declare module 'next-auth/jwt' {
+    interface JWT {
+        id: string;
+        plan: 'free' | 'pro';
+    }
+}
 
 // ---- Backend helper
 async function fetchFromServiceAPI(path: string, options: RequestInit = {}) {
@@ -71,6 +100,60 @@ const authOptions: NextAuthOptions = {
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
     }),
+            {
+            id: 'wyi',
+            name: 'WhatsYourInfo',
+            type: 'oauth',
+            authorization: {
+                url: 'https://whatsyour.info/oauth/authorize',
+                params: { scope: 'profile:read email:read' },
+            },
+            token: {
+                url: 'https://whatsyour.info/api/v1/oauth/token',
+                async request(context) {
+                    const response = await fetch('https://whatsyour.info/api/v1/oauth/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            grant_type: 'authorization_code',
+                            code: context.params.code,
+                            redirect_uri: context.provider.callbackUrl,
+                            client_id: context.provider.clientId,
+                            client_secret: context.provider.clientSecret,
+                        }),
+                    });
+                    const tokens = await response.json();
+                    if (!response.ok) throw new Error(tokens.error_description || 'Token request failed');
+                    return { tokens };
+                },
+            },
+            userinfo: {
+                url: 'https://whatsyour.info/api/v1/me',
+                async request(context) {
+                    const { tokens } = context;
+                    const response = await fetch('https://whatsyour.info/api/v1/me', {
+                        headers: {
+                            Authorization: `Bearer ${tokens.access_token}`,
+                            'User-Agent': 'freecustom-email-app',
+                        },
+                    });
+                    if (!response.ok) throw new Error(await response.text());
+                    return await response.json();
+                },
+            },
+            clientId: process.env.WYI_CLIENT_ID,
+            clientSecret: process.env.WYI_CLIENT_SECRET,
+            profile(profile: WYIProfile): User {
+                return {
+                    id: profile._id,
+                    name: `${profile.firstName} ${profile.lastName}`.trim(),
+                    email: profile.email,
+                    image: `https://whatsyour.info/api/v1/avatar/${profile.username}`,
+                    plan: 'free',
+                };
+            },
+        },
+
   ],
 
   cookies: {
