@@ -37,29 +37,29 @@ async function fetchFromServiceAPI(path: string, options: RequestInit = {}) {
         throw error instanceof Error ? error : new Error('A network or parsing error occurred.');
     }
 }
-
 async function upsertUser(user: {
   id: string;
   email?: string | null;
   name?: string | null;
 }) {
   try {
-    await fetchFromServiceAPI('/auth/upsert-user', {
-      method: 'POST',
+    await fetchFromServiceAPI("/auth/upsert-user", {
+      method: "POST",
       body: JSON.stringify({
         wyiUserId: user.id,
         email: user.email,
         name: user.name,
-        plan: 'free',
+        plan: "free",
       }),
     });
   } catch (e) {
-    console.error('Upsert failed:', e);
+    console.error("Upsert failed:", e);
   }
 }
 
-export const authOptions: NextAuthOptions = {
-  session: { strategy: 'jwt' },
+// ---- keep this NOT exported
+const authOptions: NextAuthOptions = {
+  session: { strategy: "jwt" },
 
   providers: [
     GoogleProvider({
@@ -95,13 +95,13 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.plan = 'free';
+        token.plan = "free";
       }
 
       if (token.id) {
         try {
-          const updatedUser = await fetchFromServiceAPI('/user/status', {
-            method: 'POST',
+          const updatedUser = await fetchFromServiceAPI("/user/status", {
+            method: "POST",
             body: JSON.stringify({ userId: token.id }),
           });
 
@@ -109,7 +109,7 @@ export const authOptions: NextAuthOptions = {
             token.plan = updatedUser.plan;
           }
         } catch (e) {
-          console.error('JWT sync failed:', e);
+          console.error("JWT sync failed:", e);
         }
       }
 
@@ -119,7 +119,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id;
-        (session.user as any).plan = token.plan || 'free';
+        (session.user as any).plan = token.plan || "free";
       }
       return session;
     },
@@ -129,4 +129,5 @@ export const authOptions: NextAuthOptions = {
 };
 
 const handler = NextAuth(authOptions);
+
 export { handler as GET, handler as POST };
