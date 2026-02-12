@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     await fetchFromServiceAPI('/user/settings', {
       method: 'POST',
       body: JSON.stringify({
-        userId: session.user.id,
+        wyiUserId: session.user.id,
         settings
       })
     });

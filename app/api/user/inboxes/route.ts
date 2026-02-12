@@ -16,6 +16,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log("user", session.user)
+
     try {
         // 2. Get the new inbox name from the request body
         const { inboxName } = await request.json();
