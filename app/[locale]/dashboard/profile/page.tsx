@@ -5,27 +5,19 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { 
-  Mail, Calendar, CreditCard, Download, 
-  Loader2, Zap, ExternalLink, 
+  Mail, Calendar, CreditCard, Loader2, Zap, ExternalLink, 
   CheckCircle2, History, ShieldCheck, AlertCircle
 } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UpsellModal } from "@/components/upsell-modal";
 import { AppHeader } from "@/components/nLHeader"; 
@@ -55,6 +47,7 @@ interface UserProfile {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const t = useTranslations("Profile");
   
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserProfile | null>(null);
@@ -88,11 +81,11 @@ export default function ProfilePage() {
       if (data.success && data.user) {
         setUserData(data.user);
       } else {
-        toast.error("Could not retrieve user data");
+        toast.error(t('toasts.fetch_error'));
       }
     } catch (error) {
       console.error("Failed to load profile data", error);
-      toast.error("Failed to load profile details");
+      toast.error(t('toasts.load_error'));
     } finally {
       setLoading(false);
     }
@@ -134,7 +127,7 @@ export default function ProfilePage() {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground animate-pulse">Loading profile data...</p>
+          <p className="text-muted-foreground animate-pulse">{t('loading')}</p>
         </div>
       </div>
     );
@@ -143,6 +136,7 @@ export default function ProfilePage() {
   const isPro = userData?.plan === "pro";
   const provider = getProviderDetails(userData);
   const subStatus = userData?.subscription?.status || "NONE";
+  const paymentProviderName = userData?.subscription?.provider === 'paypal' ? "PayPal" : "Payment Provider";
 
   // Calculate usage percentage (Pro: 5GB, Free: 500MB approx)
   const maxStorage = isPro ? 5 * 1024 * 1024 * 1024 : 500 * 1024 * 1024; 
@@ -159,24 +153,24 @@ export default function ProfilePage() {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
-              <p className="text-muted-foreground mt-1">Manage your profile, subscription, and billing history.</p>
+              <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+              <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
             </div>
             {!isPro && (
                 <Button 
                     onClick={() => router.push('/pricing')} 
                     className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0"
                 >
-                    <Zap className="mr-2 h-4 w-4 fill-current" /> Upgrade to Pro
+                    <Zap className="mr-2 h-4 w-4 fill-current" /> {t('upgrade_btn')}
                 </Button>
             )}
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="bg-background border">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="billing">Billing & Invoices</TabsTrigger>
-              <TabsTrigger value="settings">Preferences</TabsTrigger>
+              <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
+              <TabsTrigger value="billing">{t('tabs.billing')}</TabsTrigger>
+              <TabsTrigger value="settings">{t('tabs.settings')}</TabsTrigger>
             </TabsList>
 
             {/* OVERVIEW TAB */}
@@ -197,7 +191,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="ml-auto">
                                 <Badge variant={isPro ? "default" : "secondary"} className="uppercase tracking-wider">
-                                    {isPro ? "Pro Plan" : "Free Plan"}
+                                    {isPro ? t('overview.plan_pro') : t('overview.plan_free')}
                                 </Badge>
                             </div>
                         </CardHeader>
@@ -205,13 +199,13 @@ export default function ProfilePage() {
                         <CardContent className="pt-6 grid gap-4">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-1">
-                                    <p className="text-sm font-medium text-muted-foreground">User ID</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{t('overview.user_id')}</p>
                                     <p className="text-sm font-mono bg-muted inline-block px-2 py-1 rounded select-all truncate max-w-full" title={userData?.wyiUserId}>
                                         {userData?.wyiUserId || "N/A"}
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm font-medium text-muted-foreground">Member Since</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{t('overview.member_since')}</p>
                                     <p className="text-sm">
                                         {userData?.createdAt 
                                             ? format(new Date(userData.createdAt), "MMMM d, yyyy") 
@@ -219,7 +213,7 @@ export default function ProfilePage() {
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm font-medium text-muted-foreground">Login Method</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{t('overview.login_method')}</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         {provider.icon}
                                         <span className="text-sm font-medium">{provider.label}</span>
@@ -232,12 +226,12 @@ export default function ProfilePage() {
                     {/* Quick Stats / Limits */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Usage Limits</CardTitle>
+                            <CardTitle className="text-base">{t('overview.usage_title')}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Storage Used</span>
+                                    <span className="text-muted-foreground">{t('overview.storage_used')}</span>
                                     <span className="font-medium">{storagePercent.toFixed(1)}%</span>
                                 </div>
                                 <div className="h-2 bg-secondary rounded-full overflow-hidden">
@@ -247,20 +241,20 @@ export default function ProfilePage() {
                                     />
                                 </div>
                                 <p className="text-xs text-muted-foreground text-right">
-                                    {formatStorage(currentStorage)} of {isPro ? "5 GB" : "500 MB"}
+                                    {formatStorage(currentStorage)} / {isPro ? "5 GB" : "500 MB"}
                                 </p>
                             </div>
                              <div className="space-y-2 pt-2">
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Daily Emails</span>
-                                    <span className="font-medium">Unlimited</span>
+                                    <span className="text-muted-foreground">{t('overview.daily_emails')}</span>
+                                    <span className="font-medium">{t('overview.unlimited')}</span>
                                 </div>
                             </div>
                         </CardContent>
                         {!isPro && (
                             <CardFooter>
                                 <p className="text-xs text-muted-foreground">
-                                    <span className="text-amber-500 font-medium">Note:</span> Emails auto-delete after 24h on Free plan.
+                                    <span className="text-amber-500 font-medium">{t('overview.note_label')}</span> {t('overview.note_text')}
                                 </p>
                             </CardFooter>
                         )}
@@ -275,14 +269,14 @@ export default function ProfilePage() {
               <Card className={isPro ? "border-primary/20 bg-primary/5" : ""}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5" /> Subscription Details
+                        <CreditCard className="h-5 w-5" /> {t('billing.sub_title')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Current Plan</p>
+                        <p className="text-sm font-medium text-muted-foreground">{t('billing.current_plan')}</p>
                         <div className="flex items-baseline gap-2">
-                            <h3 className="text-2xl font-bold capitalize">{userData?.plan} Plan</h3>
+                            <h3 className="text-2xl font-bold capitalize">{t('billing.plan_display', { plan: userData?.plan })}</h3>
                             {isPro && (
                                 <Badge variant={subStatus === "ACTIVE" ? "default" : "destructive"} className={subStatus === "ACTIVE" ? "bg-green-600" : ""}>
                                     {subStatus}
@@ -290,13 +284,13 @@ export default function ProfilePage() {
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            {isPro ? "Premium features unlocked" : "Basic features only"}
+                            {isPro ? t('billing.feat_unlocked') : t('billing.feat_basic')}
                         </p>
                     </div>
 
                     {isPro && userData?.subscription && (
                         <div className="space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground">Start Date</p>
+                            <p className="text-sm font-medium text-muted-foreground">{t('billing.start_date')}</p>
                             <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-lg font-semibold">
@@ -306,7 +300,7 @@ export default function ProfilePage() {
                                 </span>
                             </div>
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                Payment via {userData.subscription.provider === 'paypal' ? <span className="font-bold text-blue-600">PayPal</span> : 'Paddle'}
+                                {t('billing.payment_via')} {userData.subscription.provider === 'paypal' ? <span className="font-bold text-blue-600">PayPal</span> : 'Paddle'}
                             </p>
                         </div>
                     )}
@@ -315,25 +309,25 @@ export default function ProfilePage() {
                     {isPro && subStatus === "ACTIVE" ? (
                         <>
                             <Button variant="outline" onClick={handleManageSubscription}>
-                                <ExternalLink className="mr-2 h-4 w-4" /> Manage Subscription
+                                <ExternalLink className="mr-2 h-4 w-4" /> {t('billing.manage_btn')}
                             </Button>
                         </>
                     ) : (
                         <Button onClick={() => router.push('/pricing')} className="w-full sm:w-auto">
-                            Upgrade to Pro
+                             {t('billing.upgrade_btn')}
                         </Button>
                     )}
                 </CardFooter>
               </Card>
 
-              {/* Transaction History Note: Since the backend stores logs in 'payment_logs' but doesn't expose them in /user/profile yet, we show a placeholder or status */}
+              {/* Transaction History */}
               <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <History className="h-5 w-5" /> Transaction Status
+                        <History className="h-5 w-5" /> {t('billing.trans_title')}
                     </CardTitle>
                     <CardDescription>
-                        Payment records are processed securely via {userData?.subscription?.provider || "PayPal"}.
+                        {t('billing.trans_desc', { provider: userData?.subscription?.provider || "PayPal" })}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -343,14 +337,12 @@ export default function ProfilePage() {
                                 <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-full">
                                     <CheckCircle2 className="h-8 w-8 text-green-600" />
                                 </div>
-                                <h3 className="text-lg font-medium">Subscription is Active</h3>
+                                <h3 className="text-lg font-medium">{t('billing.active_title')}</h3>
                                 <p className="text-muted-foreground max-w-md">
-                                    Your last payment was successful. For detailed invoices, please check your 
-                                    {userData?.subscription?.provider === 'paypal' ? " PayPal " : " Payment Provider "} 
-                                    dashboard.
+                                    {t('billing.active_desc', { provider: paymentProviderName })}
                                 </p>
                                 <Button variant="outline" size="sm" onClick={handleManageSubscription} className="mt-2">
-                                    View Invoices on PayPal
+                                    {t('billing.view_invoice', { provider: "PayPal" })}
                                 </Button>
                             </>
                         ) : (
@@ -358,9 +350,9 @@ export default function ProfilePage() {
                                 <div className="bg-muted p-3 rounded-full">
                                     <AlertCircle className="h-8 w-8 text-muted-foreground" />
                                 </div>
-                                <h3 className="text-lg font-medium">No Recent Transactions</h3>
+                                <h3 className="text-lg font-medium">{t('billing.no_trans_title')}</h3>
                                 <p className="text-muted-foreground">
-                                    You are currently on the Free plan. Upgrade to Pro to unlock features.
+                                    {t('billing.no_trans_desc')}
                                 </p>
                             </>
                         )}
@@ -373,23 +365,23 @@ export default function ProfilePage() {
             <TabsContent value="settings">
                  <Card>
                     <CardHeader>
-                        <CardTitle>Security & Privacy</CardTitle>
-                        <CardDescription>Manage your account security settings.</CardDescription>
+                        <CardTitle>{t('settings.sec_title')}</CardTitle>
+                        <CardDescription>{t('settings.sec_desc')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between p-3 border rounded-lg">
                             <div className="space-y-0.5">
-                                <h4 className="font-medium text-sm">Two-Factor Authentication</h4>
-                                <p className="text-xs text-muted-foreground">Add an extra layer of security.</p>
+                                <h4 className="font-medium text-sm">{t('settings.2fa_title')}</h4>
+                                <p className="text-xs text-muted-foreground">{t('settings.2fa_desc')}</p>
                             </div>
-                            <Button variant="outline" size="sm" disabled>Coming Soon</Button>
+                            <Button variant="outline" size="sm" disabled>{t('settings.coming_soon')}</Button>
                         </div>
                         <div className="flex items-center justify-between p-3 border rounded-lg border-destructive/20 bg-destructive/5">
                             <div className="space-y-0.5">
-                                <h4 className="font-medium text-sm text-destructive">Delete Account</h4>
-                                <p className="text-xs text-destructive/80">Permanently remove your data and emails.</p>
+                                <h4 className="font-medium text-sm text-destructive">{t('settings.del_title')}</h4>
+                                <p className="text-xs text-destructive/80">{t('settings.del_desc')}</p>
                             </div>
-                            <Button variant="destructive" size="sm">Delete Account</Button>
+                            <Button variant="destructive" size="sm">{t('settings.del_btn')}</Button>
                         </div>
                     </CardContent>
                  </Card>

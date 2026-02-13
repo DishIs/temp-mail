@@ -2,58 +2,81 @@ import { notFound } from 'next/navigation';
 import { Locale, hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ReactNode } from 'react';
-import { clsx } from 'clsx';
-import { Inter } from 'next/font/google';
 import { routing } from '@/i18n/routing';
 import '@/styles/global.css';
 
 type Props = {
-    children: ReactNode;
-    params: Promise<{ locale: Locale }>;
+  children: ReactNode;
+  params: Promise<{ locale: Locale }>;
 };
 
-const inter = Inter({ subsets: ['latin'] });
+const BASE_URL = 'https://www.freecustom.email';
 
+// static locale pages
 export function generateStaticParams() {
-    return routing.locales.map((locale) => ({ locale }));
+  return routing.locales.map((locale) => ({ locale }));
 }
 
-// Generates language-specific SEO metadata for each page.
+// global metadata per locale
 export async function generateMetadata(props: Omit<Props, 'children'>) {
+  const { locale } = await props.params;
 
-    const { locale } = await props.params;
-    const t = await getTranslations({ locale, namespace: 'Metadata' });
+  const t = await getTranslations({ locale, namespace: 'Metadata' });
 
-    return {
-        title: t('title'),
-        description: t('description'),
-        keywords: t('keywords'),
-        openGraph: {
-            title: t('openGraph.title'),
-            description: t('openGraph.description'),
-            url: `https://www.freecustom.email/${locale}`,
-            images: [
-                {
-                    url: 'https://www.freecustom.email/logo.webp',
-                    alt: t('openGraph.alt'),
-                },
-            ],
+  // hreflang map
+  const languages: Record<string, string> = {};
+  routing.locales.forEach((loc) => {
+    languages[loc] = `${BASE_URL}/${loc}`;
+  });
+  languages['x-default'] = `${BASE_URL}/en`;
+
+  return {
+    title: t('title'),
+    description: t('description'),
+    keywords: t('keywords'),
+
+    metadataBase: new URL(BASE_URL),
+
+    alternates: {
+      canonical: `/${locale}`,
+      languages,
+    },
+
+    openGraph: {
+      title: t('openGraph.title'),
+      description: t('openGraph.description'),
+      url: `${BASE_URL}/${locale}`,
+      siteName: 'FreeCustom.Email',
+      images: [
+        {
+          url: `${BASE_URL}/logo.webp`,
+          alt: t('openGraph.alt'),
         },
-    };
+      ],
+      locale,
+      type: 'website',
+    },
+
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
 }
+
 export default async function LocaleLayout({ children, params }: Props) {
-    // Ensure that the incoming `locale` is valid
-    const { locale } = await params;
-    if (!hasLocale(routing.locales, locale)) {
-        notFound();
-    }
+  const { locale } = await params;
 
-    // Enable static rendering
-    setRequestLocale(locale);
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
 
-    return (
-        <NextIntlClientProvider>
-            {children}
-        </NextIntlClientProvider>
-    );
+  // enable static rendering per locale
+  setRequestLocale(locale);
+
+  return (
+    <NextIntlClientProvider>
+      {children}
+    </NextIntlClientProvider>
+  );
 }

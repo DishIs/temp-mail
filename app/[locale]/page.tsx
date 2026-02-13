@@ -13,7 +13,6 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { DITMailPopup } from '@/components/DITMailPopup';
 
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { fetchFromServiceAPI } from '@/lib/api';
 import { AwardsSection } from '@/components/AwardsSection';
 
@@ -29,7 +28,7 @@ export default async function Page({ params }: Props) {
     const tJsonLd = await getTranslations({ locale, namespace: 'JsonLd' });
 
     // --- FETCH ALL USER DATA ON SERVER ---
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     let customDomains = [];
     let userInboxes = [];
     let currentInbox = null;

@@ -34,6 +34,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import LocaleSwitcher from './LocaleSwitcher';
+import { SiBuymeacoffee, SiPatreon, SiReddit } from "react-icons/si";
+
 
 export function AppHeader({ initialSession }: { initialSession: Session | null }) {
   const { data: sessionData, status } = useSession();
@@ -308,6 +310,15 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
                 </a>
                 <a href="https://discord.gg/EDmxUbym" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Discord">
                     <FaDiscord className="h-5 w-5" />
+                </a>
+                <a href="https://www.reddit.com/r/FreeCustomEmail" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Reddit">
+                    <SiReddit className="h-5 w-5" />
+                </a>
+                <a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Reddit">
+                    <SiBuymeacoffee className="h-5 w-5" />
+                </a>
+                <a href="https://www.patreon.com/c/maildrop" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Reddit">
+                    <SiPatreon className="h-5 w-5" />
                 </a>
             </div>
             

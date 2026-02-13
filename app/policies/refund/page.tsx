@@ -170,7 +170,7 @@ export default function RefundPolicyPage() {
           <div className="mt-16 text-center space-y-4">
             <p className="text-muted-foreground">Need to cancel your subscription?</p>
             <div className="flex gap-4 justify-center">
-              <Link href="/dashboard/settings">
+              <Link href="/dashboard/profile">
                 <Button variant="outline">Manage Subscription</Button>
               </Link>
               <Link href="/contact">

@@ -25,6 +25,27 @@ export function AppFooter() {
     setHasSeenLatest(true);
   };
 
+  const [theme, setTheme] = useState("light");
+
+  useEffect(() => {
+    const updateTheme = () => {
+      const isDark = document.documentElement.classList.contains("dark");
+      setTheme(isDark ? "dark" : "light");
+    };
+
+    updateTheme();
+
+    // watch for theme changes (if you toggle dark mode)
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+
   return (
     <>
       <footer className="bg-muted py-8 border-t border-gray-200 dark:border-gray-800">
@@ -33,6 +54,7 @@ export function AppFooter() {
             <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
               © {new Date().getFullYear()} DishIs Technologies. All rights reserved.
             </p>
+
             <div className="flex flex-wrap justify-center gap-4 items-center">
               {/* WHATS NEW BUTTON (MOVED HERE) */}
               <button
@@ -104,6 +126,16 @@ export function AppFooter() {
               >
                 Feedback
               </Link>
+              <a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" className="w-24" /></a>
+              <iframe
+                src={`https://status.freecustom.email/badge?theme=${theme}`}
+                width="190"
+                height="30"
+                frameBorder="0"
+                scrolling="no"
+                style={{ colorScheme: 'normal' }}
+                className="justify-center "
+              />
             </div>
           </div>
         </div>

@@ -133,7 +133,7 @@ export function SettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[800px] h-[85vh] md:h-[70vh] p-0 gap-0 overflow-hidden flex flex-col md:flex-row border-0 md:border sm:rounded-xl">
+      <DialogContent className="max-w-[800px] h-[85vh] md:h-[70vh] p-0 gap-0 overflow-hidden flex flex-col md:flex-row border-0 md:border sm:rounded-xl ">
         
         <div className="hidden md:flex flex-col w-64 border-r bg-muted/20 p-4 gap-1 shrink-0">
             <div className="flex items-center gap-2 px-2 mb-6 text-lg font-semibold tracking-tight">

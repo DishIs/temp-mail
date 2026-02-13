@@ -48,7 +48,7 @@ const PrivacyAdSide = () => (
       <EyeOff className="w-3 h-3" /> Privacy-Safe Ad
     </div>
     <div className="text-xs text-muted-foreground">
-      Keeping this service free & private. <br /> If we reach our monthly server + operation costs, then no one will see this AD.
+      Keeping this service free & private. If we reach our monthly server + operation costs through supports or subscriptions, then no one will see this AD. <br /> 
       <span className="font-semibold text-primary">Upgrade to remove.</span>
     </div>
   </div>
@@ -362,14 +362,14 @@ export function EmailBox({
   // --- DELETE & PERMISSION HANDLERS ---
   const handleDeleteAction = (type: 'inbox' | 'message', id?: string) => {
     // 1. Check Authentication
-    if (!isAuthenticated) {
-      setAuthNeedFeature(type === 'inbox' ? 'Delete / Burn Inbox' : 'Delete Message Permanently');
+    if (!isAuthenticated && type == 'message') {
+      setAuthNeedFeature('Delete Message Permanently');
       setIsAuthNeedOpen(true);
       return;
     }
     // 2. Check Pro (Delete Permanently is a Pro feature)
-    if (!isPro) {
-      openUpsell(type === 'inbox' ? 'Burn Inbox' : 'Permanent Deletion');
+    if (!isPro && type == 'message') {
+      openUpsell('Permanent Deletion');
       return;
     }
     // 3. Execute
