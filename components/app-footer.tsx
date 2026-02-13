@@ -51,13 +51,13 @@ export function AppFooter() {
               </button>
 
               <Link
-                href="/blog/privacy-policy"
+                href="/policies/privacy"
                 className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
               >
                 Privacy Policy
               </Link>
               <Link
-                href="/blog/terms-of-service"
+                href="/policies/terms"
                 className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
               >
                 Terms of Service
