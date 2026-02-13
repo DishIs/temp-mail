@@ -80,7 +80,7 @@ export function DITMailPopup() {
                   Use your own custom domains
                 </FeatureHighlight>
                 <FeatureHighlight icon={<Layers className="h-4 w-4" />}>
-                  Get 25MB attachment limits
+                  No future ads
                 </FeatureHighlight>
               </ul>
 

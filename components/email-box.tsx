@@ -48,7 +48,7 @@ const PrivacyAdSide = () => (
       <EyeOff className="w-3 h-3" /> Privacy-Safe Ad
     </div>
     <div className="text-xs text-muted-foreground">
-      Keeping this service free & private. <br />
+      Keeping this service free & private. <br /> If we reach our monthly server + operation costs, then no one will see this AD.
       <span className="font-semibold text-primary">Upgrade to remove.</span>
     </div>
   </div>
