@@ -285,7 +285,7 @@ export function EmailBox({
   const isAuthenticated = !!session;
   // @ts-ignore
   const userPlan = session?.user?.plan || 'none';
-  const isPro = true;
+  const isPro = userPlan === 'pro';
 
   // --- DYNAMIC ENDPOINT SELECTION ---
   const API_ENDPOINT = isAuthenticated ? '/api/private-mailbox' : '/api/public-mailbox';
