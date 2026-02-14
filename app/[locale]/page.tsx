@@ -10,7 +10,6 @@ import Script from 'next/script';
 import Link from 'next/link';
 import { Locale } from 'next-intl';
 import { ThemeProvider } from '@/components/theme-provider';
-import { DITMailPopup } from '@/components/DITMailPopup';
 
 import { getServerSession } from 'next-auth';
 import { fetchFromServiceAPI } from '@/lib/api';
@@ -123,7 +122,6 @@ export default async function Page({ params }: Props) {
                     <AwardsSection />
                     <AppFooter />
                 </div>
-                {session?.user.plan !== 'pro' && <DITMailPopup />}
             </ThemeProvider>
         </>
     );

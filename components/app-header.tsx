@@ -137,12 +137,6 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
                   <span>Profile & Billing</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/settings">
-                  <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
