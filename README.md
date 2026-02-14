@@ -100,3 +100,5 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 ## 📜 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
+
+<a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" className="w-24" /></a>
