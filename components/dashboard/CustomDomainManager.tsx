@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Copy, Trash2, CheckCircle, HelpCircle, RefreshCw, Lock, Crown } from "lucide-react";
 import toast from "react-hot-toast";
-import { useSession } from "@/hooks/use-session";
+import { useSession } from "next-auth/react";
 import { UpsellModal } from "@/components/upsell-modal";
 import { useTranslations } from "next-intl";
 import {
@@ -156,7 +156,7 @@ function normalizeDomain(input: Partial<CustomDomain> & { domain?: string }): Cu
 export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManagerProps) {
   const t = useTranslations('Dashboard');
   const { data: session } = useSession();
-  const user = session;
+  const user = session?.user;
   const [domains, setDomains] = useState<CustomDomain[]>(
     (initialDomains ?? []).map((d) => normalizeDomain(d)!).filter(Boolean)
   );

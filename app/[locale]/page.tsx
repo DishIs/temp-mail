@@ -14,7 +14,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { fetchFromServiceAPI } from '@/lib/api';
 import { AwardsSection } from '@/components/AwardsSection';
 import { LANDING_PAGES } from '@/lib/landing-pages-config';
-import { getSession } from '@/lib/session';
+import { auth } from '@/auth';
 
 type Props = {
     params: { locale: Locale };
@@ -28,15 +28,15 @@ export default async function Page({ params }: Props) {
     const tJsonLd = await getTranslations({ locale, namespace: 'JsonLd' });
 
     // --- FETCH ALL USER DATA ON SERVER ---
-    const session = await getSession();
+    const session = await auth();
     let customDomains = [];
     let userInboxes = [];
     let currentInbox = null;
 
-    if (session?.id) {
+    if (session?.user?.id) {
         try {
             // Fetch the entire user profile in one call
-            const profileData = await fetchFromServiceAPI(`/user/profile/${session.id}`);
+            const profileData = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
 
             if (profileData.success && profileData.user) {
                 const { user } = profileData;

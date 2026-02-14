@@ -12,7 +12,7 @@ import { LandingPageTemplate } from "@/components/landing-page-template";
 import { LANDING_PAGES, getPageConfig } from "@/lib/landing-pages-config";
 import { routing } from "@/i18n/routing";
 import Script from "next/script";
-import { getSession } from "@/lib/session";
+import { auth } from "@/auth";
 
 type Props = {
   params: { locale: Locale; slug: string };
@@ -22,11 +22,11 @@ const SITE_URL = "https://www.freecustom.email";
 
 
 // ============================
-// Dynamic generation (locale × slug)
+// Static generation (locale × slug)
 // ============================
+
 export const dynamicParams = true;
 export const revalidate = 86400; // 1 day ISR
-
 
 
 // ============================
@@ -103,16 +103,16 @@ export default async function LandingPage({ params }: Props) {
   if (!pageConfig) notFound();
 
   // ---- Session ----
-  const session = await getSession();
+  const session = await auth();
 
 
   let customDomains: any[] = [];
   let userInboxes: string[] = [];
   let currentInbox: string | null = null;
 
-  if (session?.id) {
+  if (session?.user?.id) {
     try {
-      const profileData = await fetchFromServiceAPI(`/user/profile/${session?.id}`);
+      const profileData = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
       if (profileData.success && profileData.user) {
         const { user } = profileData;
 

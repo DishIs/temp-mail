@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/app-header";
 import { EyeOff, ShieldCheck, Globe, Zap } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSession } from "@/lib/session";
+import { auth } from "@/auth";
 
 interface DashboardData {
     customDomains: any[];
@@ -18,15 +18,15 @@ export default async function DashboardPage({
 }: {
     params: { locale: string };
 }) {
-    const session = await getSession();
+    const session = await auth();
     const t = await getTranslations("Dashboard");
-    const isPro = session?.plan === "pro";
+    const isPro = session?.user?.plan === "pro";
 
     let data: DashboardData = { customDomains: [], mutedSenders: [] };
 
-    if (isPro && session?.id) {
+    if (isPro && session?.user?.id) {
         try {
-            data = await fetchFromServiceAPI(`/user/${session.id}/dashboard-data`);
+            data = await fetchFromServiceAPI(`/user/${session.user.id}/dashboard-data`);
         } catch (e) {
             console.error("Failed to fetch dashboard data", e);
             data = { customDomains: [], mutedSenders: [] };

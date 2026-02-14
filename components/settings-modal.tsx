@@ -41,7 +41,7 @@ export interface UserSettings {
 export const DEFAULT_SETTINGS: UserSettings = {
   notifications: false,
   sound: true,
-  layout: 'classic', // Table view is default
+  layout: 'new', // Table view is default
   shortcuts: {
     refresh: 'r',
     copy: 'c',

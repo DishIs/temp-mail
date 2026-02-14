@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, Lock, Crown } from "lucide-react";
 import toast from "react-hot-toast";
-import { useSession } from "@/hooks/use-session";
+import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { UpsellModal } from "@/components/upsell-modal";
 import { useTranslations } from "next-intl";
@@ -19,7 +19,7 @@ interface MuteListManagerProps {
 export function MuteListManager({ initialSenders, isPro }: MuteListManagerProps) {
     const t = useTranslations('Dashboard');
     const {data: session} = useSession();
-    const user = session;
+    const user = session?.user;
     const [mutedSenders, setMutedSenders] = useState<string[]>(initialSenders || []);
     const [newSender, setNewSender] = useState("");
     const [isLoading, setIsLoading] = useState(false);

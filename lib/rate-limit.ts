@@ -49,7 +49,7 @@ export function isValidPublicRequest(reqHeaders: Headers): boolean {
   if (customHeader !== 'web-client') return false;
 
   // 2. Check Origin/Referer
-  const allowedHost = process.env.NEXTAUTH_URL || 'https://www.freecustom.email';
+  const allowedHost = process.env.AUTH_URL || 'https://www.freecustom.email';
   
   const validOrigin = origin ? origin.includes(allowedHost) : true; 
   const validReferer = referer ? referer.includes(allowedHost) : false;

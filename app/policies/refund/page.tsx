@@ -9,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
 import Link from "next/link";
-import { useSession } from "@/hooks/use-session";
+import { useSession } from "next-auth/react";
 
 export default function RefundPolicyPage() {
   const { data: session } = useSession();

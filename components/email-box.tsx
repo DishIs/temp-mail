@@ -18,11 +18,11 @@ import { useTranslations } from "next-intl";
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { UpsellModal } from "./upsell-modal";
 import { AuthNeed } from "./auth-needed-moda";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
-import { SessionToken } from "@/lib/session";
 
 // --- TYPES ---
 interface Attachment {
@@ -224,7 +224,7 @@ const PrivacyAdSide = () => (
 );
 
 interface EmailBoxProps {
-  initialSession: SessionToken | null;
+  initialSession: Session | null;
   initialCustomDomains: any[];
   initialInboxes: string[];
   initialCurrentInbox: string | null;

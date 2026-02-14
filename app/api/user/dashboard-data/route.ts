@@ -1,24 +1,20 @@
 // app/api/user/dashboard-data/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { fetchFromServiceAPI } from '@/lib/api';
-import { getSession, getToken } from '@/lib/session';
+import { auth } from '@/auth';
 
-export async function GET(request: NextRequest) {
-    // Get the session using the server-side utility
-    const session = await getToken(request)
+export async function GET() {
+  const session = await auth();
 
-    if (!session || !session.id) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+  if (!session?.user?.id) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
 
-    try {
-        const serviceResponse = await fetchFromServiceAPI(`/user/${session.id}/dashboard-data`);
-        
-        // The serviceResponse already contains the data we need.
-        return NextResponse.json(serviceResponse);
-
-    } catch (error) {
-        console.error("Dashboard data fetch error:", error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
-    }
+  try {
+    const serviceResponse = await fetchFromServiceAPI(`/user/${session.user.id}/dashboard-data`);
+    return NextResponse.json(serviceResponse);
+  } catch (error) {
+    console.error('Dashboard data fetch error:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
 }

@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AppHeader } from "@/components/nLHeader"; 
 import { ThemeProvider } from "@/components/theme-provider";
-import { useSession } from "@/hooks/use-session";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 

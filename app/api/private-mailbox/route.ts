@@ -1,9 +1,9 @@
 // app/api/private-mailbox/route.ts
 import { NextResponse } from 'next/server';
 import { fetchFromServiceAPI } from '@/lib/api';
-import { SignJWT } from 'jose';
+import { SignJWT } from 'jose'; // ✅ replaces jsonwebtoken — works on Cloudflare Workers
 import { rateLimit } from '@/lib/rate-limit';
-import { getToken } from '@/lib/session';
+import { auth } from '@/auth';
 
 const limiter = rateLimit({
   interval: 60 * 1000,
@@ -21,14 +21,16 @@ async function signServiceToken(plan: string): Promise<string> {
 }
 
 export async function GET(request: Request) {
-  const token = await getToken(request);
+  const session = await auth();
 
-  if (!token?.id) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { success: false, message: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
-  const userId = token.id;
-  const plan = token.plan || 'free';
+  const { id: userId, plan = 'free' } = session.user;
   const limit = plan === 'pro' ? 300 : 60;
 
   try {
@@ -50,6 +52,7 @@ export async function GET(request: Request) {
     const data = messageId
       ? await fetchFromServiceAPI(`/mailbox/${mailbox}/message/${messageId}`, options)
       : await fetchFromServiceAPI(`/mailbox/${mailbox}`, options);
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: 'Service error' }, { status: 500 });
@@ -57,16 +60,19 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const token = await getToken(request);
+  const session = await auth();
 
-  if (!token?.id) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { success: false, message: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
-  const plan = token.plan || 'free';
+  const { id: userId, plan = 'free' } = session.user;
 
   try {
-    await limiter.check(plan === 'pro' ? 100 : 20, token.id + '_DELETE');
+    await limiter.check(plan === 'pro' ? 100 : 20, `${userId}_DELETE`);
   } catch {
     return NextResponse.json({ error: 'Action limit exceeded' }, { status: 429 });
   }
@@ -77,7 +83,9 @@ export async function DELETE(request: Request) {
   const mailbox = searchParams.get('fullMailboxId');
   const messageId = searchParams.get('messageId');
 
-  if (!mailbox || !messageId) return NextResponse.json({ error: 'Params required' }, { status: 400 });
+  if (!mailbox || !messageId) {
+    return NextResponse.json({ error: 'Params required' }, { status: 400 });
+  }
 
   try {
     const data = await fetchFromServiceAPI(`/mailbox/${mailbox}/message/${messageId}`, {
