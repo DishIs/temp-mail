@@ -1,30 +1,12 @@
 "use client";
 
-export async function signIn(provider: string, options?: { callbackUrl?: string }) {
+export function signIn(provider: string, options?: { callbackUrl?: string }) {
   const callbackUrl = options?.callbackUrl ?? "/dashboard";
 
-  // Step 1: Get CSRF token (next-auth requires this for the POST)
-  const { csrfToken } = await fetch("/api/auth/csrf").then(r => r.json());
-
-  // Step 2: POST to signin endpoint — next-auth responds with a redirect to the OAuth provider
-  const res = await fetch(`/api/auth/signin/${provider}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      csrfToken,
-      callbackUrl,
-      json: "true", // tells next-auth to return JSON with the redirect URL instead of HTML
-    }),
-    redirect: "follow",
-  });
-
-  const data = await res.json();
-
-  // Step 3: Redirect to the OAuth provider URL next-auth gives us
-  if (data?.url) {
-    window.location.href = data.url;
-  }
+  window.location.href =
+    `/api/auth/signin/${provider}?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 }
+
 
 export function signOut(options?: { callbackUrl?: string }) {
   const callbackUrl = options?.callbackUrl ?? "/";

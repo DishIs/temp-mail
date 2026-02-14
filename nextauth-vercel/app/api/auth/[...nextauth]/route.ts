@@ -167,7 +167,18 @@ const authOptions: NextAuthOptions = {
         secure: true,
       },
     },
+    state: {
+      name: "__Secure-next-auth.state",
+      options: {
+        domain: ".freecustom.email",
+        path: "/",
+        sameSite: "lax",
+        secure: true,
+        httpOnly: true,
+      },
+    },
   },
+
 
   callbacks: {
     async signIn({ user }) {
