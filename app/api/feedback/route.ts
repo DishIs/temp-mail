@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 
 export async function POST(request: Request) {
@@ -16,34 +16,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER_HOST,
-      port: Number(process.env.EMAIL_SERVER_PORT),
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_SERVER_USER,
-        pass: process.env.EMAIL_SERVER_PASSWORD,
-      },
-    });
+    // const transporter = nodemailer.createTransport({
+    //   host: process.env.EMAIL_SERVER_HOST,
+    //   port: Number(process.env.EMAIL_SERVER_PORT),
+    //   secure: false,
+    //   auth: {
+    //     user: process.env.EMAIL_SERVER_USER,
+    //     pass: process.env.EMAIL_SERVER_PASSWORD,
+    //   },
+    // });
 
-    const mailOptions = {
-      from: `"Feedback System" <${process.env.EMAIL_FROM}>`,
-      replyTo: email || process.env.EMAIL_FROM,
-      to: process.env.ADMIN_EMAIL, 
-      cc: process.env.EMAIL_FROM,
-      subject: `[Feedback] ${type} - ${rating} Stars`,
-      html: `
-        <h3>New User Feedback</h3>
-        <p><strong>Type:</strong> ${type}</p>
-        <p><strong>Rating:</strong> ${rating} / 5 Stars</p>
-        <p><strong>User Email:</strong> ${email || 'Anonymous'}</p>
-        <hr />
-        <p><strong>Feedback:</strong></p>
-        <p style="white-space: pre-wrap;">${message}</p>
-      `,
-    };
+    // const mailOptions = {
+    //   from: `"Feedback System" <${process.env.EMAIL_FROM}>`,
+    //   replyTo: email || process.env.EMAIL_FROM,
+    //   to: process.env.ADMIN_EMAIL, 
+    //   cc: process.env.EMAIL_FROM,
+    //   subject: `[Feedback] ${type} - ${rating} Stars`,
+    //   html: `
+    //     <h3>New User Feedback</h3>
+    //     <p><strong>Type:</strong> ${type}</p>
+    //     <p><strong>Rating:</strong> ${rating} / 5 Stars</p>
+    //     <p><strong>User Email:</strong> ${email || 'Anonymous'}</p>
+    //     <hr />
+    //     <p><strong>Feedback:</strong></p>
+    //     <p style="white-space: pre-wrap;">${message}</p>
+    //   `,
+    // };
 
-    await transporter.sendMail(mailOptions);
+    // await transporter.sendMail(mailOptions);
 
     return NextResponse.json({ success: true, message: 'Feedback sent' });
   } catch (error) {
