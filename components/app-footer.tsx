@@ -120,6 +120,14 @@ export function AppFooter() {
               >
                 Reddit
               </a>
+              <a
+                href="https://discord.com/invite/Ztp7kT2QBz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                Discord
+              </a>
               <Link
                 href="/feedback"
                 className="text-sm text-gray-600 hover:text-blue-600 transition-colors"

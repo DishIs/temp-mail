@@ -304,7 +304,7 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
               <a href="https://github.com/DishIs/temp-mail" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="GitHub">
                 <FaGithub className="h-5 w-5" />
               </a>
-              <a href="https://discord.gg/EDmxUbym" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Discord">
+              <a href="https://discord.com/invite/Ztp7kT2QBz" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Discord">
                 <FaDiscord className="h-5 w-5" />
               </a>
               <a href="https://www.reddit.com/r/FreeCustomEmail" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Reddit">
