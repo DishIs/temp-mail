@@ -14,6 +14,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { getServerSession } from 'next-auth';
 import { fetchFromServiceAPI } from '@/lib/api';
 import { AwardsSection } from '@/components/AwardsSection';
+import { LANDING_PAGES } from '@/lib/landing-pages-config';
 
 type Props = {
     params: { locale: Locale };
@@ -72,6 +73,16 @@ export default async function Page({ params }: Props) {
         ],
     };
 
+    const internalLinks = LANDING_PAGES.map(page => ({
+        href: `/${page.slug}`,
+        label: page.slug
+            .replace(/-/g, " ")
+            .replace(/\b\w/g, c => c.toUpperCase()),
+        priority: page.priority
+    }));
+
+
+
     return (
         <>
             <Script
@@ -116,6 +127,47 @@ export default async function Page({ params }: Props) {
                             </div>
                         </section>
                         <WhySection />
+                        <section className="mt-12">
+                            <h3 className="text-2xl font-bold">Explore Temp Mail Guides</h3>
+
+                            {/* Core Pages */}
+                            <div className="mt-6">
+                                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Core</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {internalLinks
+                                        .filter(l => l.priority === 'high')
+                                        .map(link => (
+                                            <Link
+                                                key={link.href}
+                                                href={`/${locale}${link.href}`}
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        ))}
+                                </div>
+                            </div>
+
+                            {/* Medium */}
+                            <div className="mt-6">
+                                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Popular Features</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {internalLinks
+                                        .filter(l => l.priority === 'medium')
+                                        .slice(0, 6)
+                                        .map(link => (
+                                            <Link
+                                                key={link.href}
+                                                href={`/${locale}${link.href}`}
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        ))}
+                                </div>
+                            </div>
+                        </section>
+
                         <PopularArticles />
 
                     </main>

@@ -4,6 +4,16 @@ import Link from "next/link";
 import { CheckCircle, ArrowRight, Zap, Shield, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "next-intl";
+import { LANDING_PAGES } from "@/lib/landing-pages-config";
+
+const INTERNAL_LINKS = LANDING_PAGES.map(page => ({
+  href: `/${page.slug}`,
+  label: page.slug
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, c => c.toUpperCase()),
+  priority: page.priority
+}));
+
 
 interface LandingPageTemplateProps {
   translations: Record<string, string>;
@@ -54,6 +64,7 @@ const renderStepList = (
   }
   return items.length > 0 ? <ol className="space-y-3">{items}</ol> : null;
 };
+
 
 // Comparison table renderer (for competitor pages)
 const renderComparisonTable = (translations: Record<string, string>) => {
@@ -132,7 +143,17 @@ export function LandingPageTemplate({
   emailBoxComponent,
   slug,
 }: LandingPageTemplateProps) {
-    const locale = useLocale();
+  const locale = useLocale();
+
+
+const linksToShow = INTERNAL_LINKS
+  .filter(l => !l.href.includes(slug)) // exclude current page
+  .sort((a, b) => {
+    const order = { high: 0, medium: 1, low: 2 };
+    return order[a.priority] - order[b.priority];
+  })
+  .slice(0, 14); // ideal count
+
 
   // Collect FAQ items
   const faqItems = [];
@@ -312,14 +333,14 @@ export function LandingPageTemplate({
         {/* Setup steps */}
         {(hasSection("setupTitle") || hasBullets("setupStep")) && (
           <Section title={t["setupTitle"]}>
-            {renderStepList(t, "setupStep")}
+            {renderStepList(t, "setupStep", 3)}
           </Section>
         )}
 
         {/* Customization */}
         {(hasSection("customizationTitle") || hasBullets("customization")) && (
           <Section title={t["customizationTitle"]}>
-            {renderBulletList(t, "customization")}
+            {renderBulletList(t, "customization", 4)}
           </Section>
         )}
 
@@ -351,20 +372,20 @@ export function LandingPageTemplate({
 
         {(hasSection("performanceTitle") || hasBullets("perf")) && (
           <Section title={t["performanceTitle"]}>
-            {renderBulletList(t, "perf", 5, <Zap className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />)}
+            {renderBulletList(t, "perf", 4, <Zap className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />)}
           </Section>
         )}
 
         {/* Security measures */}
-        {(hasSection("securityMeasuresTitle") || hasBullets("measure")) && (
+        {/* {(hasSection("securityMeasuresTitle") || hasBullets("measure")) && (
           <Section title={t["securityMeasuresTitle"]}>
             {renderBulletList(t, "measure", 6, <Shield className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />)}
           </Section>
-        )}
+        )} */}
 
         {(hasSection("threatModelTitle") || hasBullets("threatModel")) && (
           <Section title={t["threatModelTitle"]}>
-            {renderBulletList(t, "threatModel")}
+            {renderBulletList(t, "threatModel", 4)}
           </Section>
         )}
 
@@ -384,13 +405,13 @@ export function LandingPageTemplate({
         {/* Problems / Solutions (comparison pages) */}
         {(hasSection("problemsTitle") || hasBullets("problem")) && (
           <Section title={t["problemsTitle"]}>
-            {renderBulletList(t, "problem")}
+            {renderBulletList(t, "problem", 4)}
           </Section>
         )}
 
         {(hasSection("ourSolutionTitle") || hasBullets("solution")) && (
           <Section title={t["ourSolutionTitle"]}>
-            {renderBulletList(t, "solution")}
+            {renderBulletList(t, "solution", 4)}
           </Section>
         )}
 
@@ -398,7 +419,7 @@ export function LandingPageTemplate({
         {hasSection("servicesTitle") && (
           <Section title={t["servicesTitle"]}>
             <div className="space-y-4">
-              {[1, 2, 3, 4].map(i => t[`service${i}Name`] ? (
+              {[1, 2, 3].map(i => t[`service${i}Name`] ? (
                 <div key={i} className="border border-border rounded-lg p-4">
                   <div className="font-semibold text-foreground mb-1 flex items-center gap-2">
                     {i === 1 && <Badge variant="default" className="text-xs">Our Pick</Badge>}
@@ -421,7 +442,7 @@ export function LandingPageTemplate({
         {/* Privacy levels */}
         {(hasSection("choicesTitle") || hasBullets("privacyLevel")) && (
           <Section title={t["choicesTitle"]}>
-            {renderBulletList(t, "privacyLevel")}
+            {renderBulletList(t, "privacyLevel", 3)}
           </Section>
         )}
 
@@ -435,7 +456,7 @@ export function LandingPageTemplate({
         {/* Best practices */}
         {(hasSection("bestPracticesTitle") || hasBullets("bestPractice")) && (
           <Section title={t["bestPracticesTitle"]}>
-            {renderBulletList(t, "bestPractice")}
+            {renderBulletList(t, "bestPractice", 5)}
           </Section>
         )}
 
@@ -449,13 +470,13 @@ export function LandingPageTemplate({
         {/* Developer / Test types */}
         {(hasSection("testingChallengesTitle") || hasBullets("challenge")) && (
           <Section title={t["testingChallengesTitle"]}>
-            {renderBulletList(t, "challenge")}
+            {renderBulletList(t, "challenge", 4)}
           </Section>
         )}
 
         {(hasSection("testTypesTitle") || hasBullets("testType")) && (
           <Section title={t["testTypesTitle"]}>
-            {renderBulletList(t, "testType", 8)}
+            {renderBulletList(t, "testType", 4)}
           </Section>
         )}
 
@@ -468,7 +489,7 @@ export function LandingPageTemplate({
 
         {(hasSection("discordUseCasesTitle") || hasBullets("discordUseCase")) && (
           <Section title={t["discordUseCasesTitle"]}>
-            {renderBulletList(t, "discordUseCase")}
+            {renderBulletList(t, "discordUseCase", 4)}
           </Section>
         )}
 
@@ -480,7 +501,7 @@ export function LandingPageTemplate({
 
         {(hasSection("instagramUseCasesTitle") || hasBullets("instagramUseCase")) && (
           <Section title={t["instagramUseCasesTitle"]}>
-            {renderBulletList(t, "instagramUseCase")}
+            {renderBulletList(t, "instagramUseCase", 4)}
           </Section>
         )}
 
@@ -492,7 +513,7 @@ export function LandingPageTemplate({
 
         {(hasSection("telegramUseCasesTitle") || hasBullets("telegramUseCase")) && (
           <Section title={t["telegramUseCasesTitle"]}>
-            {renderBulletList(t, "telegramUseCase")}
+            {renderBulletList(t, "telegramUseCase", 3)}
           </Section>
         )}
 
@@ -511,7 +532,7 @@ export function LandingPageTemplate({
 
         {(hasSection("otpUseCasesTitle") || hasBullets("otpUseCase")) && (
           <Section title={t["otpUseCasesTitle"]}>
-            {renderBulletList(t, "otpUseCase")}
+            {renderBulletList(t, "otpUseCase", 4)}
           </Section>
         )}
 
@@ -524,20 +545,20 @@ export function LandingPageTemplate({
 
         {(hasSection("verificationTypesTitle") || hasBullets("verificationType")) && (
           <Section title={t["verificationTypesTitle"]}>
-            {renderBulletList(t, "verificationType")}
+            {renderBulletList(t, "verificationType", 4)}
           </Section>
         )}
 
         {(hasSection("tipsTitle") || hasBullets("tip")) && (
           <Section title={t["tipsTitle"]}>
-            {renderBulletList(t, "tip")}
+            {renderBulletList(t, "tip", 4)}
           </Section>
         )}
 
         {/* Instant / Fast / Regenerate */}
         {(hasSection("instantFeaturesTitle") || hasBullets("instantFeature")) && (
           <Section title={t["instantFeaturesTitle"]}>
-            {renderBulletList(t, "instantFeature", 6, <Zap className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />)}
+            {renderBulletList(t, "instantFeature", 3, <Zap className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />)}
           </Section>
         )}
 
@@ -571,7 +592,7 @@ export function LandingPageTemplate({
         {/* Criteria */}
         {(hasSection("criteriaTitle") || hasBullets("criterion")) && (
           <Section title={t["criteriaTitle"]}>
-            {renderBulletList(t, "criterion")}
+            {renderBulletList(t, "criterion", 4)}
           </Section>
         )}
 
@@ -636,7 +657,7 @@ export function LandingPageTemplate({
 
         {(hasSection("redditUseCasesTitle") || hasBullets("redditUseCase")) && (
           <Section title={t["redditUseCasesTitle"]}>
-            {renderBulletList(t, "redditUseCase")}
+            {renderBulletList(t, "redditUseCase", 4)}
           </Section>
         )}
 
@@ -670,32 +691,22 @@ export function LandingPageTemplate({
         )}
 
         {/* Internal Links */}
-                {/* INTERNAL LINKS (locale-aware) */}
+        {/* INTERNAL LINKS (locale-aware) */}
         <div className="border-t border-border pt-6">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Related Services
           </h3>
 
           <div className="flex flex-wrap gap-2">
-            {[
-              { href: "/", label: "Free Temp Mail" },
-              { href: "/temp-mail", label: "Temp Mail" },
-              { href: "/custom-temp-mail", label: "Custom Temp Mail" },
-              { href: "/temp-mail-api", label: "Temp Mail API" },
-              { href: "/temp-mail-for-developers", label: "For Developers" },
-              { href: "/temp-mail-no-ads", label: "No Ads" },
-            ]
-              .filter((l) => !l.href.includes(slug))
-              .slice(0, 5)
-              .map((l) => (
-                <Link
-                  key={l.href}
-                  href={`/${locale}${l.href}`}
-                  className="text-xs px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                >
-                  {l.label}
-                </Link>
-              ))}
+            {linksToShow.map((l) => (
+              <Link
+                key={l.href}
+                href={`/${locale}${l.href}`}
+                className="text-xs px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              >
+                {l.label}
+              </Link>
+            ))}
           </div>
         </div>
 

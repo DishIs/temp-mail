@@ -1,4 +1,5 @@
 // app/[locale]/(landing)/[slug]/page.tsx
+
 import { notFound } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getServerSession } from "next-auth";
@@ -9,33 +10,41 @@ import { AppHeader } from "@/components/app-header";
 import { AppFooter } from "@/components/app-footer";
 import { EmailBox } from "@/components/email-box";
 import { LandingPageTemplate } from "@/components/landing-page-template";
-import { LANDING_PAGES, LANDING_PAGE_SLUGS, getPageConfig } from "@/lib/landing-pages-config";
+import { LANDING_PAGES, getPageConfig } from "@/lib/landing-pages-config";
+import { routing } from "@/i18n/routing";
 import Script from "next/script";
-
-const FREE_DOMAINS = [
-  "areueally.info", "ditapi.info", "ditcloud.info", "ditdrive.info",
-  "ditgame.info", "ditlearn.info", "ditpay.info", "ditplay.info",
-  "ditube.info", "junkstopper.info",
-];
 
 type Props = {
   params: { locale: Locale; slug: string };
 };
 
-// Generates all static paths for all locales × all slugs
+const SITE_URL = "https://www.freecustom.email";
+
+
+// ============================
+// Static generation (locale × slug)
+// ============================
 export function generateStaticParams() {
-  return LANDING_PAGES.flatMap((page) => [
-    { slug: page.slug },
-  ]);
+  return routing.locales.flatMap((locale) =>
+    LANDING_PAGES.map((page) => ({
+      locale,
+      slug: page.slug,
+    }))
+  );
 }
 
+
+// ============================
+// Metadata (SEO)
+// ============================
 export async function generateMetadata({ params }: Props) {
   const { locale, slug } = params;
+
   const pageConfig = getPageConfig(slug);
   if (!pageConfig) return {};
 
-  // @ts-ignore
   const t = await getTranslations({ locale, namespace: "LandingPages" });
+
   const pageT = (key: string) => {
     try {
       // @ts-ignore
@@ -45,38 +54,62 @@ export async function generateMetadata({ params }: Props) {
     }
   };
 
+  const url = `${SITE_URL}/${locale}/${slug}`;
+
+  // hreflang alternates
+  const languages: Record<string, string> = {};
+  routing.locales.forEach((loc) => {
+    languages[loc] = `${SITE_URL}/${loc}/${slug}`;
+  });
+
   return {
     title: pageT("metaTitle"),
     description: pageT("metaDescription"),
     keywords: `temp mail, ${slug.replace(/-/g, " ")}, disposable email, temporary email`,
+
+    alternates: {
+      canonical: url,
+      languages,
+      "x-default": `${SITE_URL}/en/${slug}`,
+    },
+
     openGraph: {
       title: pageT("metaTitle"),
       description: pageT("metaDescription"),
-      url: `https://www.freecustom.email/${locale}/${slug}`,
+      url,
+      locale,
+      type: "website",
       images: [
         {
-          url: "https://www.freecustom.email/logo.webp",
+          url: `${SITE_URL}/logo.webp`,
           alt: "FreeCustom.Email",
         },
       ],
     },
-    alternates: {
-      canonical: `https://www.freecustom.email/en/${slug}`,
+
+    twitter: {
+      card: "summary_large_image",
+      title: pageT("metaTitle"),
+      description: pageT("metaDescription"),
+      images: [`${SITE_URL}/logo.webp`],
     },
   };
 }
 
+
+// ============================
+// Page
+// ============================
 export default async function LandingPage({ params }: Props) {
   const { locale, slug } = params;
   setRequestLocale(locale);
 
   const pageConfig = getPageConfig(slug);
-  if (!pageConfig) {
-    notFound();
-  }
+  if (!pageConfig) notFound();
 
-  // Fetch user session and data (same as homepage)
+  // ---- Session ----
   const session = await getServerSession();
+
   let customDomains: any[] = [];
   let userInboxes: string[] = [];
   let currentInbox: string | null = null;
@@ -86,16 +119,18 @@ export default async function LandingPage({ params }: Props) {
       const profileData = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
       if (profileData.success && profileData.user) {
         const { user } = profileData;
+
         if (user.plan === "pro" && Array.isArray(user.customDomains)) {
           customDomains = user.customDomains;
         }
+
         if (Array.isArray(user.inboxes)) {
           userInboxes = user.inboxes;
           if (userInboxes.length > 0) currentInbox = userInboxes[0];
         }
       }
     } catch (error) {
-      console.error("Failed to fetch user profile on landing page:", error);
+      console.error("Profile fetch failed:", error);
     }
   }
 
@@ -202,14 +237,14 @@ export default async function LandingPage({ params }: Props) {
     }
   }
 
-  // JSON-LD for SEO
+  // ---- Structured data ----
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "FreeCustom.Email",
-    url: `https://www.freecustom.email/${locale}/${slug}`,
-    description: translations["metaDescription"] || "",
+    url: `${SITE_URL}/${locale}/${slug}`,
     applicationCategory: "UtilityApplication",
+    operatingSystem: "Web",
     offers: {
       "@type": "Offer",
       price: "0",
@@ -229,13 +264,15 @@ export default async function LandingPage({ params }: Props) {
   return (
     <>
       <Script
-        id="json-ld-landing"
+        id="jsonld-landing"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <div className="min-h-screen max-w-[100vw] bg-background">
           <AppHeader initialSession={session} />
+
           <main className="mx-auto max-w-4xl px-4 py-6">
             <LandingPageTemplate
               translations={translations}
@@ -243,6 +280,7 @@ export default async function LandingPage({ params }: Props) {
               slug={slug}
             />
           </main>
+
           <AppFooter />
         </div>
       </ThemeProvider>

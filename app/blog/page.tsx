@@ -129,7 +129,7 @@ export default async function BlogPage({
   searchParams: { page?: string }
 }) {
   const currentPage = Number(searchParams.page) || 1;
-  const postsPerPage = 10;
+  const postsPerPage = 11;
 
   // Fetch posts with pagination
   const [postsResponse, categories] = await Promise.all([
