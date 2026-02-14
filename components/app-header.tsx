@@ -38,8 +38,8 @@ import { SiBuymeacoffee, SiPatreon, SiReddit } from "react-icons/si";
 
 
 export function AppHeader({ initialSession }: { initialSession: Session | null }) {
-  const { data: sessionData, status } = useSession();
-  const session = sessionData || initialSession; 
+  const { data: session, status } = useSession();
+  // const session = sessionData || initialSession; 
   
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);

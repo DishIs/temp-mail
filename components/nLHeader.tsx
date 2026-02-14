@@ -36,8 +36,8 @@ import { Badge } from "@/components/ui/badge";
 import { SiBuymeacoffee, SiPatreon, SiReddit } from "react-icons/si";
 
 export function AppHeader({ initialSession }: { initialSession: Session | null }) {
-  const { data: sessionData, status } = useSession();
-  const session = sessionData || initialSession;
+  const { data: session, status } = useSession();
+  // const session = sessionData || initialSession;
 
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -169,7 +169,7 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
 
     return (
       <Button asChild size="sm" className="ml-2 font-semibold">
-        <Link href="https://auth.freecustom.email/api/auth/signin">
+        <Link href="/auth">
           Login
         </Link>
       </Button>
