@@ -16,7 +16,7 @@ import {
   Mail
 } from "lucide-react";
 import Link from "next/link";
-import { FaDiscord, FaGithub, FaPatreon, FaReddit } from "react-icons/fa";
+import { FaDiscord, FaGithub } from "react-icons/fa";
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
