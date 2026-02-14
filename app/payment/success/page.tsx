@@ -1,21 +1,19 @@
-// app/payment/success/page.tsx
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useSession } from "next-auth/react";
-import toast from "react-hot-toast"; // ✅ Using React Hot Toast
+import toast from "react-hot-toast";
+import { useSession } from 'next-auth/react';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { update } = useSession();
-  
-  // PayPal Subscription returns 'subscription_id'
-  const subscriptionId = searchParams.get('subscription_id'); 
+
+  const subscriptionId = searchParams.get('subscription_id');
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const hasRun = useRef(false);
 
@@ -25,7 +23,6 @@ export default function PaymentSuccessPage() {
 
     const verifySubscription = async () => {
       const toastId = toast.loading("Verifying subscription...");
-
       try {
         const res = await fetch('/api/paypal/verify-subscription', {
           method: 'POST',
@@ -36,22 +33,15 @@ export default function PaymentSuccessPage() {
         const data = await res.json();
 
         if (data.success) {
-          // Trigger session update to get 'pro' status immediately
           await update();
-          
           setStatus('success');
           toast.success("Welcome to Pro! Subscription active.", { id: toastId });
-          
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 3000);
+          setTimeout(() => { window.location.href = '/dashboard'; }, 3000);
         } else {
-          console.error("Verification failed:", data);
           setStatus('error');
           toast.error("Activation Failed: " + (data.error || "Unknown error"), { id: toastId });
         }
       } catch (error) {
-        console.error("Payment verification error:", error);
         setStatus('error');
         toast.error("Network error during verification", { id: toastId });
       }
@@ -61,45 +51,54 @@ export default function PaymentSuccessPage() {
   }, [subscriptionId, router, update]);
 
   return (
+    <CardContent className="flex flex-col items-center justify-center space-y-4 py-8">
+      {status === 'verifying' && (
+        <>
+          <Loader2 className="h-16 w-16 text-primary animate-spin" />
+          <p className="text-muted-foreground">Confirming subscription status with PayPal...</p>
+        </>
+      )}
+      {status === 'success' && (
+        <>
+          <CheckCircle2 className="h-16 w-16 text-green-500 animate-in zoom-in duration-300" />
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-foreground">You are now Pro!</h3>
+            <p className="text-muted-foreground">Your persistent storage is ready.</p>
+            <p className="text-xs text-muted-foreground/50">Redirecting to dashboard...</p>
+          </div>
+        </>
+      )}
+      {status === 'error' && (
+        <>
+          <AlertTriangle className="h-16 w-16 text-destructive" />
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-foreground">Verification Failed</h3>
+            <p className="text-muted-foreground">We couldn't verify the subscription. Please contact support.</p>
+            <Button onClick={() => router.push('/pricing')} variant="outline" className="mt-4">
+              Return to Pricing
+            </Button>
+          </div>
+        </>
+      )}
+    </CardContent>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md text-center shadow-lg">
         <CardHeader>
           <CardTitle>Activating Subscription</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center space-y-4 py-8">
-          
-          {status === 'verifying' && (
-            <>
-              <Loader2 className="h-16 w-16 text-primary animate-spin" />
-              <p className="text-muted-foreground">Confirming subscription status with PayPal...</p>
-            </>
-          )}
-
-          {status === 'success' && (
-            <>
-              <CheckCircle2 className="h-16 w-16 text-green-500 animate-in zoom-in duration-300" />
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-foreground">You are now Pro!</h3>
-                <p className="text-muted-foreground">Your persistent storage is ready.</p>
-                <p className="text-xs text-muted-foreground/50">Redirecting to dashboard...</p>
-              </div>
-            </>
-          )}
-
-          {status === 'error' && (
-            <>
-              <AlertTriangle className="h-16 w-16 text-destructive" />
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-foreground">Verification Failed</h3>
-                <p className="text-muted-foreground">We couldn't verify the subscription. Please contact support.</p>
-                <Button onClick={() => router.push('/pricing')} variant="outline" className="mt-4">
-                  Return to Pricing
-                </Button>
-              </div>
-            </>
-          )}
-
-        </CardContent>
+        <Suspense fallback={
+          <CardContent className="flex flex-col items-center justify-center space-y-4 py-8">
+            <Loader2 className="h-16 w-16 text-primary animate-spin" />
+            <p className="text-muted-foreground">Loading...</p>
+          </CardContent>
+        }>
+          <PaymentSuccessContent />
+        </Suspense>
       </Card>
     </div>
   );

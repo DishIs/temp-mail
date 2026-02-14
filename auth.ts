@@ -3,6 +3,8 @@ import NextAuth, { type DefaultSession, type NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 import GitHub from 'next-auth/providers/github';
 import type { OAuthConfig } from 'next-auth/providers';
+// ✅ Fix 1: import JWT type first so TS can resolve the module before augmentation
+import type { JWT } from 'next-auth/jwt';
 import { fetchFromServiceAPI } from '@/lib/api';
 
 // ─── Type Augmentation ────────────────────────────────────────────────────────
@@ -23,12 +25,12 @@ declare module 'next-auth' {
       plan: 'free' | 'pro';
     } & DefaultSession['user'];
   }
-  // v5: augment User here too so custom providers can return it
   interface User {
     plan?: 'free' | 'pro';
   }
 }
 
+// ✅ Fix 1 (cont): now this augmentation works because JWT was imported above
 declare module 'next-auth/jwt' {
   interface JWT {
     id: string;
@@ -36,6 +38,25 @@ declare module 'next-auth/jwt' {
   }
 }
 
+// ─── Helper Types for Custom Provider Contexts ───────────────────────────────
+// ✅ Fix 2: explicit types for request() contexts so they're not implicitly any
+
+interface TokenRequestContext {
+  params: Record<string, string | undefined>;
+  provider: {
+    callbackUrl: string;
+    clientId?: string;
+    clientSecret?: string;
+  };
+}
+
+interface UserinfoRequestContext {
+  tokens: {
+    access_token?: string;
+  };
+}
+
+// ─── Backend Helper ───────────────────────────────────────────────────────────
 
 async function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
   try {
@@ -65,7 +86,8 @@ const WYIProvider: OAuthConfig<WYIProfile> = {
   },
   token: {
     url: 'https://whatsyour.info/api/v1/oauth/token',
-    async request(context) {
+    // ✅ Fix 2: explicit context type
+    async request(context: TokenRequestContext) {
       const response = await fetch('https://whatsyour.info/api/v1/oauth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,7 +106,8 @@ const WYIProvider: OAuthConfig<WYIProfile> = {
   },
   userinfo: {
     url: 'https://whatsyour.info/api/v1/me',
-    async request(context) {
+    // ✅ Fix 2: explicit context type
+    async request(context: UserinfoRequestContext) {
       const response = await fetch('https://whatsyour.info/api/v1/me', {
         headers: {
           Authorization: `Bearer ${context.tokens.access_token}`,
@@ -97,9 +120,11 @@ const WYIProvider: OAuthConfig<WYIProfile> = {
   },
   clientId: process.env.WYI_CLIENT_ID,
   clientSecret: process.env.WYI_CLIENT_SECRET,
-  profile(profile) {
+  profile(profile: WYIProfile) {
     return {
-      id: profile._id,
+      // ✅ Fix 3: profile._id is string per our interface, but TS sees JSON as
+      // unknown — String() cast guarantees the id field is always a string
+      id: String(profile._id),
       name: `${profile.firstName} ${profile.lastName}`.trim(),
       email: profile.email,
       image: `https://whatsyour.info/api/v1/avatar/${profile.username}`,
@@ -125,10 +150,7 @@ const config: NextAuthConfig = {
     WYIProvider,
   ],
 
-  // v5: rename NEXTAUTH_SECRET → AUTH_SECRET in your env, but this still works
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-
-  // Required for non-Vercel / Cloudflare deployments
+  secret: process.env.AUTH_SECRET,
   trustHost: true,
 
   cookies: {
@@ -156,7 +178,6 @@ const config: NextAuthConfig = {
 
   callbacks: {
     async signIn({ user }) {
-      // v5: user.id is always defined here (no need to cast)
       await upsertUser({ id: user.id!, email: user.email, name: user.name });
       return true;
     },
@@ -167,7 +188,6 @@ const config: NextAuthConfig = {
     },
 
     async jwt({ token, user }) {
-      // v5: `user` is only present on first sign-in (same as v4)
       if (user) {
         token.id = user.id!;
         token.plan = user.plan ?? 'free';
