@@ -5,12 +5,8 @@ export const routing = defineRouting({
     'en',
     'de',
     'zh',
-    'es',
-    'hi',
     'fr',
-    'ru',
     'pt', // Portuguese (high traffic)
-    'tr', // Turkish
     'id'  // Indonesian
   ],
   defaultLocale: 'en',

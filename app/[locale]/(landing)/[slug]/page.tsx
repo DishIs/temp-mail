@@ -22,16 +22,11 @@ const SITE_URL = "https://www.freecustom.email";
 
 
 // ============================
-// Static generation (locale × slug)
+// Dynamic generation (locale × slug)
 // ============================
-export function generateStaticParams() {
-  return routing.locales.flatMap((locale) =>
-    LANDING_PAGES.map((page) => ({
-      locale,
-      slug: page.slug,
-    }))
-  );
-}
+export const dynamicParams = true;
+export const revalidate = 86400; // 1 day ISR
+
 
 
 // ============================
