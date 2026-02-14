@@ -7,6 +7,7 @@ export const routing = defineRouting({
     'zh',
     'fr',
     'pt', // Portuguese (high traffic)
+    'tr', // Turkish
     'id'  // Indonesian
   ],
   defaultLocale: 'en',
