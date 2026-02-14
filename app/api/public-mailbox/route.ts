@@ -1,7 +1,6 @@
 // app/api/public-mailbox/route.ts
 import { NextResponse } from 'next/server';
 import { fetchFromServiceAPI } from '@/lib/api';
-import jwt from "jsonwebtoken";
 import { headers } from 'next/headers';
 import { rateLimit, isValidPublicRequest } from '@/lib/rate-limit';
 
@@ -10,6 +9,7 @@ const limiter = rateLimit({
   interval: 60 * 1000, 
   uniqueTokenPerInterval: 500, 
 });
+
 
 export async function GET(request: Request) {
   const reqHeaders = await headers();
@@ -28,12 +28,6 @@ export async function GET(request: Request) {
   }
 
   // 3. Generate Guest Token
-  const signedToken = jwt.sign(
-    { plan: 'guest' },
-    process.env.JWT_SECRET as string,
-    { algorithm: "HS256", expiresIn: "5m" }
-  );
-
   const { searchParams } = new URL(request.url);
   const mailbox = searchParams.get('fullMailboxId');
   const messageId = searchParams.get('messageId');
@@ -42,7 +36,7 @@ export async function GET(request: Request) {
 
   try {
     let data;
-    const options = { headers: { 'Authorization': `Bearer ${signedToken}` } };
+    const options = { headers: { 'Authorization': `Bearer ` } };
     
     if (messageId) {
       data = await fetchFromServiceAPI(`/mailbox/${mailbox}/message/${messageId}`, options);

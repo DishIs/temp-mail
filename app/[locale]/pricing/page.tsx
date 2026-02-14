@@ -10,12 +10,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { ThemeProvider } from "@/components/theme-provider";
 import toast from "react-hot-toast"; 
 import { useTranslations } from "next-intl";
+import { useSession } from "@/hooks/use-session";
 
 type BillingCycle = "weekly" | "monthly" | "yearly";
 

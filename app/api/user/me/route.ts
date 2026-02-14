@@ -2,14 +2,11 @@
 
 import { NextResponse } from 'next/server';
 import { fetchFromServiceAPI } from '@/lib/api'; // <-- Your helper for calling the backend
-import { getToken } from 'next-auth/jwt';
+import { getToken } from '@/lib/session';
 
 export async function GET(request: Request) {
     // 1. Authenticate the request using the NextAuth session.
-const token = await getToken({
-        req: request as any,
-        secret: process.env.NEXTAUTH_SECRET,
-    });
+const token = await getToken(request);
 
     if (!token?.id) {
         return NextResponse.json(

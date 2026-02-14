@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, XCircle, Info, Loader2 } from "lucide-react"; // <-- Import Loader2
-import { signIn } from "next-auth/react";
+import { signIn } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 // --- DATA STRUCTURE FOR PLANS ---

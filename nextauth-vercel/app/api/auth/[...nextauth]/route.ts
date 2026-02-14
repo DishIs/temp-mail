@@ -160,7 +160,7 @@ const authOptions: NextAuthOptions = {
     sessionToken: {
       name: "__Secure-next-auth.session-token",
       options: {
-        domain: ".yourdomain.com",
+        domain: ".freecustom.email",
         path: "/",
         httpOnly: true,
         sameSite: "lax",

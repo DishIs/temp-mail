@@ -1,14 +1,13 @@
 // app/api/user/domains/verify/route.ts
 import { NextResponse } from 'next/server';
 import { fetchFromServiceAPI } from '@/lib/api';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getToken } from '@/lib/session';
 
 export async function POST(request: Request) {
     // Get the session using the server-side utility
-    const session = await getServerSession(authOptions);
+    const session = await getToken(request)
 
-    if (!session || !session.user) {
+    if (!session || !session.id) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
     
@@ -23,7 +22,7 @@ export async function POST(request: Request) {
             method: 'POST',
             body: JSON.stringify({
                 domain: domain,
-                wyiUserId: session.user.id // Pass the authenticated user ID
+                wyiUserId: session.id // Pass the authenticated user ID
             }),
         });
         

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/nLHeader"; // Adjust path if needed
 import { ThemeProvider } from "@/components/theme-provider";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/hooks/use-session";
 
 export default function PrivacyPolicyPage() {
   const { data: session } = useSession();

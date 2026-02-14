@@ -5,8 +5,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getCookie, setCookie } from "cookies-next"
 import { Loader, Paperclip, Info, ShieldCheck, Lock, Clock } from 'lucide-react'
-import Link from 'next/link'
-import { Button } from "@/components/ui/button"
 
 interface Attachment {
   filename: string;

@@ -19,8 +19,9 @@ import Link from "next/link";
 import { FaDiscord, FaGithub } from "react-icons/fa";
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { signOut, useSession } from "next-auth/react";
-import { Session } from "next-auth";
+import { signOut } from "@/lib/auth-client";
+import { useSession } from "@/hooks/use-session";
+
 import { usePathname } from "next/navigation";
 import {
   DropdownMenu,
@@ -34,8 +35,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SiBuymeacoffee, SiPatreon, SiReddit } from "react-icons/si";
+import { SessionToken } from "@/lib/session";
 
-export function AppHeader({ initialSession }: { initialSession: Session | null }) {
+export function AppHeader({ initialSession }: { initialSession: SessionToken | null }) {
   const { data: sessionData, status } = useSession();
   const session = sessionData || initialSession;
 
@@ -62,7 +64,7 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
     setMenuOpen(false);
   }, []);
 
-  const isLoggedIn = status === 'authenticated' || !!session?.user;
+  const isLoggedIn = status === 'authenticated' || !!session?.id;
   // @ts-ignore
   const userPlan = session?.user?.plan || 'free';
   const isPro = userPlan === 'pro';
@@ -86,15 +88,15 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
       return <div className="h-9 w-9 bg-muted rounded-full animate-pulse" />;
     }
 
-    if (isLoggedIn && session?.user) {
+    if (isLoggedIn && session?.id) {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 ml-2 hover:bg-transparent">
               <Avatar className={`h-9 w-9 border-2 transition-all ${isPro ? 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.4)]' : 'border-border'}`}>
-                <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
+                <AvatarImage src={session.image || ""} alt={session.name || "User"} />
                 <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                  {session.user.name?.charAt(0).toUpperCase() || "U"}
+                  {session.name?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
 
@@ -114,8 +116,8 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
             {/* User Info Header */}
             <DropdownMenuLabel className="font-normal p-2">
               <div className="flex flex-col space-y-1.5">
-                <p className="text-sm font-semibold leading-none truncate">{session.user.name}</p>
-                <p className="text-xs leading-none text-muted-foreground truncate">{session.user.email}</p>
+                <p className="text-sm font-semibold leading-none truncate">{session.name}</p>
+                <p className="text-xs leading-none text-muted-foreground truncate">{session.email}</p>
               </div>
             </DropdownMenuLabel>
 

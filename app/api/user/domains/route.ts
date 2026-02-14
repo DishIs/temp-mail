@@ -1,15 +1,12 @@
 // app/api/user/domains/route.ts
 import { NextResponse } from 'next/server';
 import { fetchFromServiceAPI } from '@/lib/api';
-import { getToken } from 'next-auth/jwt';
+import { getToken } from '@/lib/session';
 
 
 // --- NEW GET METHOD ---
 export async function GET(request: Request) {
-    const token = await getToken({
-        req: request as any,
-        secret: process.env.NEXTAUTH_SECRET,
-    });
+    const token = await getToken(request);
 
     if (!token?.id) {
         return NextResponse.json(
@@ -32,10 +29,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     // Get the session using the server-side utility
-const token = await getToken({
-        req: request as any,
-        secret: process.env.NEXTAUTH_SECRET,
-    });
+const token = await getToken(request);
 
     if (!token?.id) {
         return NextResponse.json(
@@ -70,10 +64,7 @@ const token = await getToken({
 
 export async function DELETE(request: Request) {
     // Get the session using the server-side utility
-    const token = await getToken({
-        req: request as any,
-        secret: process.env.NEXTAUTH_SECRET,
-    });
+    const token = await getToken(request);
 
     if (!token?.id) {
         return NextResponse.json(

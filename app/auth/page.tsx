@@ -1,7 +1,9 @@
 // app/auth/page.tsx
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "@/lib/auth-client";
+import { useSession } from "@/hooks/use-session";
+
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -11,7 +13,6 @@ import { FaGoogle, FaGithub } from "react-icons/fa"; // Using standard React Ico
 import { AppHeader } from "@/components/nLHeader"; // Standardized import
 import { ThemeProvider } from "@/components/theme-provider";
 import Link from "next/link";
-import Image from "next/image";
 
 function AuthForm() {
     const searchParams = useSearchParams();

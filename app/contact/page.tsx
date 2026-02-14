@@ -10,9 +10,9 @@ import { Loader2, Send, Mail, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { AppHeader } from "@/components/nLHeader";
 import { AppFooter } from "@/components/app-footer";
-import { useSession } from "next-auth/react";
 import { Turnstile } from "@marsidev/react-turnstile"; // Import Turnstile
 import { ThemeProvider } from "@/components/theme-provider";
+import { useSession } from "@/hooks/use-session";
 
 export default function ContactPage() {
   const { data: session } = useSession();
@@ -21,8 +21,8 @@ export default function ContactPage() {
   const turnstileRef = useRef<any>(null); // Ref to reset captcha
 
   const [formData, setFormData] = useState({
-    name: session?.user?.name || "",
-    email: session?.user?.email || "",
+    name: session?.name || "",
+    email: session?.email || "",
     subject: "",
     message: ""
   });

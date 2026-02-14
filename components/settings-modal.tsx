@@ -22,7 +22,6 @@ import {
   Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "./ui/badge";
 
 export interface UserSettings {
   notifications: boolean;

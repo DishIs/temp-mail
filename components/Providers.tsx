@@ -1,11 +1,11 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { SessionProvider } from "@/hooks/use-session";
 import { Toaster } from "react-hot-toast";
 
-export default function Providers({ children, session }: { children: React.ReactNode, session: any }) {
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider>
       <Toaster position="top-center" reverseOrder={false} />
       {children}
     </SessionProvider>

@@ -1,7 +1,6 @@
 import { GoogleAnalytics } from '@next/third-parties/google';
 import "@/styles/global.css";
 import Providers from "@/components/Providers";
-import { getServerSession } from "next-auth"; 
 import NextTopLoader from 'nextjs-toploader';
 
 export const metadata = {
@@ -22,7 +21,6 @@ export const metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(); 
 
   return (
     <html lang="en">
@@ -42,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           speed={200}
           shadow="0 0 10px #2299DD,0 0 5px #2299DD"
         />
-        <Providers session={session}>
+        <Providers>
           {children}
         </Providers>
       </body>

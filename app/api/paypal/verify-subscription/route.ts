@@ -5,15 +5,12 @@
 import { NextResponse } from 'next/server';
 import { fetchFromServiceAPI } from '@/lib/api';
 import { getPayPalAccessToken } from '@/lib/paypal';
-import { getToken } from 'next-auth/jwt';
+import { getToken } from '@/lib/session';
 
 const PAYPAL_API = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com';
 
 export async function POST(request: Request) {
-  const token = await getToken({
-        req: request as any,
-        secret: process.env.NEXTAUTH_SECRET,
-    });
+  const token = await getToken(request);
 
     if (!token?.id) {
         return NextResponse.json(

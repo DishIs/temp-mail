@@ -2,7 +2,6 @@
 
 import { notFound } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { getServerSession } from "next-auth";
 import { fetchFromServiceAPI } from "@/lib/api";
 import { Locale } from "next-intl";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -13,6 +12,7 @@ import { LandingPageTemplate } from "@/components/landing-page-template";
 import { LANDING_PAGES, getPageConfig } from "@/lib/landing-pages-config";
 import { routing } from "@/i18n/routing";
 import Script from "next/script";
+import { getSession } from "@/lib/session";
 
 type Props = {
   params: { locale: Locale; slug: string };
@@ -108,15 +108,16 @@ export default async function LandingPage({ params }: Props) {
   if (!pageConfig) notFound();
 
   // ---- Session ----
-  const session = await getServerSession();
+  const session = await getSession();
+
 
   let customDomains: any[] = [];
   let userInboxes: string[] = [];
   let currentInbox: string | null = null;
 
-  if (session?.user?.id) {
+  if (session?.id) {
     try {
-      const profileData = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
+      const profileData = await fetchFromServiceAPI(`/user/profile/${session?.id}`);
       if (profileData.success && profileData.user) {
         const { user } = profileData;
 

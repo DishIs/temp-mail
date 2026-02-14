@@ -13,8 +13,8 @@ import { AppHeader } from "@/components/nLHeader";
 import { AppFooter } from "@/components/app-footer";
 import { cn } from "@/lib/utils";
 import { Turnstile } from "@marsidev/react-turnstile"; // Import Turnstile
-import { useSession } from "next-auth/react";
 import { ThemeProvider } from "@/components/theme-provider";
+import { useSession } from "@/hooks/use-session";
 
 export default function FeedbackPage() {
   const [isLoading, setIsLoading] = useState(false);

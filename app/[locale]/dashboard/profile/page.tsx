@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { 
   Mail, Calendar, CreditCard, Loader2, Zap, ExternalLink, 
@@ -22,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UpsellModal } from "@/components/upsell-modal";
 import { AppHeader } from "@/components/nLHeader"; 
 import { ThemeProvider } from "@/components/theme-provider";
+import { useSession } from "@/hooks/use-session";
+
 
 // Interfaces based on your MongoDB structure
 interface SubscriptionData {

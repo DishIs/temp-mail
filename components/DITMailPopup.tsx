@@ -3,11 +3,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react'; // <-- Import useSession
 import { motion, AnimatePresence } from 'framer-motion'; // <-- Import for animations
 import { X, Star, Zap, Layers } from 'lucide-react'; // <-- Import modern icons
 import { Button } from '@/components/ui/button';
-import { AuthPopup } from './AuthPopup';
+import { useSession } from '@/hooks/use-session';
 
 // A small, reusable component for feature highlights
 const FeatureHighlight = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
@@ -20,7 +19,6 @@ const FeatureHighlight = ({ icon, children }: { icon: React.ReactNode; children:
 export function DITMailPopup() {
   const { data: session, status } = useSession(); // <-- Get user session
   const [isPopupVisible, setIsPopupVisible] = useState(false);
-  const [isPopupOpen, setIsPopupOpen] = useState(false)
 
   useEffect(() => {
     // Only show the popup if the user is not logged in and hasn't dismissed it before

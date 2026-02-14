@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { getToken } from '@/lib/session';
 import { fetchFromServiceAPI } from '@/lib/api';
 
 export async function POST(request: Request) {
     // ---- Extract JWT from cookie
-    const token = await getToken({
-        req: request as any,
-        secret: process.env.NEXTAUTH_SECRET,
-    });
+    const token = await getToken(request);
 
     if (!token?.id) {
         return NextResponse.json(

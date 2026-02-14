@@ -11,10 +11,10 @@ import Link from 'next/link';
 import { Locale } from 'next-intl';
 import { ThemeProvider } from '@/components/theme-provider';
 
-import { getServerSession } from 'next-auth';
 import { fetchFromServiceAPI } from '@/lib/api';
 import { AwardsSection } from '@/components/AwardsSection';
 import { LANDING_PAGES } from '@/lib/landing-pages-config';
+import { getSession } from '@/lib/session';
 
 type Props = {
     params: { locale: Locale };
@@ -28,15 +28,15 @@ export default async function Page({ params }: Props) {
     const tJsonLd = await getTranslations({ locale, namespace: 'JsonLd' });
 
     // --- FETCH ALL USER DATA ON SERVER ---
-    const session = await getServerSession();
+    const session = await getSession();
     let customDomains = [];
     let userInboxes = [];
     let currentInbox = null;
 
-    if (session?.user?.id) {
+    if (session?.id) {
         try {
             // Fetch the entire user profile in one call
-            const profileData = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
+            const profileData = await fetchFromServiceAPI(`/user/profile/${session.id}`);
 
             if (profileData.success && profileData.user) {
                 const { user } = profileData;
