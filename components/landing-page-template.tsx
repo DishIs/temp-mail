@@ -60,7 +60,7 @@ const renderComparisonTable = (translations: Record<string, string>) => {
   if (!translations["col1"]) return null;
 
   const rows = [];
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= 5; i++) {
     const rowKey = `row${i}f`;
     if (translations[rowKey]) {
       rows.push({
