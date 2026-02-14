@@ -1205,7 +1205,7 @@ export function EmailBox({
                 </TooltipTrigger>
                 <TooltipContent><p>{isAuthenticated ? 'Press C to copy' : 'Login to use shortcuts'}</p></TooltipContent>
               </Tooltip>
-              <Button className="hidden xs:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
+              <Button className="hidden sm:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')} aria-label={t('show_qr')}>
                 <QrCode className="h-4 w-4" />
               </Button>
               {/* SETTINGS BUTTON */}
