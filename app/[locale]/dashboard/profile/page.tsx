@@ -6,12 +6,13 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { 
   Mail, Calendar, CreditCard, Loader2, Zap, ExternalLink, 
-  CheckCircle2, History, ShieldCheck, AlertCircle
+  CheckCircle2, History, AlertCircle
 } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import { useTranslations } from "next-intl";
+import Image from "next/image"; // Added for optimization
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,7 @@ import { UpsellModal } from "@/components/upsell-modal";
 import { AppHeader } from "@/components/nLHeader"; 
 import { ThemeProvider } from "@/components/theme-provider";
 
-// Interfaces based on your MongoDB structure
+// Interface for User Data
 interface SubscriptionData {
   provider: "paypal" | "paddle";
   subscriptionId: string;
@@ -39,9 +40,21 @@ interface UserProfile {
   email: string;
   image?: string;
   plan: "free" | "pro";
-  storageUsage?: number; // In bytes
   subscription?: SubscriptionData;
   createdAt?: string;
+}
+
+// Interface for Storage Data (matching your API response)
+interface StorageStats {
+  success: boolean;
+  storageUsed: number;
+  storageLimit: number;
+  percentUsed: string; // API returns string formatted percentage
+  emailCount: number;
+  storageUsedFormatted: string;
+  storageLimitFormatted: string;
+  storageRemaining: number;
+  storageRemainingFormatted: string;
 }
 
 export default function ProfilePage() {
@@ -51,6 +64,7 @@ export default function ProfilePage() {
   
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserProfile | null>(null);
+  const [storageData, setStorageData] = useState<StorageStats | null>(null);
   
   // State for upsell
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
@@ -65,11 +79,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (status === "authenticated") {
       fetchUserData();
+      fetchStorageData();
     }
   }, [status]);
 
   const fetchUserData = async () => {
-    setLoading(true);
     try {
       const response = await fetch('/api/user/me');
       const data = await response.json();
@@ -86,7 +100,22 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Failed to load profile data", error);
       toast.error(t('toasts.load_error'));
+    }
+  };
+
+  const fetchStorageData = async () => {
+    try {
+      const response = await fetch('/api/user/storage');
+      const data = await response.json();
+
+      if (data.success) {
+        setStorageData(data);
+      }
+    } catch (error) {
+      console.error("Failed to load storage stats", error);
     } finally {
+      // We set loading to false here assuming both calls fire roughly together
+      // or we can handle individual loading states if preferred.
       setLoading(false);
     }
   };
@@ -94,32 +123,50 @@ export default function ProfilePage() {
   const handleManageSubscription = () => {
     const subId = userData?.subscription?.subscriptionId;
     if (subId) {
-        // Direct link to PayPal Autopay management
         window.open(`https://www.paypal.com/myaccount/autopay/connect/${subId}`, '_blank');
     } else {
         router.push('/pricing');
     }
   };
 
-  // Helper: Identify login method based on image URL or provider data
+  // Logic to determine Login Provider
   const getProviderDetails = (user: UserProfile | null) => {
-    if (!user) return { label: "Unknown", icon: <ShieldCheck className="w-4 h-4" /> };
+    if (!user) return { label: "Unknown", icon: null };
     
-    if (user.image?.includes("googleusercontent.com")) {
-      return { label: "Google", icon: <FaGoogle className="w-4 h-4 text-blue-500" /> };
-    }
-    if (user.image?.includes("githubusercontent.com")) {
-      return { label: "GitHub", icon: <FaGithub className="w-4 h-4" /> };
-    }
-    return { label: "Email / Standard", icon: <ShieldCheck className="w-4 h-4 text-green-600" /> };
-  };
+    const image = user.image || "";
 
-  // Helper: Formatting Storage
-  const formatStorage = (bytes: number = 0) => {
-    if (bytes === 0) return "0 MB";
-    const mb = bytes / (1024 * 1024);
-    if (mb > 1000) return `${(mb / 1024).toFixed(2)} GB`;
-    return `${mb.toFixed(1)} MB`;
+    if (image.includes("googleusercontent.com")) {
+      return { 
+        label: "Google", 
+        icon: <FaGoogle className="w-5 h-5 text-blue-500" /> 
+      };
+    }
+    
+    if (image.includes("githubusercontent.com")) {
+      return { 
+        label: "GitHub", 
+        icon: <FaGithub className="w-5 h-5 text-gray-700 dark:text-white" /> 
+      };
+    }
+
+    // Default to WhatsYour.Info (Email/Password or custom auth)
+    return { 
+      label: "WhatsYour.Info", 
+      icon: (
+        <div className="relative w-5 h-5">
+           {/* Assuming wyi.svg exists in public folder as requested */}
+           <img 
+             src="/wyi.svg" 
+             alt="WYI" 
+             className="w-full h-full object-contain"
+             onError={(e) => {
+               // Fallback if SVG is missing
+               e.currentTarget.style.display = 'none';
+             }}
+           />
+        </div>
+      ) 
+    };
   };
 
   if (status === "loading" || loading) {
@@ -134,14 +181,15 @@ export default function ProfilePage() {
   }
 
   const isPro = userData?.plan === "pro";
-  const provider = getProviderDetails(userData);
+  const providerDetails = getProviderDetails(userData);
   const subStatus = userData?.subscription?.status || "NONE";
   const paymentProviderName = userData?.subscription?.provider === 'paypal' ? "PayPal" : "Payment Provider";
 
-  // Calculate usage percentage (Pro: 5GB, Free: 500MB approx)
-  const maxStorage = isPro ? 5 * 1024 * 1024 * 1024 : 500 * 1024 * 1024; 
-  const currentStorage = userData?.storageUsage || 0;
-  const storagePercent = Math.min((currentStorage / maxStorage) * 100, 100);
+  // Use storage data from API, or defaults if loading failed
+  const percentUsed = storageData ? parseFloat(storageData.percentUsed) : 0;
+  const usageText = storageData 
+    ? `${storageData.storageUsedFormatted} / ${storageData.storageLimitFormatted}`
+    : "Loading...";
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -215,8 +263,8 @@ export default function ProfilePage() {
                                 <div className="space-y-1">
                                     <p className="text-sm font-medium text-muted-foreground">{t('overview.login_method')}</p>
                                     <div className="flex items-center gap-2 mt-1">
-                                        {provider.icon}
-                                        <span className="text-sm font-medium">{provider.label}</span>
+                                        {providerDetails.icon}
+                                        <span className="text-sm font-medium">{providerDetails.label}</span>
                                     </div>
                                 </div>
                             </div>
@@ -232,19 +280,23 @@ export default function ProfilePage() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-muted-foreground">{t('overview.storage_used')}</span>
-                                    <span className="font-medium">{storagePercent.toFixed(1)}%</span>
+                                    <span className="font-medium">{percentUsed.toFixed(2)}%</span>
                                 </div>
                                 <div className="h-2 bg-secondary rounded-full overflow-hidden">
                                     <div 
                                         className="h-full bg-primary rounded-full transition-all duration-500" 
-                                        style={{ width: `${storagePercent}%` }} 
+                                        style={{ width: `${percentUsed}%` }} 
                                     />
                                 </div>
                                 <p className="text-xs text-muted-foreground text-right">
-                                    {formatStorage(currentStorage)} / {isPro ? "5 GB" : "500 MB"}
+                                    {usageText}
                                 </p>
                             </div>
                              <div className="space-y-2 pt-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Emails Stored</span>
+                                    <span className="font-medium">{storageData?.emailCount ?? 0}</span>
+                                </div>
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-muted-foreground">{t('overview.daily_emails')}</span>
                                     <span className="font-medium">{t('overview.unlimited')}</span>
