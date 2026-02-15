@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Copy, Trash2, CheckCircle, HelpCircle, RefreshCw, Lock, Crown, Check } from "lucide-react";
+import { Loader2, Copy, Trash2, CheckCircle, HelpCircle, RefreshCw, Lock, Crown, Check, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { UpsellModal } from "@/components/upsell-modal";
@@ -24,8 +24,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 
 interface CustomDomain {
   domain: string;
@@ -276,6 +278,10 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
   const [isLoading, setIsLoading] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState<string | null>(null);
 
+  // States for Delete Confirmation Modal
+  const [domainToDelete, setDomainToDelete] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const [upsellFeature, setUpsellFeature] = useState("Custom Domains");
 
@@ -328,9 +334,17 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
     }
   };
 
-  const handleDeleteDomain = async (domainToDelete: string) => {
+  // Opens the modal
+  const initiateDelete = (domain: string) => {
     if (!isPro) { openUpsell("Manage Domains"); return; }
-    if (!user) return;
+    setDomainToDelete(domain);
+    setDeleteConfirmation("");
+  };
+
+  // Performs the actual API deletion
+  const confirmDelete = async () => {
+    if (!domainToDelete || !user) return;
+    
     setIsLoading(true);
     const toastId = toast.loading(`Deleting ${domainToDelete}...`);
     try {
@@ -341,8 +355,10 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result?.message || t('domains_del_fail'));
+      
       setDomains((prev) => prev.filter((d) => d.domain !== domainToDelete));
       toast.success(t('domains_del_success'), { id: toastId });
+      setDomainToDelete(null); // Close modal
     } catch (error: any) {
       toast.error(error?.message ?? t('domains_del_fail'), { id: toastId });
     } finally {
@@ -469,7 +485,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDeleteDomain(d.domain)}
+                      onClick={() => initiateDelete(d.domain)}
                       disabled={isLoading}
                       className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
                     >
@@ -507,6 +523,57 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
           </div>
         </CardContent>
       </Card>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <Dialog open={!!domainToDelete} onOpenChange={(open) => {
+        if (!open && !isLoading) setDomainToDelete(null);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Domain
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete 
+              <span className="font-semibold text-foreground"> {domainToDelete} </span> 
+              and remove all associated email addresses and data.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-3 py-3">
+            <Label htmlFor="domain-confirm" className="text-sm font-medium">
+              Type <span className="font-mono bg-muted px-1 rounded">{domainToDelete}</span> to confirm:
+            </Label>
+            <Input
+              id="domain-confirm"
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder={domainToDelete || ""}
+              className="col-span-3"
+              autoComplete="off"
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDomainToDelete(null)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteConfirmation !== domainToDelete || isLoading}
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Domain
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <UpsellModal
         isOpen={isUpsellOpen}

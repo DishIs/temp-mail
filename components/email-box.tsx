@@ -2,20 +2,28 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { getCookie, setCookie } from "cookies-next";
-import { Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck, Star, ListOrdered, Clock, AlertTriangle, EyeOff, Archive, ArchiveRestore, Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck, Lock } from "lucide-react";
+import {
+  Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck,
+  Star, ListOrdered, Clock, EyeOff, Archive, ArchiveRestore,
+  Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck,
+  Lock, ExternalLink
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { QRCodeModal } from "./qr-code-modal";
 import { cn } from "@/lib/utils";
 import { MessageModal } from "./message-modal";
 import { ErrorPopup } from "./error-popup";
 import { DeleteConfirmationModal } from "./delete-confirmation-modal";
 import { ShareDropdown } from "./ShareDropdown";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Session } from "next-auth";
@@ -24,7 +32,7 @@ import { UpsellModal } from "./upsell-modal";
 import { AuthNeed } from "./auth-needed-moda";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 
-// --- TYPES ---
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface Attachment {
   filename: string;
   contentType: string;
@@ -43,143 +51,186 @@ interface Message {
   body?: string;
   hasAttachments?: boolean;
   attachments?: Attachment[];
+  /** Pro-only: extracted by SMTP plugin on server */
+  otp?: string | null;
+  verificationLink?: string | null;
 }
 
-// --- HELPER COMPONENT FOR SPLIT VIEW ---
-const SplitPaneMessageView = ({ 
-  message, 
-  token, 
-  apiEndpoint, 
-  isPro, 
-  onUpsell 
-}: { 
-  message: Message, 
-  token: string | null, 
-  apiEndpoint: string,
-  isPro: boolean,
-  onUpsell: (feature: string) => void
-}) => {
+// ── OTP badge — real code for Pro, blurred •••••• + Crown for others ──────────
+function OtpBadge({
+  otp, isPro, onCopy, onUpsell, copied
+}: { otp: string; isPro: boolean; onCopy: () => void; onUpsell: () => void, copied: boolean }) {
+  if (isPro) {
+    return (
+      <div
+        className="shrink-0 inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 text-[10px] font-mono cursor-pointer hover:bg-emerald-500/20 transition-colors"
+        onClick={(e) => { e.stopPropagation(); onCopy(); }}
+        title="Click to copy OTP"
+      >
+        <span className="font-bold tracking-wider">{otp}</span>
+        {copied ? <Check className="h-2.5 w-2.5"/> : <Copy className="h-2.5 w-2.5" />}
+      </div>
+    );
+  }
+  // Non-pro: blurred tease with Crown → click opens upsell
+  return (
+    <button
+      type="button"
+      className="shrink-0 inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20 text-[10px] font-mono cursor-pointer hover:bg-amber-500/20 transition-colors select-none"
+      onClick={(e) => { e.stopPropagation(); onUpsell(); }}
+      title="Upgrade to Pro to see OTP codes instantly"
+    >
+      <span className="font-bold tracking-widest blur-[4px] pointer-events-none">••••••</span>
+      <Crown className="h-2.5 w-2.5 shrink-0" />
+    </button>
+  );
+}
+
+// ── Verification link badge — clickable link for Pro, locked chip for others ──
+function VerifyLinkBadge({
+  url, isPro, onUpsell,
+}: { url: string; isPro: boolean; onUpsell: () => void }) {
+  if (isPro) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="shrink-0 inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 text-[10px] font-medium cursor-pointer hover:bg-blue-500/20 transition-colors"
+        onClick={(e) => e.stopPropagation()}
+        title="Open verification link"
+      >
+        <span>Verify</span>
+        <ExternalLink className="h-2.5 w-2.5" />
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="shrink-0 inline-flex items-center gap-1 bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border text-[10px] font-medium cursor-pointer hover:bg-muted/80 transition-colors select-none"
+      onClick={(e) => { e.stopPropagation(); onUpsell(); }}
+      title="Upgrade to Pro to see verification links"
+    >
+      <span className="blur-[4px] pointer-events-none">Verify</span>
+      <Crown className="h-2.5 w-2.5 shrink-0 text-amber-500" />
+    </button>
+  );
+}
+
+// ── Split pane ────────────────────────────────────────────────────────────────
+const SplitPaneMessageView = ({
+  message, token, apiEndpoint, isPro, onUpsell,
+}: { message: Message; token: string | null; apiEndpoint: string; isPro: boolean; onUpsell: (f: string) => void }) => {
   const [fullMessage, setFullMessage] = useState<Message | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchFullMessage = useCallback(async (messageId: string) => {
+  const fetchFullMessage = useCallback(async (id: string) => {
     setIsLoading(true);
     try {
-      const headers: Record<string, string> = { 'x-fce-client': 'web-client' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const response = await fetch(`${apiEndpoint}?fullMailboxId=${message.to}&messageId=${messageId}`, { headers });
-      const data = await response.json();
-      if (data.success) setFullMessage(data.data);
-    } catch (error) {
-      console.error('Error fetching full message:', error);
-    } finally {
-      setIsLoading(false);
-    }
+      const headers: Record<string, string> = { "x-fce-client": "web-client" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const r = await fetch(`${apiEndpoint}?fullMailboxId=${message.to}&messageId=${id}`, { headers });
+      const d = await r.json();
+      if (d.success) setFullMessage(d.data);
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
   }, [message.to, token, apiEndpoint]);
 
-  useEffect(() => {
-    setFullMessage(null);
-    fetchFullMessage(message.id);
-  }, [message.id, fetchFullMessage]);
+  useEffect(() => { setFullMessage(null); fetchFullMessage(message.id); }, [message.id, fetchFullMessage]);
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const fmt = (b: number) => {
+    if (!b) return "0 B";
+    const s = ["B", "KB", "MB", "GB"]; const i = Math.floor(Math.log(b) / Math.log(1024));
+    return `${(b / Math.pow(1024, i)).toFixed(1)} ${s[i]}`;
   };
 
-  const handleAttachmentClick = (e: React.MouseEvent, att: Attachment) => {
-    if (!isPro) { e.preventDefault(); onUpsell("Attachments"); }
-  };
-
-  const displayMessage = fullMessage || message;
-
+  const m = fullMessage || message;
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="p-4 border-b">
-        <h2 className="text-xl font-bold mb-2 break-words">{displayMessage.subject}</h2>
-        <div className="grid grid-cols-1 gap-1 text-sm text-muted-foreground">
-          <div className="flex justify-between">
-            <span className="font-semibold text-foreground mr-2">From:</span>
-            <span className="truncate">{displayMessage.from}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-semibold text-foreground mr-2">Date:</span>
-            <span>{new Date(displayMessage.date).toLocaleString()}</span>
-          </div>
+        <h2 className="text-xl font-bold mb-2 break-words">{m.subject}</h2>
+        <div className="grid gap-1 text-sm text-muted-foreground">
+          <div className="flex justify-between"><span className="font-semibold text-foreground mr-2">From:</span><span className="truncate">{m.from}</span></div>
+          <div className="flex justify-between"><span className="font-semibold text-foreground mr-2">Date:</span><span>{new Date(m.date).toLocaleString()}</span></div>
         </div>
       </div>
       <div className="flex-1 overflow-hidden relative min-h-0 bg-white dark:bg-zinc-950">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader className="animate-spin h-6 w-6 mr-2" /> Loading content...
-          </div>
-        ) : displayMessage.html ? (
-          <iframe
-            srcDoc={`<base target="_blank" /><style>body { margin: 0; padding: 1.5rem; font-family: system-ui, -apple-system, sans-serif; word-wrap: break-word; } img { max-width: 100%; height: auto; } ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }</style>${displayMessage.html}`}
-            className="w-full h-full border-none block bg-white"
-            title="Email Content"
-            sandbox="allow-same-origin allow-popups"
-          />
-        ) : (
-          <div className="h-full overflow-y-auto p-6 whitespace-pre-wrap font-sans text-sm">
-            {displayMessage.body || displayMessage.text || "No content."}
-          </div>
-        )}
+        {isLoading
+          ? <div className="flex justify-center items-center h-full text-muted-foreground"><Loader className="animate-spin h-5 w-5 mr-2" />Loading…</div>
+          : m.html
+            ? <iframe srcDoc={`<base target="_blank" /><style>body{margin:0;padding:1.5rem;font-family:system-ui,sans-serif;word-wrap:break-word}img{max-width:100%}</style>${m.html}`} className="w-full h-full border-none" sandbox="allow-same-origin allow-popups" title="Email" />
+            : <div className="h-full overflow-y-auto p-6 whitespace-pre-wrap text-sm">{m.body || m.text || "No content."}</div>
+        }
       </div>
-      {(displayMessage.attachments && displayMessage.attachments.length > 0) ? (
-        <div className="p-3 bg-muted/30 border-t shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold flex items-center gap-2">
-              <Paperclip className="h-3.5 w-3.5" /> Attachments
-            </h3>
-            {!isPro && <span className="text-[10px] text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Pro</span>}
+      {m.attachments?.length
+        ? (
+          <div className="p-3 bg-muted/30 border-t shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" />Attachments</h3>
+              {!isPro && <span className="text-[10px] text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full flex items-center gap-1"><Lock className="h-2.5 w-2.5" />Pro</span>}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {m.attachments.map((att, i) => (
+                <a key={i} href={isPro ? `data:${att.contentType};base64,${att.content}` : "#"} download={isPro ? att.filename : undefined} onClick={(e) => { if (!isPro) { e.preventDefault(); onUpsell("Attachments"); } }} className="flex items-center gap-2 p-1.5 bg-background border rounded hover:bg-accent transition-colors min-w-[150px] max-w-[200px]">
+                  <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0"><Paperclip className="h-3 w-3 text-muted-foreground" /></div>
+                  <div className="flex-grow min-w-0"><p className="font-medium text-xs truncate">{att.filename}</p><p className="text-[10px] text-muted-foreground">{fmt(att.size)}</p></div>
+                </a>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
-            {displayMessage.attachments.map((att, index) => (
-              <a key={index} href={isPro ? `data:${att.contentType};base64,${att.content}` : "#"} download={isPro ? att.filename : undefined} onClick={(e) => handleAttachmentClick(e, att)} className="flex items-center gap-2 p-1.5 bg-background border rounded hover:bg-accent transition-colors min-w-[150px] max-w-[200px] cursor-pointer">
-                <div className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0"><Paperclip className="h-3 w-3 text-muted-foreground" /></div>
-                <div className="flex-grow min-w-0">
-                  <p className="font-medium text-xs truncate">{att.filename}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatBytes(att.size)}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      ) : !isLoading && (
-        <div className="p-1 bg-muted/10 border-t text-[10px] text-center text-muted-foreground">
-          <ShieldCheck className="inline h-3 w-3 mr-1" /> Scanned by DITMail Security
-        </div>
-      )}
+        )
+        : !isLoading && <div className="p-1 bg-muted/10 border-t text-[10px] text-center text-muted-foreground"><ShieldCheck className="inline h-3 w-3 mr-1" />Scanned by DITMail Security</div>
+      }
     </div>
   );
 };
 
+// ── Constants ─────────────────────────────────────────────────────────────────
 const FREE_DOMAINS = [
-  "areueally.info", "ditapi.info",
-  "ditcloud.info", "ditdrive.info", "ditgame.info", "ditlearn.info",
-  "ditpay.info", "ditplay.info", "ditube.info", "junkstopper.info"
+  "areueally.info", "ditapi.info", "ditcloud.info", "ditdrive.info",
+  "ditgame.info", "ditlearn.info", "ditpay.info", "ditplay.info",
+  "ditube.info", "junkstopper.info",
 ];
 
-function generateRandomEmail(domain: string): string {
+function generateRandomEmail(domain: string) {
   const chars = "abcdefghijklmnopqrstuvwxyz";
-  let prefix = "";
-  for (let i = 0; i < 6; i++) prefix += chars[Math.floor(Math.random() * chars.length)];
-  return `${prefix}@${domain}`;
+  return [...Array(6)].map(() => chars[Math.floor(Math.random() * chars.length)]).join("") + "@" + domain;
 }
+
+const getPreferredDomain = (domains: string[], last: string | null) =>
+  (last && domains.includes(last)) ? last : (domains[0] && !FREE_DOMAINS.includes(domains[0]) ? domains[0] : domains[0] || FREE_DOMAINS[0]);
+
+const fmtDate = (s: string) =>
+  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "numeric", hour12: true }).format(new Date(s));
+
+const getExpiry = (dateStr: string, hours: number) => {
+  const d = new Date(dateStr); d.setHours(d.getHours() + hours);
+  const now = new Date(); const diff = d.getTime() - now.getTime();
+  const timeStr = d.toLocaleTimeString("en-GB", { hour: "numeric", minute: "numeric", hour12: true });
+  if (diff <= 0) return "Expired";
+  if (d.getDate() !== now.getDate()) return `Tomorrow at ${timeStr}`;
+  return `Today at ${timeStr}`;
+};
+
+// ── Client-side OTP/link sniffer (for non-pro tease only) ────────────────────
+// Pro users get real values from the SMTP plugin. Non-pro: quick subject scan
+// so the blurred badge still shows up as a feature preview.
+const sniffHasOtp = (subject?: string) => {
+  if (!subject) return false;
+  return (
+    /\b\d{6}\b/.test(subject) ||
+    /(?:code|otp|verification|pin|token)[^0-9]{0,15}\d{4,8}/i.test(subject) ||
+    /\d{4,8}[^0-9]{0,30}(?:code|otp|pin|token)/i.test(subject)
+  );
+};
+const sniffHasVerifyLink = (subject?: string) =>
+  !!subject && /verif|confirm|activat|validat|magic.link|click here/i.test(subject);
 
 const PrivacyAdSide = () => (
   <div className="p-4 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
-    <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
-      <EyeOff className="w-3 h-3" /> Privacy-Safe Ad
-    </div>
-    <div className="text-xs text-muted-foreground">
-      Keeping this service free & private. If we reach our monthly server + operation costs through supports or subscriptions, then no one will see this AD. <br />
-      <span className="font-semibold text-primary">Upgrade to remove.</span>
-    </div>
+    <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1"><EyeOff className="w-3 h-3" />Privacy-Safe Ad</div>
+    <div className="text-xs text-muted-foreground">Keeping this service free & private.<br /><span className="font-semibold text-primary">Upgrade to remove.</span></div>
   </div>
 );
 
@@ -190,93 +241,28 @@ interface EmailBoxProps {
   initialCurrentInbox: string | null;
 }
 
-const getPreferredDomain = (availableDomains: string[], lastUsedDomain: string | null): string => {
-  if (lastUsedDomain && availableDomains.includes(lastUsedDomain)) return lastUsedDomain;
-  const first = availableDomains[0];
-  const isCustom = first && !FREE_DOMAINS.includes(first);
-  return isCustom ? first : (first || FREE_DOMAINS[0]);
-};
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }).format(date);
-};
-
-const getExpirationDate = (dateString: string, hours: number) => {
-  const date = new Date(dateString);
-  date.setHours(date.getHours() + hours);
-  const now = new Date();
-  const diff = date.getTime() - now.getTime();
-  const isTomorrow = date.getDate() !== now.getDate();
-  const timeStr = date.toLocaleTimeString('en-GB', { hour: 'numeric', minute: 'numeric', hour12: true });
-  if (diff <= 0) return "Expired";
-  if (isTomorrow) return `Tomorrow at ${timeStr}`;
-  return `Today at ${timeStr}`;
-};
-
-// ── FIX 3: Improved OTP extractor — handles both "Your code is 123456" and "123456 is your code" ──
-function extractOtp(message: Message): string | null {
-  const subject = message.subject;
-  if (!subject) return null;
-
-  // Pattern 1: keyword then digits ("code: 123456", "OTP is 456789")
-  const afterKeyword = subject.match(/(?:code|otp|verification|verify|pin|token|passcode)[^0-9]{0,10}(\b\d{4,8}\b)/i);
-  if (afterKeyword) return afterKeyword[1];
-
-  // Pattern 2: digits then keyword ("123456 is your code")
-  const beforeKeyword = subject.match(/\b(\d{4,8})\b[^0-9]{0,30}(?:code|otp|verification|verify|pin|token|passcode)/i);
-  if (beforeKeyword) return beforeKeyword[1];
-
-  // Pattern 3: standalone 6-digit number in subject
-  const standalone6 = subject.match(/\b(\d{6})\b/);
-  if (standalone6) return standalone6[1];
-
-  // Pattern 4: standalone 4 or 8 digit numbers
-  const standalone48 = subject.match(/\b(\d{4}|\d{8})\b/);
-  if (standalone48) return standalone48[1];
-
-  return null;
-}
-
-// ── OTP badge component — shared between renderers ──
-function OtpBadge({ otp, onCopy }: { otp: string; onCopy: () => void }) {
-  return (
-    <div
-      className="shrink-0 inline-flex items-center gap-1 bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20 text-[10px] font-mono cursor-pointer hover:bg-green-500/20 transition-colors"
-      onClick={(e) => { e.stopPropagation(); onCopy(); }}
-      title="Click to copy OTP"
-    >
-      <span className="font-bold tracking-wider">{otp}</span>
-      <Copy className="h-2.5 w-2.5" />
-    </div>
-  );
-}
-
-export function EmailBox({
-  initialSession,
-  initialCustomDomains,
-  initialInboxes,
-  initialCurrentInbox
-}: EmailBoxProps) {
-  const t = useTranslations('EmailBox');
+// ── EmailBox ──────────────────────────────────────────────────────────────────
+export function EmailBox({ initialSession, initialCustomDomains, initialInboxes, initialCurrentInbox }: EmailBoxProps) {
+  const t = useTranslations("EmailBox");
   const [session] = useState(initialSession);
   const isAuthenticated = !!session;
   // @ts-ignore
-  const userPlan = session?.user?.plan || 'none';
-  const isPro = userPlan === 'pro';
+  const userPlan = session?.user?.plan || "none";
+  const isPro = userPlan === "pro";
+  const API_ENDPOINT = isAuthenticated ? "/api/private-mailbox" : "/api/public-mailbox";
 
-  const API_ENDPOINT = isAuthenticated ? '/api/private-mailbox' : '/api/public-mailbox';
-
+  // ── State ──
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [emailHistory, setEmailHistory] = useState<string[]>(initialInboxes);
-  const [selectedDomain, setSelectedDomain] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState("");
   const [primaryDomain, setPrimaryDomain] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [otpCopied, setOTPCopied] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -288,507 +274,372 @@ export function EmailBox({
   const [discoveredUpdates, setDiscoveredUpdates] = useState({ newDomains: false });
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
-
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-
-  const [activeTab, setActiveTab] = useState<'all' | 'dismissed'>('all');
+  const [activeTab, setActiveTab] = useState<"all" | "dismissed">("all");
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const [dismissedMessageIds, setDismissedMessageIds] = useState<Set<string>>(new Set());
   const [isStorageLoaded, setIsStorageLoaded] = useState(false);
-
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const [isAuthNeedOpen, setIsAuthNeedOpen] = useState(false);
   const [upsellFeature, setUpsellFeature] = useState("Pro Features");
   const [authNeedFeature, setAuthNeedFeature] = useState("LoggedIn Features");
 
-  // ── FIX 1 & 2: Guard ref — prevents auto-save POST immediately after GET loads settings ──
   const skipNextSettingsSave = useRef(false);
-  // Store original page title to restore when all emails are read
-  const originalTitle = useRef(typeof document !== 'undefined' ? document.title : 'DITMail');
+  const originalTitle = useRef(typeof document !== "undefined" ? document.title : "DITMail");
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const currentEmailRef = useRef("");
+  const sendNotificationRef = useRef<(t: string, b: string) => void>(() => {});
+  const setMessagesRef = useRef(setMessages);
 
-  const openUpsell = (feature: string) => {
-    setUpsellFeature(feature);
-    setIsUpsellOpen(true);
-  };
+  const openUpsell = (feature: string) => { setUpsellFeature(feature); setIsUpsellOpen(true); };
 
   const availableDomains = useMemo(() => {
-    const verifiedCustomDomains = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
-    return [...new Set([...verifiedCustomDomains, ...FREE_DOMAINS])];
+    const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
+    return [...new Set([...custom, ...FREE_DOMAINS])];
   }, [initialCustomDomains]);
 
-  const isSplit = userSettings.layout === 'split' && isPro;
-  const isCompact = userSettings.layout === 'compact';
-  const isZen = userSettings.layout === 'zen';
-  const isMinimal = userSettings.layout === 'minimal';
-  const isClassic = userSettings.layout === 'classic';
-  const isNew = userSettings.layout === 'new';
-  const isMobile = userSettings.layout === 'mobile' && isPro;
-  const isRetro = userSettings.layout === 'retro' && isPro;
+  const isSplit = userSettings.layout === "split" && isPro;
+  const isCompact = userSettings.layout === "compact";
+  const isZen = userSettings.layout === "zen";
+  const isMinimal = userSettings.layout === "minimal";
+  const isClassic = userSettings.layout === "classic";
+  const isMobile = userSettings.layout === "mobile" && isPro;
+  const isRetro = userSettings.layout === "retro" && isPro;
 
-  const updateUserInbox = async (newInbox: string) => {
-    if (!isAuthenticated || !newInbox) return;
-    try {
-      await fetch('/api/user/inboxes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inboxName: newInbox }) });
-    } catch (err) {
-      console.error("Error syncing inbox:", err);
-    }
-  };
+  // ── Inline badges — gated for non-pro ──────────────────────────────────────
+  // Pro: real otp/link from SMTP plugin.
+  // Non-pro: client-side subject sniff shows blurred tease badge that opens upsell.
+  const renderBadges = useCallback((msg: Message) => {
+    const hasOtp = isPro ? !!msg.otp : sniffHasOtp(msg.subject);
+    const hasVerify = isPro ? !!msg.verificationLink : sniffHasVerifyLink(msg.subject);
+    if (!hasOtp && !hasVerify) return null;
+    return (
+      <>
+        {hasOtp && (
+          <OtpBadge
+            otp={msg.otp ?? "??????"}
+            isPro={isPro}
+            onCopy={() => { navigator.clipboard.writeText(msg.otp!); setOTPCopied(true); setTimeout(() => setOTPCopied(false), 2000); }}
+            onUpsell={() => openUpsell("Auto OTP Extraction")}
+            copied={otpCopied}
+          />
+        )}
+        {hasVerify && (
+          <VerifyLinkBadge
+            url={msg.verificationLink ?? "#"}
+            isPro={isPro}
+            onUpsell={() => openUpsell("Verification Link Detection")}
+          />
+        )}
+      </>
+    );
+  }, [isPro]);
 
-  useEffect(() => {
-    const initialize = async () => {
-      await fetchToken();
-      const localHistory: string[] = JSON.parse(localStorage.getItem('emailHistory') || '[]');
-      const lastUsedDomain: string | null = localStorage.getItem('lastUsedDomain');
-      const initialDomain = getPreferredDomain(availableDomains, lastUsedDomain);
-      let effectiveInitialEmail: string | null = null;
-      let historyToDisplay: string[] = [];
+  // ── Persistent WebSocket ────────────────────────────────────────────────────
+  const connectWebSocket = useCallback((mailbox: string) => {
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+    const prev = wsRef.current;
+    if (prev) { prev.onclose = null; if (prev.readyState < 2) prev.close(1000, "mailbox_change"); }
 
+    const ws = new WebSocket(`wss://api2.freecustom.email/?mailbox=${encodeURIComponent(mailbox)}`);
+    wsRef.current = ws;
+    ws.onopen = () => { reconnectAttemptsRef.current = 0; };
+    ws.onmessage = (ev) => {
       try {
-        const savedSettings = localStorage.getItem('userSettings');
-        if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
-      } catch (e) { console.error("Error loading settings", e); }
-
-      try {
-        const savedReadIds = JSON.parse(localStorage.getItem('readMessageIds') || '[]');
-        setReadMessageIds(new Set(savedReadIds));
-        const savedDismissedIds = JSON.parse(localStorage.getItem('dismissedMessageIds') || '[]');
-        setDismissedMessageIds(new Set(savedDismissedIds));
-      } catch (e) {
-        console.error("Error loading local storage state", e);
-      } finally {
-        setIsStorageLoaded(true);
-      }
-
-      if (initialInboxes.length > 0) {
-        historyToDisplay = initialInboxes;
-        effectiveInitialEmail = initialCurrentInbox || initialInboxes[0];
-      } else if (localHistory.length > 0) {
-        historyToDisplay = localHistory;
-        effectiveInitialEmail = localHistory[0];
-      } else {
-        effectiveInitialEmail = generateRandomEmail(initialDomain);
-        historyToDisplay = [effectiveInitialEmail];
-      }
-
-      setEmail(effectiveInitialEmail);
-      setEmailHistory(historyToDisplay);
-      setSelectedDomain(effectiveInitialEmail.split('@')[1]);
+        const d = JSON.parse(ev.data);
+        if (d.type !== "new_mail" || d.mailbox !== currentEmailRef.current) return;
+        const msg: Message = {
+          id: d.id, from: d.from, to: d.to, subject: d.subject, date: d.date,
+          hasAttachments: d.hasAttachment,
+          otp: d.otp ?? null,
+          verificationLink: d.verificationLink ?? null,
+        };
+        setMessagesRef.current(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          sendNotificationRef.current(`New Email from ${msg.from}`, msg.subject || "(No Subject)");
+          return [msg, ...prev];
+        });
+      } catch (_) {}
     };
-    initialize();
+    ws.onerror = () => {};
+    ws.onclose = (ev) => {
+      if (ev.code === 1000) return;
+      const delay = Math.min(500 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
+      reconnectAttemptsRef.current++;
+      reconnectTimerRef.current = setTimeout(() => {
+        if (currentEmailRef.current) connectWebSocket(currentEmailRef.current);
+      }, delay);
+    };
   }, []);
 
-  // ── FIX 2: Fetch settings via GET — mark skipNextSettingsSave so auto-save doesn't fire ──
+  useEffect(() => () => {
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    const ws = wsRef.current;
+    if (ws) { ws.onclose = null; ws.close(1000, "unmount"); }
+  }, []);
+
+  // ── Init ──
   useEffect(() => {
-    const fetchRemoteSettings = async () => {
+    const init = async () => {
+      await fetchToken();
+      const localHistory: string[] = JSON.parse(localStorage.getItem("emailHistory") || "[]");
+      const lastDomain = localStorage.getItem("lastUsedDomain");
+      let initEmail: string;
+      let hist: string[];
+
+      try {
+        const saved = localStorage.getItem("userSettings");
+        if (saved) setUserSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
+      } catch {}
+
+      try {
+        setReadMessageIds(new Set(JSON.parse(localStorage.getItem("readMessageIds") || "[]")));
+        setDismissedMessageIds(new Set(JSON.parse(localStorage.getItem("dismissedMessageIds") || "[]")));
+      } catch {} finally { setIsStorageLoaded(true); }
+
+      if (initialInboxes.length > 0) {
+        hist = initialInboxes; initEmail = initialCurrentInbox || initialInboxes[0];
+      } else if (localHistory.length > 0) {
+        hist = localHistory; initEmail = localHistory[0];
+      } else {
+        const d = getPreferredDomain(availableDomains, lastDomain);
+        initEmail = generateRandomEmail(d); hist = [initEmail];
+      }
+      setEmail(initEmail); setEmailHistory(hist); setSelectedDomain(initEmail.split("@")[1]);
+    };
+    init();
+  }, []);
+
+  // Settings sync
+  useEffect(() => {
+    const fetch_ = async () => {
       if (!isAuthenticated) return;
       try {
-        const response = await fetch('/api/user/settings', { method: 'GET' });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.settings && typeof data.settings === 'object') {
-            // Set the guard BEFORE updating state so the auto-save effect skips this change
+        const r = await fetch("/api/user/settings");
+        if (r.ok) {
+          const d = await r.json();
+          if (d.settings) {
             skipNextSettingsSave.current = true;
-            setUserSettings(prev => ({ ...prev, ...data.settings }));
-            localStorage.setItem('userSettings', JSON.stringify({ ...DEFAULT_SETTINGS, ...data.settings }));
+            setUserSettings(p => ({ ...p, ...d.settings }));
+            localStorage.setItem("userSettings", JSON.stringify({ ...DEFAULT_SETTINGS, ...d.settings }));
           }
         }
-      } catch (e) {
-        console.error("Error fetching settings:", e);
-      }
+      } catch {}
     };
-
-    if (isStorageLoaded) fetchRemoteSettings();
+    if (isStorageLoaded) fetch_();
   }, [isAuthenticated, isStorageLoaded]);
 
-  // ── FIX 1: Auto-save on settings change — skip the change that came from GET ──
   useEffect(() => {
     if (!isStorageLoaded) return;
-
-    // If this change was triggered by the GET response, skip the POST and reset the guard
-    if (skipNextSettingsSave.current) {
-      skipNextSettingsSave.current = false;
-      return;
-    }
-
-    localStorage.setItem('userSettings', JSON.stringify(userSettings));
-
-    if (isAuthenticated) {
-      fetch('/api/user/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userSettings),
-      }).catch(e => console.error("Sync settings failed", e));
-    }
+    if (skipNextSettingsSave.current) { skipNextSettingsSave.current = false; return; }
+    localStorage.setItem("userSettings", JSON.stringify(userSettings));
+    if (isAuthenticated)
+      fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => {});
   }, [userSettings, isStorageLoaded, isAuthenticated]);
 
-  // ── FIX 4: Update document title with unread count ──
+  // Page title unread count
   useEffect(() => {
-    const unreadCount = messages.filter(
-      m => !readMessageIds.has(m.id) && !dismissedMessageIds.has(m.id)
-    ).length;
-
-    if (unreadCount > 0) {
-      document.title = `(${unreadCount}) ${originalTitle.current.replace(/^\(\d+\)\s*/, '')}`;
-    } else {
-      document.title = originalTitle.current.replace(/^\(\d+\)\s*/, '');
-    }
+    const n = messages.filter(m => !readMessageIds.has(m.id) && !dismissedMessageIds.has(m.id)).length;
+    const base = originalTitle.current.replace(/^\(\d+\)\s*/, "");
+    document.title = n > 0 ? `(${n}) ${base}` : base;
   }, [messages, readMessageIds, dismissedMessageIds]);
 
   const sendNotification = (title: string, body: string) => {
-    if (userSettings.sound) {
-      try {
-        const audio = new Audio('/notification.mp3');
-        audio.play().catch(e => console.log("Audio play failed", e));
-      } catch (e) { }
-    }
-    if (userSettings.notifications && document.visibilityState !== "visible") {
-      new Notification(title, { body, icon: '/logo.webp' });
-    }
+    if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => {}); } catch {}
+    if (userSettings.notifications && document.visibilityState !== "visible")
+      new Notification(title, { body, icon: "/logo.webp" });
   };
+  useEffect(() => { sendNotificationRef.current = sendNotification; });
 
-  useEffect(() => {
-    if (isStorageLoaded) localStorage.setItem('readMessageIds', JSON.stringify(Array.from(readMessageIds)));
-  }, [readMessageIds, isStorageLoaded]);
-
-  useEffect(() => {
-    if (isStorageLoaded) localStorage.setItem('dismissedMessageIds', JSON.stringify(Array.from(dismissedMessageIds)));
-  }, [dismissedMessageIds, isStorageLoaded]);
+  useEffect(() => { if (isStorageLoaded) localStorage.setItem("readMessageIds", JSON.stringify([...readMessageIds])); }, [readMessageIds, isStorageLoaded]);
+  useEffect(() => { if (isStorageLoaded) localStorage.setItem("dismissedMessageIds", JSON.stringify([...dismissedMessageIds])); }, [dismissedMessageIds, isStorageLoaded]);
+  useEffect(() => { if (selectedDomain) localStorage.setItem("lastUsedDomain", selectedDomain); }, [selectedDomain]);
 
   useEffect(() => {
     if (!email) return;
-    updateUserInbox(email);
-    const currentLocalHistory: string[] = JSON.parse(localStorage.getItem('emailHistory') || '[]');
-    let newHistory = [email, ...currentLocalHistory.filter(e => e !== email)];
-    if (userPlan === 'free') newHistory = newHistory.slice(0, 7);
-    else if (!isAuthenticated) newHistory = newHistory.slice(0, 5);
-    localStorage.setItem('emailHistory', JSON.stringify(newHistory));
-    setEmailHistory(newHistory);
-  }, [email, session, isAuthenticated, userPlan]);
+    if (!isAuthenticated) return;
+    fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => {});
+    const h: string[] = JSON.parse(localStorage.getItem("emailHistory") || "[]");
+    let next = [email, ...h.filter(e => e !== email)];
+    if (userPlan === "free") next = next.slice(0, 7);
+    else if (!isAuthenticated) next = next.slice(0, 5);
+    localStorage.setItem("emailHistory", JSON.stringify(next));
+    setEmailHistory(next);
+  }, [email, session]);
 
+  // Connect WS + load inbox on email/token change
   useEffect(() => {
-    if (selectedDomain) localStorage.setItem('lastUsedDomain', selectedDomain);
-  }, [selectedDomain]);
-
-  useEffect(() => {
-    if (!email || (isAuthenticated && !token)) return;
+    if (!email) return;
+    if (isAuthenticated && !token) return;
+    currentEmailRef.current = email;
+    connectWebSocket(email);
     refreshInbox();
-    const socket = new WebSocket(`wss://api2.freecustom.email/?mailbox=${email}`);
-    socket.onopen = () => console.log("WebSocket connection established");
-    socket.onmessage = () => refreshInbox();
-    return () => socket.close();
-  }, [email, token, isAuthenticated]);
+  }, [email, token, isAuthenticated, connectWebSocket]); // eslint-disable-line
 
-  const checkSavedMessages = (currentMessages: Message[]) => {
-    const savedIds = new Set<string>();
-    currentMessages.forEach(msg => { if (localStorage.getItem(`saved-msg-${msg.id}`)) savedIds.add(msg.id); });
-    setSavedMessageIds(savedIds);
-  };
-
-  const useHistoryEmail = (historyEmail: string) => {
-    setEmail(historyEmail);
-    setSelectedDomain(historyEmail.split('@')[1]);
-    setIsEditing(false);
-  };
-
-  const deleteEmail = () => {
-    const lastUsedDomain = localStorage.getItem('lastUsedDomain');
-    const domainToUse = getPreferredDomain(availableDomains, lastUsedDomain);
-    const newEmail = generateRandomEmail(domainToUse);
-    setEmail(newEmail);
-    setSelectedDomain(domainToUse);
-    setMessages([]);
-    setReadMessageIds(new Set());
-    setDismissedMessageIds(new Set());
-  };
-
-  const handleDomainChange = (newDomain: string) => {
-    setSelectedDomain(newDomain);
-    const prefix = email.split("@")[0];
-    setEmail(`${prefix}@${newDomain}`);
-  };
-
-  const handleDeleteAction = (type: 'inbox' | 'message', id?: string) => {
-    if (!isAuthenticated && type === 'message') {
-      setAuthNeedFeature('Delete Message Permanently');
-      setIsAuthNeedOpen(true);
-      return;
-    }
-    if (!isPro && type === 'message') { openUpsell('Permanent Deletion'); return; }
-    if (type === 'inbox') {
-      deleteEmail();
-    } else if (type === 'message' && id) {
-      setItemToDelete({ type: 'message', id });
-      setIsDeleteModalOpen(true);
-    }
-  };
-
-  const handleProShortcut = (action: () => void, featureName: string) => {
-    if (isPro) action(); else openUpsell(`Keyboard Shortcut: ${featureName}`);
-  };
-  const handleAuthNeededShortcut = (action: () => void, featureName: string) => {
-    if (isAuthenticated) action(); else { setAuthNeedFeature(`Keyboard Shortcut: ${featureName}`); setIsAuthNeedOpen(true); }
-  };
-
-  const shortcuts = {
-    [userSettings.shortcuts.refresh]: () => handleAuthNeededShortcut(refreshInbox, 'Refresh Inbox'),
-    [userSettings.shortcuts.copy]: () => handleAuthNeededShortcut(copyEmail, 'Copy Email'),
-    [userSettings.shortcuts.delete]: () => handleDeleteAction('inbox'),
-    [userSettings.shortcuts.new]: () => handleProShortcut(changeEmail, "Quick Edit"),
-    [userSettings.shortcuts.qr]: () => setIsQRModalOpen(!isQRModalOpen)
-  };
-
-  useKeyboardShortcuts(shortcuts, 'pro');
-
-  const fetchToken = async (): Promise<string | null> => {
+  const fetchToken = async () => {
     try {
-      const response = await fetch("/api/auth", { method: "POST" });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json() as { token?: string };
-      if (data.token) {
-        setToken(data.token);
-        setCookie("authToken", data.token, { maxAge: 3600 });
-        return data.token;
-      }
-      throw new Error("No token received from server");
-    } catch (error) {
-      return null;
-    }
+      const r = await fetch("/api/auth", { method: "POST" });
+      const d = await r.json() as { token?: string };
+      if (d.token) { setToken(d.token); setCookie("authToken", d.token, { maxAge: 3600 }); return d.token; }
+    } catch {}
+    return null;
   };
 
   const refreshInbox = async () => {
     if (isAuthenticated && !token) return;
     setIsRefreshing(true);
     try {
-      const headers: Record<string, string> = { 'x-fce-client': 'web-client' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const response = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}`, { headers });
-      if (!response.ok) {
-        if (response.status === 429) throw new Error("You are refreshing too fast.");
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const headers: Record<string, string> = { "x-fce-client": "web-client" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}`, { headers });
+      if (!r.ok) throw new Error(r.status === 429 ? "Refreshing too fast." : `HTTP ${r.status}`);
+      const d = await r.json();
+      setShowAttachmentNotice(!!d.wasAttachmentStripped);
+      if (d.success && Array.isArray(d.data)) {
+        const newMsgs = d.data.filter((m: Message) => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
+        if (newMsgs.length > 0 && messages.length > 0) sendNotification(`New Email from ${newMsgs[0].from}`, newMsgs[0].subject || "(No Subject)");
+        setMessages(d.data);
+        const ids = new Set<string>();
+        d.data.forEach((msg: Message) => { if (localStorage.getItem(`saved-msg-${msg.id}`)) ids.add(msg.id); });
+        setSavedMessageIds(ids);
       }
-      const data = await response.json();
-      setShowAttachmentNotice(!!data.wasAttachmentStripped);
-      const typedData = data as { success: boolean; data: Message[]; message?: string };
-      if (typedData.success && Array.isArray(typedData.data)) {
-        const newMsgs = typedData.data.filter(m => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
-        if (newMsgs.length > 0 && messages.length > 0) {
-          const latest = newMsgs[0];
-          sendNotification(`New Email from ${latest.from}`, latest.subject || "(No Subject)");
-        }
-        setMessages(typedData.data);
-        checkSavedMessages(typedData.data);
-      } else {
-        throw new Error(typedData.message || 'Failed to fetch messages');
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsRefreshing(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setIsRefreshing(false); }
   };
 
-  const copyEmail = async () => {
-    await navigator.clipboard.writeText(email);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const copyEmail = async () => { await navigator.clipboard.writeText(email); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
-  const copyOtp = (otp: string) => {
-    navigator.clipboard.writeText(otp);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const toggleSaveMessage = async (message: Message, e: React.MouseEvent) => {
+  const toggleSaveMessage = async (msg: Message, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (userPlan !== 'free') return;
-    const isSaved = savedMessageIds.has(message.id);
-    const messageId = message.id;
-    if (isSaved) {
-      localStorage.removeItem(`saved-msg-${messageId}`);
-      setSavedMessageIds(prev => { const s = new Set(prev); s.delete(messageId); return s; });
+    if (userPlan !== "free") return;
+    if (savedMessageIds.has(msg.id)) {
+      localStorage.removeItem(`saved-msg-${msg.id}`);
+      setSavedMessageIds(p => { const s = new Set(p); s.delete(msg.id); return s; });
     } else {
       try {
-        const headers: Record<string, string> = { 'x-fce-client': 'web-client' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        const response = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${messageId}`, { headers });
-        const data = await response.json();
-        if (data.success) {
-          localStorage.setItem(`saved-msg-${messageId}`, JSON.stringify(data.data));
-          setSavedMessageIds(prev => new Set(prev).add(messageId));
-        } else {
-          setError('Failed to fetch message details for saving.');
-        }
-      } catch (err) {
-        setError(`Error saving message: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
+        const headers: Record<string, string> = { "x-fce-client": "web-client" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${msg.id}`, { headers });
+        const d = await r.json();
+        if (d.success) { localStorage.setItem(`saved-msg-${msg.id}`, JSON.stringify(d.data)); setSavedMessageIds(p => new Set(p).add(msg.id)); }
+        else setError("Failed to save message.");
+      } catch (err) { setError(`Save error: ${err}`); }
     }
   };
 
-  const handleMessageAction = (messageId: string, e: React.MouseEvent) => {
+  const handleMessageAction = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (activeTab === 'dismissed') {
-      setDismissedMessageIds(prev => { const s = new Set(prev); s.delete(messageId); return s; });
-    } else {
-      setDismissedMessageIds(prev => new Set(prev).add(messageId));
-    }
+    if (activeTab === "dismissed") setDismissedMessageIds(p => { const s = new Set(p); s.delete(id); return s; });
+    else setDismissedMessageIds(p => new Set(p).add(id));
   };
 
-  const viewMessage = async (message: Message) => {
-    if (!readMessageIds.has(message.id)) setReadMessageIds(prev => new Set(prev).add(message.id));
-    setSelectedMessage(message);
+  const viewMessage = (msg: Message) => {
+    if (!readMessageIds.has(msg.id)) setReadMessageIds(p => new Set(p).add(msg.id));
+    setSelectedMessage(msg);
     if (!isSplit) setIsMessageModalOpen(true);
   };
 
-  const handleDeleteConfirmation = async () => {
-    if (itemToDelete?.type === 'email') {
-      let domain = localStorage.getItem('primaryDomain') as string;
-      if (!domain || !availableDomains.includes(domain)) domain = availableDomains[Math.floor(Math.random() * availableDomains.length)];
-      const newEmail = generateRandomEmail(domain);
-      setEmail(newEmail);
-      setSelectedDomain(domain);
-      setMessages([]);
-      setReadMessageIds(new Set());
-      setDismissedMessageIds(new Set());
-      if (email && (isAuthenticated ? token : true)) refreshInbox();
-    } else if (itemToDelete?.type === 'message' && itemToDelete.id) {
-      try {
-        const headers: Record<string, string> = { 'x-fce-client': 'web-client' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        const response = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${itemToDelete.id}`, { method: 'DELETE', headers });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json() as { success: boolean; message?: string };
-        if (data.success) {
-          setMessages(messages.filter(m => m.id !== itemToDelete.id));
-        } else {
-          throw new Error(data.message || 'Failed to delete message');
-        }
-      } catch (error) {
-        setError(`Error deleting message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
-    setIsDeleteModalOpen(false);
-    setItemToDelete(null);
+  const deleteEmail = () => {
+    const d = getPreferredDomain(availableDomains, localStorage.getItem("lastUsedDomain"));
+    const ne = generateRandomEmail(d);
+    setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set());
   };
 
-  const handleEmailInputChange = (newPrefix: string) => {
-    newPrefix = newPrefix.toLowerCase().replace(/[^a-z0-9._-]/g, '');
-    setEmail(`${newPrefix}@${selectedDomain}`);
-    setBlockButtons(newPrefix.length === 0);
+  const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
+    if (!isAuthenticated && type === "message") { setAuthNeedFeature("Delete Message"); setIsAuthNeedOpen(true); return; }
+    if (!isPro && type === "message") { openUpsell("Permanent Deletion"); return; }
+    if (type === "inbox") deleteEmail();
+    else if (id) { setItemToDelete({ type: "message", id }); setIsDeleteModalOpen(true); }
+  };
+
+  const handleDeleteConfirmation = async () => {
+    if (itemToDelete?.type === "email") {
+      const d = getPreferredDomain(availableDomains, localStorage.getItem("primaryDomain"));
+      const ne = generateRandomEmail(d);
+      setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set());
+    } else if (itemToDelete?.type === "message" && itemToDelete.id) {
+      try {
+        const headers: Record<string, string> = { "x-fce-client": "web-client" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${itemToDelete.id}`, { method: "DELETE", headers });
+        const d = await r.json();
+        if (d.success) setMessages(msgs => msgs.filter(m => m.id !== itemToDelete.id));
+        else throw new Error(d.message);
+      } catch (err) { setError(`Delete failed: ${err}`); }
+    }
+    setIsDeleteModalOpen(false); setItemToDelete(null);
   };
 
   const changeEmail = () => {
-    if (!isAuthenticated) { setIsAuthNeedOpen(true); setAuthNeedFeature('Update Email'); return; }
+    if (!isAuthenticated) { setIsAuthNeedOpen(true); setAuthNeedFeature("Update Email"); return; }
     if (isEditing) {
-      const [prefix] = email.split('@');
-      if (prefix && prefix.length > 0) {
-        setEmail(`${prefix}@${selectedDomain}`);
-        setIsEditing(false);
-        setReadMessageIds(new Set());
-        setDismissedMessageIds(new Set());
-      } else {
-        setError('Please enter a valid email prefix.');
-      }
-    } else {
-      setIsEditing(true);
-    }
+      const [p] = email.split("@");
+      if (p?.length > 0) { setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); }
+      else setError("Enter a valid email prefix.");
+    } else setIsEditing(true);
   };
 
-  const handlePrimaryDomainChange = (domain: string) => {
-    const current = localStorage.getItem('primaryDomain');
-    if (current === domain) { localStorage.removeItem('primaryDomain'); setPrimaryDomain(null); }
-    else { localStorage.setItem('primaryDomain', domain); setPrimaryDomain(domain); }
-  };
+  const handleProShortcut = (fn: () => void, name: string) => { if (isPro) fn(); else openUpsell(`Keyboard Shortcut: ${name}`); };
+  const handleAuthShortcut = (fn: () => void, name: string) => { if (isAuthenticated) fn(); else { setAuthNeedFeature(`Keyboard Shortcut: ${name}`); setIsAuthNeedOpen(true); } };
 
-  const handleNewDomainUpdates = () => {
-    setDiscoveredUpdates({ newDomains: true });
-    localStorage.setItem('discoveredUpdates', JSON.stringify({ newDomains: true }));
-  };
+  useKeyboardShortcuts({
+    [userSettings.shortcuts.refresh]: () => handleAuthShortcut(refreshInbox, "Refresh"),
+    [userSettings.shortcuts.copy]: () => handleAuthShortcut(copyEmail, "Copy Email"),
+    [userSettings.shortcuts.delete]: () => handleDeleteAction("inbox"),
+    [userSettings.shortcuts.new]: () => handleProShortcut(changeEmail, "Quick Edit"),
+    [userSettings.shortcuts.qr]: () => setIsQRModalOpen(!isQRModalOpen),
+  }, "pro");
 
   const filteredMessages = useMemo(() => {
-    if (activeTab === 'dismissed') return messages.filter(m => dismissedMessageIds.has(m.id));
+    if (activeTab === "dismissed") return messages.filter(m => dismissedMessageIds.has(m.id));
     return messages.filter(m => !dismissedMessageIds.has(m.id));
   }, [messages, activeTab, dismissedMessageIds]);
 
   useEffect(() => {
-    const header = document.querySelector('header');
-    const footer = document.querySelector('footer');
-    const nav = document.querySelector('nav');
-    if (isZen || isRetro) {
-      if (header) header.style.display = 'none';
-      if (footer) footer.style.display = 'none';
-      if (nav) nav.style.display = 'none';
-    } else if (isMinimal) {
-      if (header) header.style.display = 'flex';
-      if (footer) footer.style.display = 'none';
-    } else {
-      if (header) header.style.display = '';
-      if (footer) footer.style.display = '';
-      if (nav) nav.style.display = '';
-    }
-    return () => {
-      if (header) header.style.display = '';
-      if (footer) footer.style.display = '';
-      if (nav) nav.style.display = '';
-    };
+    const h = document.querySelector("header"), f = document.querySelector("footer"), n = document.querySelector("nav");
+    if (isZen || isRetro) { if (h) h.style.display = "none"; if (f) f.style.display = "none"; if (n) n.style.display = "none"; }
+    else if (isMinimal) { if (h) h.style.display = "flex"; if (f) f.style.display = "none"; }
+    else { if (h) h.style.display = ""; if (f) f.style.display = ""; if (n) n.style.display = ""; }
+    return () => { if (h) h.style.display = ""; if (f) f.style.display = ""; if (n) n.style.display = ""; };
   }, [userSettings.layout, isZen, isMinimal, isRetro]);
 
-  // --- RENDERERS ---
-
-  // ── FIX 3: Classic renderer now shows OTP badge ──
+  // ── Renderers ─────────────────────────────────────────────────────────────
   const renderClassicMessageList = () => (
     <div className="overflow-x-auto">
       <Table>
         <TableBody>
           {filteredMessages.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center">
-                <div className="py-12">
-                  <div className="mb-4 flex justify-center"><Mail className="h-12 w-12 text-muted-foreground" /></div>
-                  <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
-                  <div className="text-sm text-muted-foreground">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
+            <tr><td colSpan={4} className="text-center py-12">
+              <Mail className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-base font-medium">{activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}</p>
+              <p className="text-sm text-muted-foreground">{activeTab === "all" ? t("inbox_empty_subtitle") : "Dismissed emails appear here."}</p>
+            </td></tr>
+          ) : filteredMessages.map((msg, i) => (
+            <tr key={msg.id} className={cn("border-b", i % 2 === 0 ? "bg-muted/20" : "bg-background")}>
+              <td className="py-2.5 pl-3 font-medium text-sm truncate max-w-[140px]">{msg.from}</td>
+              <td className="py-2.5 px-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm">{msg.subject}</span>
+                  {renderBadges(msg)}
                 </div>
-              </TableCell>
-            </TableRow>
-          ) : (
-            filteredMessages.map((message, index) => {
-              const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
-              const otp = userSettings.smartOtp ? extractOtp(message) : null;
-              return (
-                <TableRow key={message.id} className={index % 2 === 0 ? 'bg-muted/20' : 'bg-background'}>
-                  <TableCell className="font-medium">{message.from}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span>{message.subject}</span>
-                        {/* ── OTP badge in classic layout ── */}
-                        {otp && (
-                          <OtpBadge otp={otp} onCopy={() => copyOtp(otp)} />
-                        )}
-                      </div>
-                      {!isPro && <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1 mt-0.5"><Clock className="w-2 h-2" /> Expires: {expirationText}</span>}
-                    </div>
-                  </TableCell>
-                  <TableCell>{new Date(message.date).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button variant="link" size="sm" onClick={() => viewMessage(message)}>{t('view')}</Button>
-                      <Button variant="link" size="sm" className="text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteAction('message', message.id); }}>{t('delete')}</Button>
-                      {userPlan === 'free' && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"} onClick={(e) => toggleSaveMessage(message, e)}>
-                          <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" title={activeTab === 'dismissed' ? "Restore" : "Dismiss"} onClick={(e) => handleMessageAction(message.id, e)}>
-                        {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
+                {!isPro && <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1 mt-0.5"><Clock className="w-2 h-2" />Expires: {getExpiry(msg.date, 24)}</span>}
+              </td>
+              <td className="py-2.5 px-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(msg.date).toLocaleString()}</td>
+              <td className="py-2.5 pr-3">
+                <div className="flex items-center gap-1">
+                  <Button variant="link" size="sm" className="h-7 px-2 text-xs" onClick={() => viewMessage(msg)}>{t("view")}</Button>
+                  <Button variant="link" size="sm" className="h-7 px-2 text-xs text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>{t("delete")}</Button>
+                  {userPlan === "free" && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-3.5 w-3.5", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>
+                    {activeTab === "dismissed" ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))}
         </TableBody>
       </Table>
     </div>
@@ -799,154 +650,104 @@ export function EmailBox({
       {filteredMessages.map(msg => (
         <div key={msg.id} onClick={() => viewMessage(msg)} className="bg-card border rounded-lg p-4 shadow-sm active:scale-95 transition-transform flex items-center justify-between">
           <div className="flex flex-col gap-1 overflow-hidden">
-            <span className="font-bold text-lg truncate">{msg.from}</span>
-            <span className="text-sm text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>
-            <span className="text-xs text-muted-foreground/50">{formatDate(msg.date)}</span>
+            <span className="font-bold text-base truncate">{msg.from}</span>
+            <div className="flex items-center gap-2 flex-wrap"><span className="text-sm text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>{renderBadges(msg)}</div>
+            <span className="text-xs text-muted-foreground/50">{fmtDate(msg.date)}</span>
           </div>
-          <ChevronRight className="w-6 h-6 text-muted-foreground/50" />
+          <ChevronRight className="w-5 h-5 text-muted-foreground/50 shrink-0" />
         </div>
       ))}
-      {filteredMessages.length === 0 && <div className="text-center p-10 text-muted-foreground">Empty Inbox</div>}
+      {filteredMessages.length === 0 && <div className="text-center p-10 text-muted-foreground">Empty inbox</div>}
     </div>
   );
 
   const renderRetroMessageList = () => (
-    <div style={{ fontFamily: '"Times New Roman", Times, serif', backgroundColor: 'white', color: 'black', padding: '20px', minHeight: '100vh' }}>
-      <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>Email Box 1.0</h1>
-      <div style={{ marginBottom: '20px' }}>
-        Welcome, <b>{email}</b>. [<a href="#" onClick={(e) => { e.preventDefault(); refreshInbox(); }} style={{ color: 'blue', textDecoration: 'underline' }}>Refresh</a>] [<a href="#" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }} style={{ color: 'blue', textDecoration: 'underline' }}>Settings</a>]
-      </div>
-      <hr style={{ borderTop: '1px solid black', borderBottom: 'none' }} />
-      <ul style={{ listStyleType: 'disc', paddingLeft: '20px', marginTop: '10px' }}>
-        {filteredMessages.length === 0 ? (
-          <li>No messages found on server.</li>
-        ) : (
-          filteredMessages.map(msg => (
-            <li key={msg.id} style={{ marginBottom: '5px' }}>
-              <a href="#" onClick={(e) => { e.preventDefault(); viewMessage(msg); }} style={{ color: 'blue', textDecoration: 'underline', fontSize: '16px' }}>
-                {msg.subject || "(No Subject)"}
-              </a>
-              <span style={{ fontSize: '12px', color: '#555' }}> - From: {msg.from} ({formatDate(msg.date)})</span>
-            </li>
-          ))
-        )}
+    <div style={{ fontFamily: '"Times New Roman",serif', background: "white", color: "black", padding: 20, minHeight: "100vh" }}>
+      <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 10 }}>Email Box 1.0</h1>
+      <div style={{ marginBottom: 20 }}>Welcome, <b>{email}</b>. [<a href="#" onClick={(e) => { e.preventDefault(); refreshInbox(); }} style={{ color: "blue" }}>Refresh</a>] [<a href="#" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }} style={{ color: "blue" }}>Settings</a>]</div>
+      <hr /><ul style={{ listStyle: "disc", paddingLeft: 20, marginTop: 10 }}>
+        {filteredMessages.length === 0 ? <li>No messages.</li> : filteredMessages.map(msg => (
+          <li key={msg.id} style={{ marginBottom: 5 }}>
+            <a href="#" onClick={(e) => { e.preventDefault(); viewMessage(msg); }} style={{ color: "blue" }}>{msg.subject || "(No Subject)"}</a>
+            <span style={{ fontSize: 12, color: "#555" }}> - {msg.from} ({fmtDate(msg.date)})</span>
+          </li>
+        ))}
       </ul>
-      <hr style={{ borderTop: '1px solid black', borderBottom: 'none', marginTop: '20px' }} />
-      <div style={{ fontSize: '10px', marginTop: '10px' }}>Generated by Server at {new Date().toTimeString()}</div>
     </div>
   );
 
   const renderNewMessageList = () => (
     <div className="flex flex-col rounded-xl overflow-hidden bg-background border border-border/50">
       {filteredMessages.length === 0 ? (
-        <div className="py-16 flex flex-col items-center justify-center text-center px-4">
-          <div className="bg-muted/30 p-4 rounded-full mb-4">
-            {activeTab === 'all' ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}
-          </div>
-          <div className="text-lg font-medium">{activeTab === 'all' ? t('inbox_empty_title') : "No dismissed emails"}</div>
-          <div className="text-sm text-muted-foreground max-w-xs">{activeTab === 'all' ? t('inbox_empty_subtitle') : "Emails you dismiss without deleting appear here."}</div>
+        <div className="py-16 flex flex-col items-center text-center px-4">
+          <div className="bg-muted/30 p-4 rounded-full mb-4">{activeTab === "all" ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}</div>
+          <p className="text-base font-medium">{activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}</p>
+          <p className="text-sm text-muted-foreground max-w-xs mt-1">{activeTab === "all" ? t("inbox_empty_subtitle") : "Emails you dismiss appear here."}</p>
         </div>
-      ) : (
-        filteredMessages.map((message) => {
-          const isRead = readMessageIds.has(message.id);
-          const isUnread = !isRead;
-          const isSelected = selectedMessage?.id === message.id;
-          const expirationText = userPlan === 'pro' ? "Permanent" : getExpirationDate(message.date, 24);
-          // ── FIX 3: uses the improved extractOtp ──
-          const otp = userSettings.smartOtp ? extractOtp(message) : null;
-
-          return (
-            <div
-              key={message.id}
-              onClick={() => viewMessage(message)}
-              className={cn(
-                "group relative flex flex-col gap-1 sm:flex-row sm:items-center px-4 border-b last:border-0 cursor-pointer transition-all hover:bg-muted/40",
-                isCompact ? "py-1" : "py-2",
-                isSelected && isSplit ? "bg-primary/5 border-l-4 border-l-primary" : "",
-                isUnread && !isSelected ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
-              )}
-            >
-              {!isCompact && (
-                <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                  {message.from.charAt(1).toUpperCase()}
-                </div>
-              )}
-              <div className="flex-1 min-w-0 flex flex-col">
-                <div className="flex items-center justify-between">
-                  <span className={cn("truncate text-sm", isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
-                    {message.from}
-                  </span>
-                  <span className={cn("text-xs whitespace-nowrap shrink-0", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                    {formatDate(message.date)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn("truncate text-xs flex-1", isUnread ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                    {message.subject || "(No Subject)"}
-                  </span>
-                  {otp && <OtpBadge otp={otp} onCopy={() => copyOtp(otp)} />}
-                </div>
-                {!isCompact && (
-                  <div className="flex items-center justify-between mt-1">
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Storage"); }}>
-                      <Clock className="h-3 w-3" />
-                      <span>{expirationText}</span>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      {userPlan === 'free' && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title={savedMessageIds.has(message.id) ? "Unsave" : "Save to Browser"} onClick={(e) => toggleSaveMessage(message, e)}>
-                          <Star className={cn("h-4 w-4", savedMessageIds.has(message.id) && "fill-amber-500 text-amber-500")} />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Delete Permanently" onClick={(e) => { e.stopPropagation(); handleDeleteAction('message', message.id); }}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" title={activeTab === 'dismissed' ? "Restore" : "Dismiss"} onClick={(e) => handleMessageAction(message.id, e)}>
-                        {activeTab === 'dismissed' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                )}
+      ) : filteredMessages.map((msg) => {
+        const isRead = readMessageIds.has(msg.id);
+        const isSelected = selectedMessage?.id === msg.id;
+        return (
+          <div key={msg.id} onClick={() => viewMessage(msg)}
+            className={cn("group relative flex flex-col gap-1 sm:flex-row sm:items-center px-4 border-b last:border-0 cursor-pointer transition-all hover:bg-muted/40",
+              isCompact ? "py-1" : "py-2",
+              isSelected && isSplit ? "bg-primary/5 border-l-4 border-l-primary" : "",
+              !isRead && !isSelected ? "bg-background" : "bg-muted/5 dark:bg-muted/10"
+            )}>
+            {!isCompact && <div className="hidden sm:flex items-center justify-center h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary font-semibold text-sm">{msg.from.charAt(1).toUpperCase()}</div>}
+            <div className="flex-1 min-w-0 flex flex-col">
+              <div className="flex items-center justify-between">
+                <span className={cn("truncate text-sm", !isRead ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>{msg.from}</span>
+                <span className={cn("text-xs whitespace-nowrap shrink-0", !isRead ? "font-semibold text-foreground" : "text-muted-foreground")}>{fmtDate(msg.date)}</span>
               </div>
+              <div className="flex items-center gap-2">
+                <span className={cn("truncate text-xs flex-1", !isRead ? "font-semibold text-foreground" : "text-muted-foreground")}>{msg.subject || "(No Subject)"}</span>
+                {renderBadges(msg)}
+              </div>
+              {!isCompact && (
+                <div className="flex items-center justify-between mt-1">
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 cursor-pointer" onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Storage"); }}>
+                    <Clock className="h-3 w-3" /><span>{isPro ? "Permanent" : getExpiry(msg.date, 24)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {userPlan === "free" && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-4 w-4", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>{activeTab === "dismissed" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
+                  </div>
+                </div>
+              )}
             </div>
-          );
-        })
-      )}
+          </div>
+        );
+      })}
     </div>
   );
 
-  if (isRetro) {
-    return (
-      <>
-        {renderRetroMessageList()}
-        <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />
-        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(feature: string) => { setAuthNeedFeature(feature); setIsAuthNeedOpen(true); }} />
-      </>
-    );
-  }
+  if (isRetro) return (
+    <>{renderRetroMessageList()}
+      <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(f: string) => { setAuthNeedFeature(f); setIsAuthNeedOpen(true); }} />
+    </>
+  );
 
   return (
-    <Card className={cn("border-dashed", isZen ? "border-0 shadow-none bg-transparent" : "")}>
+    <Card className={cn("border-dashed", isZen && "border-0 shadow-none bg-transparent")}>
       <CardContent className="space-y-2 pt-3">
+        {/* Email input row */}
         <div className="flex items-center gap-2">
           {isEditing ? (
             <div className="flex flex-1 items-center gap-2">
-              <Input value={email.split('@')[0]} onChange={(e) => handleEmailInputChange(e.target.value)} className="flex-1" placeholder={t('placeholder_username')} />
+              <Input value={email.split("@")[0]} onChange={(e) => { const v = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""); setEmail(`${v}@${selectedDomain}`); setBlockButtons(v.length === 0); }} className="flex-1" placeholder={t("placeholder_username")} />
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-1/2 truncate">{selectedDomain || t('select_domain')}</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-white dark:bg-zinc-900 shadow-lg border border-muted z-50 custom-scrollbar">
-                  {availableDomains.map((domain) => {
-                    const isCustom = !FREE_DOMAINS.includes(domain);
+                <DropdownMenuTrigger asChild><Button variant="outline" className="w-1/2 truncate">{selectedDomain || t("select_domain")}</Button></DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-white dark:bg-zinc-900 shadow-lg border border-muted z-50">
+                  {availableDomains.map(d => {
+                    const isCustom = !FREE_DOMAINS.includes(d);
                     return (
-                      <DropdownMenuItem key={domain} onSelect={() => { if (isCustom && !isPro) { openUpsell("Custom Domains"); return; } handleDomainChange(domain); }} className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-muted dark:hover:bg-zinc-800">
-                        <div className="flex items-center gap-2">
-                          {isCustom && <Crown className="h-4 w-4 text-amber-500" />}
-                          <span>{domain}</span>
-                        </div>
-                        <Button title={primaryDomain === domain ? t('unset_primary') : t('set_primary')} variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); if (!isPro) { openUpsell("Priority Domain Settings"); return; } handlePrimaryDomainChange(domain); }} aria-label={`Set ${domain} as primary`} className="hover:bg-transparent">
-                          <Star className={`h-4 w-4 ${primaryDomain === domain ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
+                      <DropdownMenuItem key={d} onSelect={() => { if (isCustom && !isPro) { openUpsell("Custom Domains"); return; } setSelectedDomain(d); setEmail(`${email.split("@")[0]}@${d}`); }} className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer hover:bg-muted">
+                        <div className="flex items-center gap-2">{isCustom && <Crown className="h-4 w-4 text-amber-500" />}<span>{d}</span></div>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); if (!isPro) { openUpsell("Priority Domain"); return; } const c = localStorage.getItem("primaryDomain"); if (c === d) { localStorage.removeItem("primaryDomain"); setPrimaryDomain(null); } else { localStorage.setItem("primaryDomain", d); setPrimaryDomain(d); } }} className="hover:bg-transparent h-7 w-7">
+                          <Star className={cn("h-4 w-4", primaryDomain === d ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground")} />
                         </Button>
                       </DropdownMenuItem>
                     );
@@ -954,23 +755,18 @@ export function EmailBox({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          ) : (
-            <div className="flex-1 rounded-md bg-muted p-2">{email || t('loading')}</div>
-          )}
+          ) : <div className="flex-1 rounded-md bg-muted p-2 text-sm">{email || t("loading")}</div>}
           <TooltipProvider delayDuration={200}>
-            <div className="flex gap-2" role="group" aria-label="Email actions">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon" onClick={copyEmail} className="relative" disabled={blockButtons} aria-label="Copy email address">
-                    <Copy className={cn("h-4 w-4 transition-all", copied && "opacity-0")} />
-                    <span className={cn("absolute inset-0 flex items-center justify-center transition-all", copied ? "opacity-100" : "opacity-0")}><Check className="h-4 w-4" /></span>
-                    <span className="absolute top-[-2px] text-xs right-0 hidden sm:block">C</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>{isAuthenticated ? 'Press C to copy' : 'Login to use shortcuts'}</p></TooltipContent>
-              </Tooltip>
-              <Button className="hidden sm:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons} title={t('show_qr')}><QrCode className="h-4 w-4" /></Button>
-              <Button variant="secondary" size="icon" onClick={() => setIsSettingsOpen(true)} disabled={blockButtons} title="Settings"><Settings className="h-4 w-4" /></Button>
+            <div className="flex gap-2">
+              <Tooltip><TooltipTrigger asChild>
+                <Button variant="secondary" size="icon" onClick={copyEmail} className="relative" disabled={blockButtons}>
+                  <Copy className={cn("h-4 w-4 transition-all", copied && "opacity-0")} />
+                  <span className={cn("absolute inset-0 flex items-center justify-center transition-all", copied ? "opacity-100" : "opacity-0")}><Check className="h-4 w-4" /></span>
+                  <span className="absolute -top-0.5 text-[9px] right-0 hidden sm:block">C</span>
+                </Button>
+              </TooltipTrigger><TooltipContent><p>{isAuthenticated ? "Press C to copy" : "Login to use shortcuts"}</p></TooltipContent></Tooltip>
+              <Button className="hidden sm:flex" variant="secondary" size="icon" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons}><QrCode className="h-4 w-4" /></Button>
+              <Button variant="secondary" size="icon" onClick={() => setIsSettingsOpen(true)} disabled={blockButtons}><Settings className="h-4 w-4" /></Button>
               <ShareDropdown />
             </div>
           </TooltipProvider>
@@ -979,56 +775,16 @@ export function EmailBox({
         {!isZen && (
           <>
             <TooltipProvider delayDuration={200}>
-              <div className="flex gap-2 flex-wrap" role="group" aria-label="Email management actions">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button disabled={blockButtons || isRefreshing} variant="outline" className="flex-1" onClick={refreshInbox} aria-label={isRefreshing ? t('refreshing') : t('refresh')}>
-                      <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-                      <span className="hidden sm:inline">{isRefreshing ? t('refreshing') : t('refresh')}</span>
-                      <Badge variant="outline" className="ml-auto hidden sm:block">R</Badge>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>{isAuthenticated ? 'Press R to refresh' : 'Login to use shortcuts'}</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => { changeEmail(); handleNewDomainUpdates(); }} aria-label={isEditing ? t('save') : t('change')}>
-                      {isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}
-                      <span className="hidden sm:inline">{isEditing ? t('save') : t('change')}</span>
-                      <Badge variant="outline" className="ml-auto hidden sm:block">N</Badge>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>{!isAuthenticated ? 'Login to edit' : isPro ? 'Press N to edit' : 'Shortcut is Pro Only'}</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => handleDeleteAction('inbox')} aria-label={t('delete')}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">{t('delete')}</span>
-                      <Badge variant="outline" className="ml-auto hidden sm:block">D</Badge>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>{!isAuthenticated ? 'Login to use shortcuts' : isPro ? 'Press D to delete' : 'Shortcut is Pro Only'}</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" className="flex-1" onClick={() => { if (isPro) setIsManageModalOpen(true); else openUpsell("Inbox Management"); }} aria-label="Manage all inboxes">
-                      <ListOrdered className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Manage Inboxes</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>View and manage your full inbox history.</p></TooltipContent>
-                </Tooltip>
+              <div className="flex gap-2 flex-wrap">
+                <Tooltip><TooltipTrigger asChild><Button disabled={blockButtons || isRefreshing} variant="outline" className="flex-1" onClick={refreshInbox}><RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} /><span className="hidden sm:inline">{isRefreshing ? t("refreshing") : t("refresh")}</span><Badge variant="outline" className="ml-auto hidden sm:block text-[10px]">R</Badge></Button></TooltipTrigger><TooltipContent><p>Press R to refresh</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => { changeEmail(); setDiscoveredUpdates({ newDomains: true }); }}>{isEditing ? <CheckCheck className="mr-2 h-4 w-4" /> : <Edit className="mr-2 h-4 w-4" />}<span className="hidden sm:inline">{isEditing ? t("save") : t("change")}</span><Badge variant="outline" className="ml-auto hidden sm:block text-[10px]">N</Badge></Button></TooltipTrigger><TooltipContent><p>{!isAuthenticated ? "Login to edit" : isPro ? "Press N" : "Pro only shortcut"}</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button disabled={blockButtons} variant="outline" className="flex-1" onClick={() => handleDeleteAction("inbox")}><Trash2 className="mr-2 h-4 w-4" /><span className="hidden sm:inline">{t("delete")}</span><Badge variant="outline" className="ml-auto hidden sm:block text-[10px]">D</Badge></Button></TooltipTrigger><TooltipContent><p>Press D to delete</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button variant="outline" className="flex-1" onClick={() => { if (isPro) setIsManageModalOpen(true); else openUpsell("Inbox Management"); }}><ListOrdered className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Manage Inboxes</span></Button></TooltipTrigger><TooltipContent><p>View all saved inboxes</p></TooltipContent></Tooltip>
               </div>
             </TooltipProvider>
-
             <div className="flex items-center gap-4 w-full py-2">
-              <button onClick={() => setActiveTab('all')} className={cn("flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center", activeTab === 'all' ? "text-primary border-b-2 pb-2" : "text-muted-foreground")}>
-                <Mail className="h-4 w-4" /> All
-              </button>
-              <button onClick={() => setActiveTab('dismissed')} className={cn("flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary w-1/2 justify-center", activeTab === 'dismissed' ? "text-primary border-b-2 pb-2" : "text-muted-foreground")}>
-                <Archive className="h-4 w-4" /> Dismissed
-              </button>
+              <button onClick={() => setActiveTab("all")} className={cn("flex items-center gap-2 text-sm font-medium w-1/2 justify-center transition-colors", activeTab === "all" ? "text-primary border-b-2 pb-2" : "text-muted-foreground hover:text-primary")}><Mail className="h-4 w-4" />All</button>
+              <button onClick={() => setActiveTab("dismissed")} className={cn("flex items-center gap-2 text-sm font-medium w-1/2 justify-center transition-colors", activeTab === "dismissed" ? "text-primary border-b-2 pb-2" : "text-muted-foreground hover:text-primary")}><Archive className="h-4 w-4" />Dismissed</button>
             </div>
           </>
         )}
@@ -1037,14 +793,10 @@ export function EmailBox({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[600px]">
             <div className="border rounded-xl overflow-hidden overflow-y-auto">{renderNewMessageList()}</div>
             <div className="border rounded-xl overflow-hidden bg-muted/10 h-full flex flex-col">
-              {selectedMessage ? (
-                <SplitPaneMessageView message={selectedMessage} token={token} apiEndpoint={API_ENDPOINT} isPro={isPro} onUpsell={openUpsell} />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                  <Mail className="w-12 h-12 mb-4 opacity-20" />
-                  <p>Select an email to read</p>
-                </div>
-              )}
+              {selectedMessage
+                ? <SplitPaneMessageView message={selectedMessage} token={token} apiEndpoint={API_ENDPOINT} isPro={isPro} onUpsell={openUpsell} />
+                : <div className="flex flex-col items-center justify-center h-full text-muted-foreground"><Mail className="w-12 h-12 mb-4 opacity-20" /><p>Select an email to read</p></div>
+              }
             </div>
           </div>
         ) : isClassic ? renderClassicMessageList()
@@ -1055,42 +807,30 @@ export function EmailBox({
         {!isZen && (
           <div className="mt-8 flex flex-col md:flex-row gap-8">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold mb-2">{t('history_title')}</h3>
-              <ul className="space-y-2">
-                {emailHistory.map((historyEmail, index) => (
-                  <li key={index} className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{historyEmail}</span>
-                    <Button variant="ghost" size="sm" onClick={() => { setEmail(historyEmail); setOldEmailUsed(!oldEmailUsed); }}>{t('history_use')}</Button>
-                  </li>
-                ))}
-              </ul>
+              <h3 className="text-base font-semibold mb-2">{t("history_title")}</h3>
+              <ul className="space-y-2">{emailHistory.map((he, i) => (<li key={i} className="flex items-center justify-between"><span className="text-sm text-muted-foreground truncate">{he}</span><Button variant="ghost" size="sm" onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); }}>{t("history_use")}</Button></li>))}</ul>
             </div>
             {!isPro && <div className="w-full md:w-64 shrink-0"><PrivacyAdSide /></div>}
           </div>
         )}
       </CardContent>
 
-      {!isZen && (
-        <CardHeader>
-          <h2 className="text-xl font-semibold">{t('card_header_title')}</h2>
-          <p className="text-sm text-muted-foreground">{t('card_header_p')}</p>
-        </CardHeader>
-      )}
+      {!isZen && <CardHeader><h2 className="text-xl font-semibold">{t("card_header_title")}</h2><p className="text-sm text-muted-foreground">{t("card_header_p")}</p></CardHeader>}
 
       {showAttachmentNotice && !isZen && (
-        <div className="p-3 mb-4 mx-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 text-center cursor-pointer hover:underline" onClick={() => openUpsell("Large Attachments")}>
-          An email arrived with a large attachment. Upgrade to Pro to view files up to 25MB.
+        <div className="p-3 mb-4 mx-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-zinc-800 dark:text-yellow-300 text-center cursor-pointer hover:underline" onClick={() => openUpsell("Large Attachments")}>
+          A large attachment was stripped. Upgrade to Pro to receive files up to 25 MB.
         </div>
       )}
 
-      <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={useHistoryEmail} />
+      <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); }} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
       <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(feature: string) => { setAuthNeedFeature(feature); setIsAuthNeedOpen(true); }} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(f: string) => { setAuthNeedFeature(f); setIsAuthNeedOpen(true); }} />
       <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />
       <AuthNeed isOpen={isAuthNeedOpen} onClose={() => setIsAuthNeedOpen(false)} featureName={authNeedFeature} />
       {error && <ErrorPopup message={error} onClose={() => setError(null)} />}
-      <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirmation} itemToDelete={itemToDelete?.type === 'email' ? 'email address' : 'message'} />
+      <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirmation} itemToDelete={itemToDelete?.type === "email" ? "email address" : "message"} />
     </Card>
   );
 }

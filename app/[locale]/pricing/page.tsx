@@ -2,277 +2,461 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Shield, Zap, Globe, Crown, ArrowRight, Info, EyeOff, Loader2 } from "lucide-react";
+import {
+  Check, X, Crown, Loader2, EyeOff, Zap, Globe, Link2,
+  Paperclip, Clock, Mail, MessageSquareCode, ExternalLink,
+  ArrowRight, Infinity, Star, MailOpen, Shield, Sparkles
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { ThemeProvider } from "@/components/theme-provider";
-import toast from "react-hot-toast"; 
+import toast from "react-hot-toast";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 
 type BillingCycle = "weekly" | "monthly" | "yearly";
 
-// --- PRIVACY AD COMPONENT ---
-// Accepts translated strings to ensure the sub-component remains pure
-const PrivacyAd = ({ 
-  locationName, 
-  t
-}: { 
-  locationName: string; 
-  t: any 
-}) => (
-  <div className="mt-4 p-3 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 text-center group cursor-pointer hover:bg-muted/50 transition-colors">
-    <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
-      <EyeOff className="w-3 h-3" /> {t('ad_label')}
-    </div>
-    <div className="h-16 flex flex-col items-center justify-center text-sm font-medium text-foreground/80">
-      <span className="font-semibold">{t('ad_title')}</span>
-      <span className="text-xs text-muted-foreground">
-        {t('ad_desc', { location: locationName })}
-      </span>
-    </div>
-  </div>
+// ── Tick / Cross ──────────────────────────────────────────────────────────────
+const Tick = () => (
+  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-500">
+    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+  </span>
+);
+const Cross = () => (
+  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-muted-foreground/25">
+    <X className="w-3 h-3 stroke-2" />
+  </span>
+);
+
+// ── OTP demo chip ─────────────────────────────────────────────────────────────
+const OtpChip = ({ blurred }: { blurred: boolean }) => (
+  <span className={cn(
+    "inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md border select-none",
+    blurred
+      ? "bg-amber-500/10 border-amber-400/20 text-amber-500"
+      : "bg-emerald-500/10 border-emerald-400/20 text-emerald-600 dark:text-emerald-400"
+  )}>
+    {blurred
+      ? <><span className="blur-[4px] tracking-widest">847291</span><Crown className="w-3 h-3 shrink-0" /></>
+      : <><span className="tracking-widest">847291</span><Check className="w-3 h-3" /></>
+    }
+  </span>
+);
+
+// ── Verify link chip ──────────────────────────────────────────────────────────
+const VerifyChip = ({ blurred }: { blurred: boolean }) => (
+  <span className={cn(
+    "inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border font-medium select-none",
+    blurred
+      ? "bg-muted border-border text-muted-foreground"
+      : "bg-blue-500/10 border-blue-400/20 text-blue-500"
+  )}>
+    {blurred
+      ? <><span className="blur-[4px]">Verify →</span><Crown className="w-3 h-3 text-amber-500 shrink-0" /></>
+      : <><span>Verify</span><ExternalLink className="w-2.5 h-2.5" /></>
+    }
+  </span>
+);
+
+// ── Section divider row ───────────────────────────────────────────────────────
+const SectionRow = ({ label }: { label: string }) => (
+  <tr>
+    <td colSpan={4} className="py-2 pl-4 sm:pl-5 bg-muted/40 border-y border-border/40">
+      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{label}</span>
+    </td>
+  </tr>
+);
+
+// ── Feature row ───────────────────────────────────────────────────────────────
+interface FRowProps {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  isNew?: boolean;
+  guest: React.ReactNode | boolean;
+  free: React.ReactNode | boolean;
+  pro: React.ReactNode | boolean;
+}
+const FRow = ({ icon, label, hint, isNew, guest, free, pro }: FRowProps) => {
+  const cell = (v: React.ReactNode | boolean) => {
+    if (v === true) return <div className="flex justify-center"><Tick /></div>;
+    if (v === false) return <div className="flex justify-center"><Cross /></div>;
+    return <div className="flex justify-center items-center">{v}</div>;
+  };
+  return (
+    <tr className="border-b border-border/30 hover:bg-muted/15 transition-colors">
+      <td className="py-3 pl-4 sm:pl-5 pr-3">
+        <div className="flex items-start gap-2.5">
+          <span className="text-muted-foreground mt-0.5 shrink-0">{icon}</span>
+          <div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-sm font-medium leading-snug">{label}</span>
+              {isNew && (
+                <Badge className="h-4 text-[9px] px-1.5 py-0 bg-violet-500/15 text-violet-500 border-violet-400/25 border hover:bg-violet-500/15">
+                  NEW
+                </Badge>
+              )}
+            </div>
+            {hint && <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{hint}</p>}
+          </div>
+        </div>
+      </td>
+      <td className="py-3 text-center">{cell(guest)}</td>
+      <td className="py-3 text-center">{cell(free)}</td>
+      <td className="py-3 pr-4 sm:pr-5 text-center">{cell(pro)}</td>
+    </tr>
+  );
+};
+
+// ── Value text helper ─────────────────────────────────────────────────────────
+const V = ({ v, accent }: { v: string; accent?: boolean }) => (
+  <span className={cn("text-xs font-semibold", accent ? "text-primary" : "text-muted-foreground")}>{v}</span>
 );
 
 export default function PricingPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
-  const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Initialize Translations
-  const t = useTranslations('Pricing');
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
+  const [busy, setBusy] = useState(false);
+  const t = useTranslations("Pricing");
 
-  const handleUpgrade = async (planType: 'free' | 'pro') => {
-    if (planType === 'free') {
-      if (!session) router.push('/auth?callbackUrl=/dashboard');
-      else router.push('/dashboard');
-    } else {
-      // PRO FLOW
-      if (!session) {
-        toast.error(t('toasts.login_req'));
-        router.push('/auth?callbackUrl=/pricing');
-        return;
-      }
+  const isPro = session?.user?.plan === "pro";
+  const isFree = session?.user?.plan === "free";
 
-      if (session.user.plan === 'pro'){
-        toast.success('Already Pro user.')
-        router.push('/dashboard')
-        return;
-      }
-
-      setIsProcessing(true);
-      const toastId = toast.loading(t('toasts.init_payment'));
-
-      try {
-        const res = await fetch('/api/paypal/create-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cycle: billingCycle }),
-        });
-
-        const data = await res.json();
-
-        if (data.error) {
-            toast.error(data.error || t('toasts.payment_fail'), { id: toastId });
-            setIsProcessing(false);
-            return;
-        }
-
-        if (data.url) {
-            toast.success(t('toasts.redirect'), { id: toastId });
-            window.location.href = data.url;
-        } else {
-            toast.error(t('toasts.no_url'), { id: toastId });
-            setIsProcessing(false);
-        }
-
-      } catch (error) {
-        console.error(error);
-        toast.error(t('toasts.conn_err'), { id: toastId });
-        setIsProcessing(false);
-      }
+  const upgrade = async (plan: "free" | "pro") => {
+    if (plan === "free") {
+      router.push(session ? "/dashboard" : "/auth?callbackUrl=/dashboard");
+      return;
     }
+    if (!session) { toast.error(t("toasts.login_req")); router.push("/auth?callbackUrl=/pricing"); return; }
+    if (isPro) { toast.success("You're already Pro!"); router.push("/dashboard"); return; }
+    setBusy(true);
+    const tid = toast.loading(t("toasts.init_payment"));
+    try {
+      const res = await fetch("/api/paypal/create-subscription", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cycle }),
+      });
+      const d = await res.json();
+      if (d.error) { toast.error(d.error || t("toasts.payment_fail"), { id: tid }); setBusy(false); return; }
+      if (d.url) { toast.success(t("toasts.redirect"), { id: tid }); window.location.href = d.url; }
+      else { toast.error(t("toasts.no_url"), { id: tid }); setBusy(false); }
+    } catch { toast.error(t("toasts.conn_err"), { id: tid }); setBusy(false); }
   };
 
-  const pricingMap = {
-    weekly: { price: "$1.99", label: t('unit_week'), savings: null },
-    monthly: { price: "$3.99", label: t('unit_month'), savings: null },
-    yearly: { price: "$19.99", label: t('unit_year'), savings: t('save_msg') },
+  const prices: Record<BillingCycle, { price: string; sub: string; save?: string }> = {
+    weekly:  { price: "$1.99", sub: "/ week" },
+    monthly: { price: "$3.99", sub: "/ month" },
+    yearly:  { price: "$19.99", sub: "/ year", save: "Save 58%" },
   };
+  const { price, sub, save } = prices[cycle];
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="min-h-screen max-w-[100vw] bg-background">
+      <div className="min-h-screen bg-background">
         <AppHeader initialSession={session} />
-        
-        <div className="min-h-screen bg-background text-foreground py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center">
+
+        <div className="py-16 px-4 flex flex-col items-center">
 
           {/* Header */}
-          <div className="text-center max-w-3xl mx-auto mb-10 space-y-4">
-            <Badge variant="secondary" className="mb-4">{t('header_badge')}</Badge>
-            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-              {t('header_title')}
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              {t('header_subtitle')}
+          <div className="text-center max-w-lg mb-10 space-y-3">
+            <Badge variant="secondary" className="text-xs">Simple Pricing</Badge>
+            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mt-2">Plans & Pricing</h1>
+            <p className="text-muted-foreground">Start free. Upgrade for smart features.</p>
+          </div>
+
+          {/* Billing cycle */}
+          <div className="flex flex-col items-center gap-2 mb-10">
+            <Tabs defaultValue="monthly" onValueChange={(v) => setCycle(v as BillingCycle)}>
+              <TabsList className="h-9">
+                <TabsTrigger value="weekly" className="text-xs px-4">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly" className="text-xs px-4">Monthly</TabsTrigger>
+                <TabsTrigger value="yearly" className="text-xs px-4 gap-1.5">
+                  Yearly
+                  <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    -58%
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <p className="text-xs text-muted-foreground">
+              Need to change billing cycle?{" "}
+              <Link href="/contact" className="text-primary underline underline-offset-2 hover:no-underline">
+                Contact us
+              </Link>{" "}
+              — we'll apply your remaining credit.
             </p>
           </div>
 
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center mb-10">
-            <Tabs defaultValue="monthly" className="w-full max-w-md" onValueChange={(v) => setBillingCycle(v as BillingCycle)}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="weekly">{t('cycle_weekly')}</TabsTrigger>
-                <TabsTrigger value="monthly">{t('cycle_monthly')}</TabsTrigger>
-                <TabsTrigger value="yearly">{t('cycle_yearly')}</TabsTrigger>
-              </TabsList>
-            </Tabs>
+          {/* ── Comparison table ── */}
+          <div className="w-full max-w-3xl rounded-2xl border border-border shadow-sm overflow-hidden">
+            <table className="w-full">
+              {/* Plan header */}
+              <thead>
+                <tr className="border-b border-border">
+                  {/* Feature col header */}
+                  <th className="w-[46%] sm:w-[50%] bg-muted/30 py-4 pl-4 sm:pl-5 text-left align-bottom pb-5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Feature
+                    </span>
+                  </th>
+
+                  {/* Guest */}
+                  <th className="bg-muted/20 border-l border-border/40 py-4 px-2 text-center align-top">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Guest</p>
+                    <p className="text-xl font-bold">$0</p>
+                    <p className="text-[10px] text-muted-foreground mb-2">No account</p>
+                    <Button variant="ghost" size="sm" className="h-6 w-full text-[10px]" onClick={() => router.push("/")}>
+                      Try free
+                    </Button>
+                  </th>
+
+                  {/* Free */}
+                  <th className="bg-muted/10 border-l border-border/40 py-4 px-2 text-center align-top">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Free</p>
+                    <p className="text-xl font-bold">$0</p>
+                    <p className="text-[10px] text-muted-foreground mb-2">With account</p>
+                    <Button variant="outline" size="sm" className="h-6 w-full text-[10px]" onClick={() => upgrade("free")}>
+                      {isFree ? "Current" : "Sign up"}
+                    </Button>
+                  </th>
+
+                  {/* Pro */}
+                  <th className="bg-primary/5 border-l border-primary/20 py-4 px-2 text-center align-top relative">
+                    <div className="absolute top-0 inset-x-0 h-0.5 bg-primary rounded-t-sm" />
+                    <div className="flex items-center justify-center gap-1 text-primary mb-1">
+                      <Crown className="w-3 h-3 fill-current" />
+                      <span className="text-[10px] uppercase tracking-wide font-bold">Pro</span>
+                    </div>
+                    <p className="text-xl font-bold">{price}</p>
+                    <p className="text-[10px] text-muted-foreground">{sub}</p>
+                    {save && (
+                      <span className="inline-block bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 mb-1">
+                        {save}
+                      </span>
+                    )}
+                    <div className={save ? "mt-1" : "mt-2"}>
+                      <Button
+                        size="sm"
+                        className="h-6 w-full text-[10px] bg-primary text-primary-foreground hover:opacity-90"
+                        onClick={() => upgrade("pro")}
+                        disabled={busy || isPro}
+                      >
+                        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : isPro ? "Current ✓" : "Upgrade →"}
+                      </Button>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {/* ── Retention ── */}
+                <SectionRow label="Storage & Retention" />
+                <FRow
+                  icon={<Clock className="w-4 h-4" />}
+                  label="Email retention"
+                  hint="How long emails stay on our server"
+                  guest={<V v="12 hours" />}
+                  free={<V v="24 hours" />}
+                  pro={<span className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><Infinity className="w-3.5 h-3.5" /> Forever</span>}
+                />
+                <FRow
+                  icon={<Mail className="w-4 h-4" />}
+                  label="Inbox capacity"
+                  hint="Max emails stored per address"
+                  guest={<V v="20 msgs" />}
+                  free={<V v="50 msgs" />}
+                  pro={<V v="Unlimited" accent />}
+                />
+                <FRow
+                  icon={<Star className="w-4 h-4" />}
+                  label="Saved inboxes"
+                  hint="Addresses remembered across sessions"
+                  guest={<V v="5" />}
+                  free={<V v="7" />}
+                  pro={<V v="Unlimited" accent />}
+                />
+
+                {/* ── Identity ── */}
+                <SectionRow label="Identity & Domains" />
+                <FRow
+                  icon={<MailOpen className="w-4 h-4" />}
+                  label="Custom email prefix"
+                  hint="e.g. yourname@ditmail.info"
+                  guest={false}
+                  free={true}
+                  pro={true}
+                />
+                <FRow
+                  icon={<Globe className="w-4 h-4" />}
+                  label="Custom domain"
+                  hint="Receive mail at your own domain"
+                  guest={false}
+                  free={false}
+                  pro={true}
+                />
+
+                {/* ── Smart Features ── */}
+                <SectionRow label="Smart Features" />
+                <FRow
+                  icon={<MessageSquareCode className="w-4 h-4" />}
+                  label="Auto OTP extraction"
+                  hint="Login codes shown instantly in inbox list"
+                  isNew
+                  guest={false}
+                  free={
+                    <div className="flex flex-col items-center gap-1">
+                      <OtpChip blurred />
+                      <span className="text-[9px] text-muted-foreground">Pro only</span>
+                    </div>
+                  }
+                  pro={<OtpChip blurred={false} />}
+                />
+                <FRow
+                  icon={<Link2 className="w-4 h-4" />}
+                  label="Verification link detection"
+                  hint="One-click verify button extracted from email"
+                  isNew
+                  guest={false}
+                  free={
+                    <div className="flex flex-col items-center gap-1">
+                      <VerifyChip blurred />
+                      <span className="text-[9px] text-muted-foreground">Pro only</span>
+                    </div>
+                  }
+                  pro={<VerifyChip blurred={false} />}
+                />
+                <FRow
+                  icon={<Zap className="w-4 h-4" />}
+                  label="Real-time delivery"
+                  hint="WebSocket push — emails arrive without reloading"
+                  guest={true}
+                  free={true}
+                  pro={true}
+                />
+                <FRow
+                  icon={<Shield className="w-4 h-4" />}
+                  label="Inbox layouts"
+                  hint="Classic, split, compact, zen, mobile & more"
+                  guest={<V v="2 layouts" />}
+                  free={<V v="4 layouts" />}
+                  pro={<V v="All 8" accent />}
+                />
+
+                {/* ── Attachments ── */}
+                <SectionRow label="Attachments & Privacy" />
+                <FRow
+                  icon={<Paperclip className="w-4 h-4" />}
+                  label="Attachment downloads"
+                  guest={false}
+                  free={<V v="Up to 1 MB" />}
+                  pro={<V v="Up to 25 MB" accent />}
+                />
+                <FRow
+                  icon={<Sparkles className="w-4 h-4" />}
+                  label="5 GB email storage"
+                  hint="Persistent email + attachment archive"
+                  guest={false}
+                  free={false}
+                  pro={true}
+                />
+                <FRow
+                  icon={<EyeOff className="w-4 h-4" />}
+                  label="Ad-free"
+                  guest={false}
+                  free={false}
+                  pro={true}
+                />
+              </tbody>
+            </table>
           </div>
 
-          {/* Pricing Cards */}
-          <TooltipProvider>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl w-full mb-16">
-              
-              {/* TIER: NONE */}
-              <Card className="border-muted flex flex-col h-full opacity-90 hover:opacity-100 transition-opacity">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-xl">
-                    {t('plan_guest_title')} <Badge variant="outline">{t('plan_guest_badge')}</Badge>
-                  </CardTitle>
-                  <CardDescription>{t('plan_guest_desc')}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 space-y-4">
-                  <div className="text-3xl font-bold">$0</div>
-                  <ul className="space-y-3 text-sm">
-                    <Feature text={t('features.storage_12h')} />
-                    <Feature text={t('features.random_addr')} />
-                    <Feature text={t('features.no_attach')} unavailable />
-                  </ul>
-                  <PrivacyAd locationName={t('plan_guest_title')} t={t} />
-                </CardContent>
-                <CardFooter>
-                  <Button variant="secondary" className="w-full" onClick={() => router.push('/')}>
-                    {t('plan_guest_btn')}
-                  </Button>
-                </CardFooter>
-              </Card>
+          {/* Billing change note */}
+          <p className="mt-5 text-xs text-center text-muted-foreground max-w-md">
+            Want to switch from <span className="text-foreground font-medium">weekly → monthly</span> or{" "}
+            <span className="text-foreground font-medium">monthly → yearly</span>?{" "}
+            <Link href="/contact" className="text-primary underline underline-offset-2 hover:no-underline inline-flex items-center gap-0.5">
+              Contact us <ArrowRight className="w-3 h-3" />
+            </Link>{" "}
+            and we'll apply your remaining credit to the new plan.
+          </p>
 
-              {/* TIER: FREE */}
-              <Card className="border-muted flex flex-col h-full relative overflow-hidden">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-xl">
-                    {t('plan_free_title')} <Badge variant="secondary">{t('plan_free_badge')}</Badge>
-                  </CardTitle>
-                  <CardDescription>{t('plan_free_desc')}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 space-y-4">
-                  <div className="text-3xl font-bold">$0</div>
-                  <ul className="space-y-3 text-sm">
-                    <Feature text={t('features.storage_24h')} />
-                    <Feature text={t('features.custom_prefix')} />
-                    <Feature text={t('features.browser_save')} />
-                  </ul>
-                  <PrivacyAd locationName={t('plan_free_title')} t={t} />
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full" onClick={() => handleUpgrade('free')}>
-                    {session && session.user.plan === 'free' ? t('plan_free_btn_current') : t('plan_free_btn_create')}
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              {/* TIER: PRO */}
-              <Card className="border-primary border-2 shadow-2xl flex flex-col h-full relative bg-card transform scale-105 z-10">
-                {pricingMap[billingCycle].savings && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
-                    {pricingMap[billingCycle].savings}
-                  </div>
-                )}
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-primary text-2xl">
-                    <Crown className="w-6 h-6 fill-current" /> {t('plan_pro_title')}
-                  </CardTitle>
-                  <CardDescription>{t('plan_pro_desc')}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 space-y-6">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-extrabold">{pricingMap[billingCycle].price}</span>
-                    <span className="text-muted-foreground">{pricingMap[billingCycle].label}</span>
-                  </div>
-
-                  <div className="space-y-4">
-                    <p className="text-sm font-semibold text-muted-foreground">{t('plan_pro_subtitle')}</p>
-                    <ul className="space-y-3 text-sm">
-                      <Feature text={t('features.storage_perm')} />
-                      <Feature text={t('features.custom_domain')} />
-                      <Feature text={t('features.attach_25mb')} />
-                      <Feature text={t('features.unlimited_inbox')} />
-                      <Feature text={t('features.no_ads')} />
-                    </ul>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    size="lg" 
-                    className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white border-0 shadow-lg" 
-                    onClick={() => handleUpgrade('pro')}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Crown className="w-4 h-4 mr-2" />}
-                    {isProcessing ? t('plan_pro_btn_processing') : t('plan_pro_btn')}
-                  </Button>
-                </CardFooter>
-              </Card>
+          {/* Pro CTA */}
+          {!isPro && (
+            <div className="mt-12 w-full max-w-sm">
+              <div className="relative rounded-2xl border border-primary/20 bg-primary/[0.03] p-6 text-center overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5 pointer-events-none" />
+                <Crown className="w-7 h-7 text-primary fill-current mx-auto mb-3" />
+                <h3 className="text-lg font-bold mb-0.5">Go Pro today</h3>
+                <div className="flex items-baseline justify-center gap-1 mb-1">
+                  <span className="text-3xl font-extrabold">{price}</span>
+                  <span className="text-sm text-muted-foreground">{sub}</span>
+                </div>
+                {save && <Badge className="mb-3 bg-emerald-500 text-white border-0 text-[10px]">{save} vs monthly</Badge>}
+                <p className="text-xs text-muted-foreground mb-4">
+                  Auto OTP, verify links, custom domains, unlimited storage, no ads.
+                </p>
+                <Button
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-primary to-violet-600 hover:opacity-90 text-white border-0 shadow-md"
+                  onClick={() => upgrade("pro")}
+                  disabled={busy}
+                >
+                  {busy
+                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Processing…</>
+                    : <><Crown className="w-4 h-4 mr-2 fill-current" />Upgrade to Pro</>
+                  }
+                </Button>
+                <p className="text-[10px] text-muted-foreground mt-2.5">
+                  Cancel anytime.{" "}
+                  <Link href="/contact" className="underline underline-offset-2 hover:text-foreground">
+                    Need a different billing cycle?
+                  </Link>
+                </p>
+              </div>
             </div>
-          </TooltipProvider>
+          )}
 
-          {/* Feature Deep Dive */}
-          <div className="max-w-4xl w-full mt-8">
-            <h2 className="text-2xl font-bold text-center mb-8">{t('faq_title')}</h2>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1">
-                <AccordionTrigger>{t('faq_domain_title')}</AccordionTrigger>
-                <AccordionContent>
-                    {t('faq_domain_desc')}
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-2">
-                <AccordionTrigger>{t('faq_storage_title')}</AccordionTrigger>
-                <AccordionContent>
-                   {t('faq_storage_desc')}
-                </AccordionContent>
-              </AccordionItem>
+          {/* FAQ */}
+          <div className="w-full max-w-2xl mt-14">
+            <h2 className="text-xl font-bold text-center mb-5">FAQ</h2>
+            <Accordion type="single" collapsible className="space-y-2">
+              {[
+                {
+                  id: "otp", q: "How does auto OTP extraction work?",
+                  a: "Our SMTP plugin scans the subject and body the moment an email arrives. It uses layered regex patterns to detect 4–8 digit codes near keywords like 'OTP', 'code', 'verification', and 'pin' — in any order. The code is stored alongside the message and appears instantly in your inbox list. Pro only."
+                },
+                {
+                  id: "verify", q: "What is verification link detection?",
+                  a: "When an email contains a Verify, Confirm, Activate, or Magic Link button, our server extracts the URL from the HTML. You'll see a blue Verify chip in your inbox list — click it to open the link without opening the email. Pro only."
+                },
+                {
+                  id: "domain", q: t("faq_domain_title"), a: t("faq_domain_desc")
+                },
+                {
+                  id: "storage", q: t("faq_storage_title"), a: t("faq_storage_desc")
+                },
+                {
+                  id: "billing", q: "Can I change my billing cycle?",
+                  a: "Yes. We support switching between weekly, monthly, and yearly plans. Contact us with your account email and we'll calculate remaining credit from your current cycle and apply it to the new one. No double charging."
+                },
+              ].map(({ id, q, a }) => (
+                <AccordionItem key={id} value={id} className="border rounded-xl px-4">
+                  <AccordionTrigger className="text-sm font-medium py-3 text-left">{q}</AccordionTrigger>
+                  <AccordionContent className="text-sm text-muted-foreground pb-3 leading-relaxed">{a}</AccordionContent>
+                </AccordionItem>
+              ))}
             </Accordion>
           </div>
+
         </div>
       </div>
     </ThemeProvider>
-  );
-}
-
-function Feature({ text, unavailable, tooltip }: { text: string, unavailable?: boolean, tooltip?: string }) {
-  return (
-    <li className={cn("flex items-center gap-3", unavailable && "text-muted-foreground opacity-70")}>
-      {unavailable ? <X className="w-5 h-5 text-muted-foreground shrink-0" /> : <Check className="w-5 h-5 text-green-500 shrink-0" />}
-      <span className={cn("text-sm flex-1", unavailable && "line-through")}>{text}</span>
-      {tooltip && (
-        <Tooltip>
-          <TooltipTrigger>
-            <Info className="w-4 h-4 text-muted-foreground/50 hover:text-primary transition-colors" />
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p className="max-w-xs">{tooltip}</p>
-          </TooltipContent>
-        </Tooltip>
-      )}
-    </li>
   );
 }

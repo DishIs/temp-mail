@@ -39,7 +39,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.462.0",
     "miniflare": "^4.20250712.0",
-    "next": "^15.5.10",
+    "next": "^15.5.12",
     "next-auth": "^5.0.0-beta.30",
     "next-intl": "^4.3.4",
     "next-sitemap": "^4.2.3",
