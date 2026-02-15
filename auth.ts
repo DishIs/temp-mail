@@ -153,38 +153,10 @@ const config: NextAuthConfig = {
   secret: process.env.AUTH_SECRET,
   trustHost: true,
 
-  cookies: {
-    sessionToken: {
-      name: '__Secure-next-auth.session-token',
-      options: {
-        domain: '.freecustom.email',
-        path: '/',
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: true,
-      },
-    },
-    state: {
-      name: '__Secure-next-auth.state',
-      options: {
-        domain: '.freecustom.email',
-        path: '/',
-        sameSite: 'lax',
-        secure: true,
-        httpOnly: true,
-      },
-    },
-  },
-
   callbacks: {
     async signIn({ user }) {
       await upsertUser({ id: user.id!, email: user.email, name: user.name });
       return true;
-    },
-
-    async redirect({ url }) {
-      if (url.startsWith('https://www.freecustom.email')) return url;
-      return 'https://www.freecustom.email';
     },
 
     async jwt({ token, user }) {
