@@ -62,6 +62,12 @@ export default function PricingPage() {
         return;
       }
 
+      if (session.user.plan === 'pro'){
+        toast.success('Already Pro user.')
+        router.push('/dashboard')
+        return;
+      }
+
       setIsProcessing(true);
       const toastId = toast.loading(t('toasts.init_payment'));
 
@@ -178,7 +184,7 @@ export default function PricingPage() {
                 </CardContent>
                 <CardFooter>
                   <Button variant="outline" className="w-full" onClick={() => handleUpgrade('free')}>
-                    {session ? t('plan_free_btn_current') : t('plan_free_btn_create')}
+                    {session && session.user.plan === 'free' ? t('plan_free_btn_current') : t('plan_free_btn_create')}
                   </Button>
                 </CardFooter>
               </Card>
