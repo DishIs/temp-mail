@@ -180,6 +180,99 @@
     border-top: 1px solid hsl(var(--border));
     margin: 3rem 0;
   }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    table-layout: auto;
+    width: 100%;
+    margin: 2rem 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid hsl(var(--border));
+    font-size: 0.9375rem;
+
+    thead {
+      background-color: hsl(var(--muted));
+      border-bottom: 2px solid hsl(var(--border));
+
+      th {
+        font-weight: 600;
+        color: hsl(var(--foreground));
+        text-align: left;
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+
+        // Subtle sort/column indicator line between headers
+        &:not(:last-child) {
+          border-right: 1px solid hsl(var(--border));
+        }
+      }
+    }
+
+    tbody {
+      tr {
+        border-bottom: 1px solid hsl(var(--border));
+        transition: background-color 0.15s ease;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        &:nth-child(even) {
+          background-color: hsl(var(--muted) / 0.35);
+        }
+
+        &:hover {
+          background-color: hsl(var(--muted) / 0.6);
+        }
+      }
+
+      td {
+        padding: 0.75rem 1rem;
+        color: hsl(var(--foreground));
+        vertical-align: top;
+        line-height: 1.6;
+
+        &:not(:last-child) {
+          border-right: 1px solid hsl(var(--border));
+        }
+
+        // Reset margins on nested elements inside cells
+        p {
+          margin: 0;
+        }
+
+        ul, ol {
+          margin: 0.25rem 0;
+        }
+
+        code {
+          font-size: 0.8125em;
+        }
+      }
+    }
+  }
+
+  // Wrap tables on mobile so they scroll rather than break layout
+  // Usage: wrap your <table> in a <div class="table-wrapper"> on the render side,
+  // OR apply overflow-x:auto directly to the table as a fallback below.
+  @media (max-width: 640px) {
+    table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      // Subtle right-fade shadow hint that the table is scrollable
+      background:
+        linear-gradient(to right, hsl(var(--background)) 0%, transparent 2rem) left center,
+        linear-gradient(to left,  hsl(var(--background)) 0%, transparent 2rem) right center,
+        linear-gradient(to right, hsl(var(--border) / 0.4), transparent) left center,
+        linear-gradient(to left,  hsl(var(--border) / 0.4), transparent) right center;
+      background-size: 3rem 100%, 3rem 100%, 1rem 100%, 1rem 100%;
+      background-attachment: local, local, scroll, scroll;
+      background-repeat: no-repeat;
+    }
+  }
     
   /* Disabled state (if used for editing) */
   &[contenteditable="false"] {
