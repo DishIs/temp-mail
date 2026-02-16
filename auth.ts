@@ -80,33 +80,44 @@ const WYIProvider: OAuthConfig<WYIProfile> = {
   id: 'wyi',
   name: 'WhatsYourInfo',
   type: 'oauth',
+
+  // ✅ Disable PKCE — v5 enables it by default; WYI doesn't support it
+  checks: ['state'],
+
   authorization: {
     url: 'https://whatsyour.info/oauth/authorize',
     params: { scope: 'profile:read email:read' },
   },
+
   token: {
     url: 'https://whatsyour.info/api/v1/oauth/token',
-    // ✅ Fix 2: explicit context type
     async request(context: TokenRequestContext) {
+      // ✅ Build redirect_uri explicitly — don't rely on context.provider.callbackUrl
+      //    which may be undefined in v5's internal context shape
+      const redirectUri = `${process.env.NEXTAUTH_URL}/api/auth/callback/wyi`;
+
       const response = await fetch('https://whatsyour.info/api/v1/oauth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           grant_type: 'authorization_code',
           code: context.params.code,
-          redirect_uri: context.provider.callbackUrl,
+          redirect_uri: redirectUri,
           client_id: context.provider.clientId,
           client_secret: context.provider.clientSecret,
         }),
       });
+
       const tokens = await response.json();
-      if (!response.ok) throw new Error(tokens.error_description || 'Token request failed');
+      if (!response.ok) {
+        throw new Error(tokens.error_description || 'Token request failed');
+      }
       return { tokens };
     },
   },
+
   userinfo: {
     url: 'https://whatsyour.info/api/v1/me',
-    // ✅ Fix 2: explicit context type
     async request(context: UserinfoRequestContext) {
       const response = await fetch('https://whatsyour.info/api/v1/me', {
         headers: {
@@ -115,15 +126,15 @@ const WYIProvider: OAuthConfig<WYIProfile> = {
         },
       });
       if (!response.ok) throw new Error(await response.text());
-      return await response.json();
+      return response.json();
     },
   },
+
   clientId: process.env.WYI_CLIENT_ID,
   clientSecret: process.env.WYI_CLIENT_SECRET,
+
   profile(profile: WYIProfile) {
     return {
-      // ✅ Fix 3: profile._id is string per our interface, but TS sees JSON as
-      // unknown — String() cast guarantees the id field is always a string
       id: String(profile._id),
       name: `${profile.firstName} ${profile.lastName}`.trim(),
       email: profile.email,
@@ -132,7 +143,6 @@ const WYIProvider: OAuthConfig<WYIProfile> = {
     };
   },
 };
-
 // ─── Auth Config ──────────────────────────────────────────────────────────────
 
 const config: NextAuthConfig = {

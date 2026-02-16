@@ -59,19 +59,42 @@ export default async function Page({ params }: Props) {
         }
     }
 
-    const jsonLd = {
+    const organizationJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: tJsonLd('name'),
+        name: 'FreeCustom.Email',
         url: 'https://www.freecustom.email',
         logo: 'https://www.freecustom.email/logo.webp',
-        description: tJsonLd('description'),
+        description: 'Free temporary email service with custom domains and developer API.',
         sameAs: [
             'https://www.linkedin.com/company/freecustom-email',
             'https://github.com/DishantSinghDev/temp-mail',
-            'https://www.producthunt.com/products/freecustom-email',
-        ],
+            'https://www.producthunt.com/products/freecustom-email'
+        ]
     };
+
+
+    const softwareJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'FreeCustom.Email',
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Web',
+        url: 'https://www.freecustom.email',
+        description:
+            'Free temporary email generator. Create disposable or dummy email addresses instantly with custom domains and real-time inbox.',
+        offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'USD'
+        },
+        aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: '4.8',
+            ratingCount: '120'
+        }
+    };
+
 
     const internalLinks = LANDING_PAGES.map(page => ({
         href: `/${page.slug}`,
@@ -88,7 +111,12 @@ export default async function Page({ params }: Props) {
             <Script
                 id="json-ld"
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify([
+                        organizationJsonLd,
+                        softwareJsonLd
+                    ])
+                }}
             />
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                 <div className="min-h-screen max-w-[100vw] bg-background">

@@ -241,12 +241,20 @@ export default async function LandingPage({ params }: Props) {
     url: `${SITE_URL}/${locale}/${slug}`,
     applicationCategory: "UtilityApplication",
     operatingSystem: "Web",
+    description:
+      "Free temporary email generator. Create disposable or dummy email addresses instantly with custom domains and real-time inbox.",
+    image: `${SITE_URL}/logo.webp`,
     offers: {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",
     },
+    potentialAction: {
+      "@type": "UseAction",
+      target: `${SITE_URL}/${locale}/${slug}`
+    }
   };
+
 
   const emailBox = (
     <EmailBox
