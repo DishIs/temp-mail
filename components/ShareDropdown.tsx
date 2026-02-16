@@ -65,7 +65,7 @@ const sharePlatforms = [
 const reviewPlatforms = [
   {
     name: "Product Hunt",
-    href: "https://www.producthunt.com/products/freecustom-email", // Replace with your actual Product Hunt page
+    href: "https://www.producthunt.com/products/fce/reviews/new", // Replace with your actual Product Hunt page
     logo: "/product-hunt.svg",
   },
   {

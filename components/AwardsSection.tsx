@@ -29,6 +29,7 @@ export function AwardsSection() {
               className="w-52"
             />
           </a>
+          <a href="https://www.producthunt.com/products/fce?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-fce" target="_blank" rel="noopener noreferrer"><img alt="FCE - FreeCustom.Email is a temp mail platform | Product Hunt" width="200" height="40" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1079765&amp;theme=light&amp;t=1771253835806" /></a>
         </div>
         
       </div>
