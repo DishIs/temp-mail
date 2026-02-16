@@ -91,7 +91,6 @@ export default async function SinglePostPage({ params }: { params: { slug: strin
                                 {/* Tags Display */}
                                 {post.tags && post.tags.length > 0 && (
                                     <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                                        <TagIcon className="h-3 w-3 text-muted-foreground" />
                                         {post.tags.map(tag => (
                                             <Link key={tag.slug} href={`/blog/tags/${tag.slug}`}>
                                                 <Badge variant="outline" className="text-xs hover:bg-muted cursor-pointer">

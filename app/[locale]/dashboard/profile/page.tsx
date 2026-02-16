@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UpsellModal } from "@/components/upsell-modal";
 import { AppHeader } from "@/components/nLHeader"; 
 import { ThemeProvider } from "@/components/theme-provider";
+import { Session } from "next-auth";
 
 // Interface for User Data
 interface SubscriptionData {
@@ -55,6 +56,7 @@ interface StorageStats {
   storageLimitFormatted: string;
   storageRemaining: number;
   storageRemainingFormatted: string;
+  message: string;
 }
 
 export default function ProfilePage() {
@@ -130,10 +132,10 @@ export default function ProfilePage() {
   };
 
   // Logic to determine Login Provider
-  const getProviderDetails = (user: UserProfile | null) => {
-    if (!user) return { label: "Unknown", icon: null };
+  const getProviderDetails = (session: Session) => {
+    if (!session.user) return { label: "Unknown", icon: null };
     
-    const image = user.image || "";
+    const image = session.user.image || "";
 
     if (image.includes("googleusercontent.com")) {
       return { 
@@ -181,14 +183,14 @@ export default function ProfilePage() {
   }
 
   const isPro = userData?.plan === "pro";
-  const providerDetails = getProviderDetails(userData);
+  const providerDetails = getProviderDetails(session);
   const subStatus = userData?.subscription?.status || "NONE";
   const paymentProviderName = userData?.subscription?.provider === 'paypal' ? "PayPal" : "Payment Provider";
 
   // Use storage data from API, or defaults if loading failed
   const percentUsed = storageData ? parseFloat(storageData.percentUsed) : 0;
-  const usageText = storageData 
-    ? `${storageData.storageUsedFormatted} / ${storageData.storageLimitFormatted}`
+  const usageText = storageData
+    ? `${storageData.storageUsedFormatted || storageData.message} / ${storageData.storageLimitFormatted || storageData.message}`
     : "Loading...";
 
   return (
@@ -228,7 +230,7 @@ export default function ProfilePage() {
                     <Card className="md:col-span-2">
                         <CardHeader className="flex flex-row items-center gap-4">
                             <Avatar className="h-16 w-16 border-2 border-primary/10">
-                                <AvatarImage src={userData?.image || ""} />
+                                <AvatarImage src={session?.user?.image || ""} />
                                 <AvatarFallback className="text-lg bg-primary/5">{userData?.name?.charAt(0) || "U"}</AvatarFallback>
                             </Avatar>
                             <div>

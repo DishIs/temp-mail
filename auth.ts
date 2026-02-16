@@ -59,13 +59,23 @@ interface UserinfoRequestContext {
 // ─── Backend Helper ───────────────────────────────────────────────────────────
 
 async function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
+  // GitHub users often have no public name; fall back to the local part of their
+  // email, then to their provider ID so the server-side required check always passes.
+  const resolvedName =
+    user.name?.trim() ||
+    user.email?.split('@')[0] ||
+    user.id;
+
+  // Same guard for email — some GitHub users expose no verified email.
+  const resolvedEmail = user.email?.trim() || `${user.id}@provider.noemail`;
+
   try {
     await fetchFromServiceAPI('/auth/upsert-user', {
       method: 'POST',
       body: JSON.stringify({
         wyiUserId: user.id,
-        email: user.email,
-        name: user.name,
+        email: resolvedEmail,
+        name: resolvedName,
         plan: 'free',
       }),
     });
@@ -156,7 +166,17 @@ const config: NextAuthConfig = {
     GitHub({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
+      authorization: { params: { scope: 'read:user user:email' } },
+      profile(profile, tokens) {
+        return {
+          id: String(profile.id),
+          name: profile.name ?? profile.login, // login is always present
+          email: profile.email,                // now populated by the scope
+          image: profile.avatar_url,
+        };
+      },
     }),
+
     WYIProvider,
   ],
 
