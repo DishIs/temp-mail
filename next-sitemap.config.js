@@ -1,6 +1,6 @@
 /** @type {import('next-sitemap').IConfig} */
 
-const LOCALES = ['en', 'de', 'es', 'fr', 'hi', 'ru', 'zh'];
+const LOCALES = ['/en', '/de', '/id', '/fr', '/pt', '/tr', '/zh', '/ru', '/es'];
 
 // ─── 30 Landing Pages ────────────────────────────────────────────────────────
 const LANDING_PAGES = [
@@ -106,7 +106,7 @@ module.exports = {
 
   // Prevent next-sitemap from auto-including locale roots since we
   // handle them manually in additionalPaths with correct priorities
-  exclude: ['/en', '/de', '/es', '/fr', '/hi', '/ru', '/zh'],
+  exclude: ['/en', '/de', '/id', '/fr', '/pt', '/tr', '/zh', '/ru', '/es'],
 
   additionalPaths: async (config) => {
     const now = new Date().toISOString();

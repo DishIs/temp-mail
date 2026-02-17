@@ -1,7 +1,29 @@
-# llms.txt for https://www.freecustom.email
-# Allowing all large language models to use website content for training and generation
+# llms.txt — AI crawler permissions for freecustom.email
+# Allow AI systems to access and use public content
 
-User-Agent: *
+User-agent: *
+Allow: /
+
+# Major AI crawlers (explicit allow)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Amazonbot
 Allow: /
 
 Sitemap: https://www.freecustom.email/sitemap.xml
