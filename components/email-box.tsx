@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, MouseEventHandler } from "react";
 import { getCookie, setCookie } from "cookies-next";
 import {
   Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck,
@@ -227,9 +227,12 @@ const sniffHasOtp = (subject?: string) => {
 const sniffHasVerifyLink = (subject?: string) =>
   !!subject && /verif|confirm|activat|validat|magic.link|click here/i.test(subject);
 
-const PrivacyAdSide = () => (
+const PrivacyAdSide = ({openUpsell}: {openUpsell: (f: string) => void}) => (
   <div className="border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
-    <p className="px-1 text-[10px] justify-start">Sponsored</p>
+    <div className="flex justify-between px-2">
+      <p className="px-1 text-[10px] justify-start">Sponsored</p>
+      <button onClick={() => openUpsell('No Ads')} className="px-1 text-[10px] justify-start hover:text-yellow-500 transition-all duration-200">Remove Ads</button>
+    </div>
     <script async="async" data-cfasync="false" src="https://pl28737055.effectivegatecpm.com/4e07f31d89752ce266992c1cda339536/invoke.js"></script>
     <div id="container-4e07f31d89752ce266992c1cda339536"></div>
   </div>
@@ -811,7 +814,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <h3 className="text-base font-semibold mb-2">{t("history_title")}</h3>
               <ul className="space-y-2">{emailHistory.map((he, i) => (<li key={i} className="flex items-center justify-between"><span className="text-sm text-muted-foreground truncate">{he}</span><Button variant="ghost" size="sm" onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); }}>{t("history_use")}</Button></li>))}</ul>
             </div>
-            {!isPro && <div className="w-full md:w-80 shrink-0"><PrivacyAdSide /></div>}
+            {!isPro && <div className="w-full md:w-80 shrink-0"><PrivacyAdSide openUpsell={(f) => openUpsell(f)}/></div>}
           </div>
         )}
       </CardContent>

@@ -7,6 +7,7 @@ import { EyeOff, ShieldCheck, Globe, Zap } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/auth";
+import Link from "next/link";
 
 interface DashboardData {
     customDomains: any[];
@@ -61,7 +62,10 @@ export default async function DashboardPage({
 
                             {!isPro && (
                                 <div className="border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
-                                    <p className="px-1 text-[10px] justify-start">Sponsored</p>
+                                    <div className="flex justify-between px-2">
+                                        <p className="px-1 text-[10px] justify-start">Sponsored</p>
+                                        <Link href={'/pricing'} className="px-1 text-[10px] justify-start hover:text-yellow-500 transition-all duration-200">Remove Ads</Link>
+                                    </div>
                                     <script async="async" data-cfasync="false" src="https://pl28737055.effectivegatecpm.com/4e07f31d89752ce266992c1cda339536/invoke.js"></script>
                                     <div id="container-4e07f31d89752ce266992c1cda339536"></div>
                                 </div>
