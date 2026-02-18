@@ -1,16 +1,16 @@
-// app/pricing/page.tsx
 "use client";
-
 import { useState } from "react";
 import {
   Check, X, Crown, Loader2, EyeOff, Zap, Globe, Link2,
   Paperclip, Clock, Mail, MessageSquareCode, ExternalLink,
-  ArrowRight, Infinity, Star, MailOpen, Shield, Sparkles
+  ArrowRight, Infinity, Star, MailOpen, Shield, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -24,53 +24,43 @@ type BillingCycle = "weekly" | "monthly" | "yearly";
 
 // ── Tick / Cross ──────────────────────────────────────────────────────────────
 const Tick = () => (
-  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-500">
-    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-  </span>
+  <Check className="mx-auto h-4 w-4 text-emerald-500" />
 );
 const Cross = () => (
-  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted text-muted-foreground/25">
-    <X className="w-3 h-3 stroke-2" />
-  </span>
+  <X className="mx-auto h-4 w-4 text-muted-foreground/40" />
 );
 
 // ── OTP demo chip ─────────────────────────────────────────────────────────────
 const OtpChip = ({ blurred }: { blurred: boolean }) => (
-  <span className={cn(
-    "inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md border select-none",
-    blurred
-      ? "bg-amber-500/10 border-amber-400/20 text-amber-500"
-      : "bg-emerald-500/10 border-emerald-400/20 text-emerald-600 dark:text-emerald-400"
-  )}>
-    {blurred
-      ? <><span className="blur-[4px] tracking-widest">847291</span><Crown className="w-3 h-3 shrink-0" /></>
-      : <><span className="tracking-widest">847291</span><Check className="w-3 h-3" /></>
-    }
+  <span
+    className={cn(
+      "inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-50 px-2 py-0.5 text-xs font-mono font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400",
+      blurred && "blur-[3px] select-none",
+    )}
+  >
+    {blurred ? <>847291</> : <>847291</>}
   </span>
 );
 
 // ── Verify link chip ──────────────────────────────────────────────────────────
 const VerifyChip = ({ blurred }: { blurred: boolean }) => (
-  <span className={cn(
-    "inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border font-medium select-none",
-    blurred
-      ? "bg-muted border-border text-muted-foreground"
-      : "bg-blue-500/10 border-blue-400/20 text-blue-500"
-  )}>
-    {blurred
-      ? <><span className="blur-[4px]">Verify →</span><Crown className="w-3 h-3 text-amber-500 shrink-0" /></>
-      : <><span>Verify</span><ExternalLink className="w-2.5 h-2.5" /></>
-    }
+  <span
+    className={cn(
+      "inline-flex items-center gap-1 rounded-full border border-blue-400/40 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
+      blurred && "blur-[3px] select-none",
+    )}
+  >
+    {blurred ? <>Verify →</> : <>Verify</>}
   </span>
 );
 
 // ── Section divider row ───────────────────────────────────────────────────────
 const SectionRow = ({ label }: { label: string }) => (
-  <tr>
-    <td colSpan={4} className="py-2 pl-4 sm:pl-5 bg-muted/40 border-y border-border/40">
-      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{label}</span>
-    </td>
-  </tr>
+  <div className="col-span-full bg-muted/40 px-3 py-1.5">
+    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      {label}
+    </span>
+  </div>
 );
 
 // ── Feature row ───────────────────────────────────────────────────────────────
@@ -83,40 +73,52 @@ interface FRowProps {
   free: React.ReactNode | boolean;
   pro: React.ReactNode | boolean;
 }
+
 const FRow = ({ icon, label, hint, isNew, guest, free, pro }: FRowProps) => {
   const cell = (v: React.ReactNode | boolean) => {
     if (v === true) return <div className="flex justify-center"><Tick /></div>;
     if (v === false) return <div className="flex justify-center"><Cross /></div>;
-    return <div className="flex justify-center items-center">{v}</div>;
+    return <div className="flex justify-center text-center">{v}</div>;
   };
+
   return (
-    <tr className="border-b border-border/30 hover:bg-muted/15 transition-colors">
-      <td className="py-3 pl-4 sm:pl-5 pr-3">
-        <div className="flex items-start gap-2.5">
-          <span className="text-muted-foreground mt-0.5 shrink-0">{icon}</span>
-          <div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm font-medium leading-snug">{label}</span>
-              {isNew && (
-                <Badge className="h-4 text-[9px] px-1.5 py-0 bg-violet-500/15 text-violet-500 border-violet-400/25 border hover:bg-violet-500/15">
-                  NEW
-                </Badge>
-              )}
-            </div>
-            {hint && <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{hint}</p>}
-          </div>
+    /* 
+      Mobile:  3 cols — [feature label takes remaining space] [free] [pro]
+      Desktop: 4 cols — [feature] [guest] [free] [pro]
+      
+      We hide the guest column on mobile via `hidden sm:flex` on the guest cell,
+      and adjust grid-cols accordingly with a responsive class.
+    */
+    <div className="grid grid-cols-[1fr_64px_72px] sm:grid-cols-[1fr_80px_80px_80px] items-center gap-x-1 border-b border-border/50 px-3 py-2.5 last:border-0 hover:bg-muted/20 transition-colors">
+      {/* Feature label */}
+      <div className="min-w-0 pr-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground/70 shrink-0">{icon}</span>
+          <span className="text-sm font-medium leading-snug">{label}</span>
+          {isNew && (
+            <Badge className="h-4 rounded-sm px-1 text-[10px] font-bold uppercase tracking-wide bg-emerald-500 text-white border-0">
+              NEW
+            </Badge>
+          )}
         </div>
-      </td>
-      <td className="py-3 text-center">{cell(guest)}</td>
-      <td className="py-3 text-center">{cell(free)}</td>
-      <td className="py-3 pr-4 sm:pr-5 text-center">{cell(pro)}</td>
-    </tr>
+        {hint && <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug pl-5">{hint}</p>}
+      </div>
+
+      {/* Guest — hidden on mobile */}
+      <div className="hidden sm:flex justify-center">{cell(guest)}</div>
+      {/* Free */}
+      <div className="flex justify-center">{cell(free)}</div>
+      {/* Pro */}
+      <div className="flex justify-center">{cell(pro)}</div>
+    </div>
   );
 };
 
 // ── Value text helper ─────────────────────────────────────────────────────────
 const V = ({ v, accent }: { v: string; accent?: boolean }) => (
-  <span className={cn("text-xs font-semibold", accent ? "text-primary" : "text-muted-foreground")}>{v}</span>
+  <span className={cn("text-xs font-semibold tabular-nums", accent ? "text-primary" : "text-foreground")}>
+    {v}
+  </span>
 );
 
 export default function PricingPage() {
@@ -134,20 +136,41 @@ export default function PricingPage() {
       router.push(session ? "/dashboard" : "/auth?callbackUrl=/dashboard");
       return;
     }
-    if (!session) { toast.error(t("toasts.login_req")); router.push("/auth?callbackUrl=/pricing"); return; }
-    if (isPro) { toast.success("You're already Pro!"); router.push("/dashboard"); return; }
+    if (!session) {
+      toast.error(t("toasts.login_req"));
+      router.push("/auth?callbackUrl=/pricing");
+      return;
+    }
+    if (isPro) {
+      toast.success("You're already Pro!");
+      router.push("/dashboard");
+      return;
+    }
     setBusy(true);
     const tid = toast.loading(t("toasts.init_payment"));
     try {
       const res = await fetch("/api/paypal/create-subscription", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cycle }),
       });
       const d = await res.json();
-      if (d.error) { toast.error(d.error || t("toasts.payment_fail"), { id: tid }); setBusy(false); return; }
-      if (d.url) { toast.success(t("toasts.redirect"), { id: tid }); window.location.href = d.url; }
-      else { toast.error(t("toasts.no_url"), { id: tid }); setBusy(false); }
-    } catch { toast.error(t("toasts.conn_err"), { id: tid }); setBusy(false); }
+      if (d.error) {
+        toast.error(d.error || t("toasts.payment_fail"), { id: tid });
+        setBusy(false);
+        return;
+      }
+      if (d.url) {
+        toast.success(t("toasts.redirect"), { id: tid });
+        window.location.href = d.url;
+      } else {
+        toast.error(t("toasts.no_url"), { id: tid });
+        setBusy(false);
+      }
+    } catch {
+      toast.error(t("toasts.conn_err"), { id: tid });
+      setBusy(false);
+    }
   };
 
   const prices: Record<BillingCycle, { price: string; sub: string; save?: string }> = {
@@ -160,302 +183,316 @@ export default function PricingPage() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-background">
-        <AppHeader initialSession={session} />
+        <AppHeader />
 
-        <div className="py-16 px-4 flex flex-col items-center">
+        <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pb-20 pt-10 sm:pt-16">
 
-          {/* Header */}
-          <div className="text-center max-w-lg mb-10 space-y-3">
-            <Badge variant="secondary" className="text-xs">Simple Pricing</Badge>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mt-2">Plans & Pricing</h1>
-            <p className="text-muted-foreground">Start free. Upgrade for smart features.</p>
+          {/* ── Page heading ── */}
+          <div className="mb-8 sm:mb-10 text-center space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Simple Pricing
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Plans &amp; Pricing</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Start free. Upgrade for smart features.
+            </p>
           </div>
 
-          {/* Billing cycle */}
-          <div className="flex flex-col items-center gap-2 mb-10">
-            <Tabs defaultValue="monthly" onValueChange={(v) => setCycle(v as BillingCycle)}>
+          {/* ── Billing cycle toggle ── */}
+          <div className="mb-6 flex flex-col items-center gap-3">
+            <Tabs value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
               <TabsList className="h-9">
-                <TabsTrigger value="weekly" className="text-xs px-4">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly" className="text-xs px-4">Monthly</TabsTrigger>
-                <TabsTrigger value="yearly" className="text-xs px-4 gap-1.5">
+                <TabsTrigger value="weekly"  className="text-xs sm:text-sm px-3 sm:px-4">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly" className="text-xs sm:text-sm px-3 sm:px-4">Monthly</TabsTrigger>
+                <TabsTrigger value="yearly"  className="text-xs sm:text-sm px-3 sm:px-4">
                   Yearly
-                  <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  <Badge className="ml-1.5 h-4 rounded-sm px-1 text-[10px] font-bold bg-emerald-500 text-white border-0 hidden sm:inline-flex">
                     -58%
-                  </span>
+                  </Badge>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-center text-xs text-muted-foreground max-w-sm px-2">
               Need to change billing cycle?{" "}
-              <Link href="/contact" className="text-primary underline underline-offset-2 hover:no-underline">
+              <Link href="/contact" className="underline underline-offset-2 hover:text-foreground">
                 Contact us
               </Link>{" "}
-              — we'll apply your remaining credit.
+              — we&apos;ll apply your remaining credit.
             </p>
           </div>
 
           {/* ── Comparison table ── */}
-          <div className="w-full max-w-3xl rounded-2xl border border-border shadow-sm overflow-hidden">
-            <table className="w-full">
-              {/* Plan header */}
-              <thead>
-                <tr className="border-b border-border">
-                  {/* Feature col header */}
-                  <th className="w-[46%] sm:w-[50%] bg-muted/30 py-4 pl-4 sm:pl-5 text-left align-bottom pb-5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Feature
-                    </span>
-                  </th>
+          <div className="rounded-xl border border-border overflow-hidden shadow-sm">
 
-                  {/* Guest */}
-                  <th className="bg-muted/20 border-l border-border/40 py-4 px-2 text-center align-top">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Guest</p>
-                    <p className="text-xl font-bold">$0</p>
-                    <p className="text-[10px] text-muted-foreground mb-2">No account</p>
-                    <Button variant="ghost" size="sm" className="h-6 w-full text-[10px]" onClick={() => router.push("/")}>
-                      Try free
-                    </Button>
-                  </th>
+            {/* ── Plan headers ── */}
+            <div className="grid grid-cols-[1fr_64px_72px] sm:grid-cols-[1fr_80px_80px_80px] bg-muted/30 border-b border-border">
+              {/* Feature col */}
+              <div className="px-3 py-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Feature
+              </div>
 
-                  {/* Free */}
-                  <th className="bg-muted/10 border-l border-border/40 py-4 px-2 text-center align-top">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Free</p>
-                    <p className="text-xl font-bold">$0</p>
-                    <p className="text-[10px] text-muted-foreground mb-2">With account</p>
-                    <Button variant="outline" size="sm" className="h-6 w-full text-[10px]" onClick={() => upgrade("free")}>
-                      {isFree ? "Current" : "Sign up"}
-                    </Button>
-                  </th>
+              {/* Guest — hidden on mobile */}
+              <div className="hidden sm:flex flex-col items-center justify-center gap-1 py-3 border-l border-border/50">
+                <span className="text-xs font-bold">Guest</span>
+                <span className="text-[11px] text-muted-foreground">$0</span>
+                <span className="text-[10px] text-muted-foreground leading-tight text-center">No account</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-1 h-6 px-2 text-[11px]"
+                  onClick={() => router.push("/")}
+                >
+                  Try free
+                </Button>
+              </div>
 
-                  {/* Pro */}
-                  <th className="bg-primary/5 border-l border-primary/20 py-4 px-2 text-center align-top relative">
-                    <div className="absolute top-0 inset-x-0 h-0.5 bg-primary rounded-t-sm" />
-                    <div className="flex items-center justify-center gap-1 text-primary mb-1">
-                      <Crown className="w-3 h-3 fill-current" />
-                      <span className="text-[10px] uppercase tracking-wide font-bold">Pro</span>
-                    </div>
-                    <p className="text-xl font-bold">{price}</p>
-                    <p className="text-[10px] text-muted-foreground">{sub}</p>
-                    {save && (
-                      <span className="inline-block bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 mb-1">
-                        {save}
-                      </span>
-                    )}
-                    <div className={save ? "mt-1" : "mt-2"}>
-                      <Button
-                        size="sm"
-                        className="h-6 w-full text-[10px] bg-primary text-primary-foreground hover:opacity-90"
-                        onClick={() => upgrade("pro")}
-                        disabled={busy || isPro}
-                      >
-                        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : isPro ? "Current ✓" : "Upgrade →"}
-                      </Button>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
+              {/* Free */}
+              <div className="flex flex-col items-center justify-center gap-1 py-3 border-l border-border/50">
+                <span className="text-xs font-bold">Free</span>
+                <span className="text-[11px] text-muted-foreground">$0</span>
+                <span className="hidden sm:block text-[10px] text-muted-foreground leading-tight text-center">
+                  With account
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-1 h-6 px-2 text-[11px]"
+                  onClick={() => upgrade("free")}
+                >
+                  {isFree ? "Current" : "Sign up"}
+                </Button>
+              </div>
 
-              <tbody>
-                {/* ── Retention ── */}
-                <SectionRow label="Storage & Retention" />
-                <FRow
-                  icon={<Clock className="w-4 h-4" />}
-                  label="Email retention"
-                  hint="How long emails stay on our server"
-                  guest={<V v="12 hours" />}
-                  free={<V v="24 hours" />}
-                  pro={<span className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><Infinity className="w-3.5 h-3.5" /> Forever</span>}
-                />
-                <FRow
-                  icon={<Mail className="w-4 h-4" />}
-                  label="Inbox capacity"
-                  hint="Max emails stored per address"
-                  guest={<V v="20 msgs" />}
-                  free={<V v="50 msgs" />}
-                  pro={<V v="Unlimited" accent />}
-                />
-                <FRow
-                  icon={<Star className="w-4 h-4" />}
-                  label="Saved inboxes"
-                  hint="Addresses remembered across sessions"
-                  guest={<V v="5" />}
-                  free={<V v="7" />}
-                  pro={<V v="Unlimited" accent />}
-                />
+              {/* Pro */}
+              <div className="flex flex-col items-center justify-center gap-1 py-3 border-l border-border/50 bg-primary/5">
+                <div className="flex items-center gap-1">
+                  <Crown className="h-3 w-3 text-primary" />
+                  <span className="text-xs font-bold text-primary">Pro</span>
+                </div>
+                <span className="text-[11px] font-semibold">{price}</span>
+                <span className="text-[10px] text-muted-foreground">{sub}</span>
+                {save && (
+                  <Badge className="h-4 rounded-sm px-1 text-[9px] sm:text-[10px] font-bold bg-emerald-500 text-white border-0">
+                    {save}
+                  </Badge>
+                )}
+                <Button
+                  size="sm"
+                  className="mt-1 h-6 px-2 text-[11px]"
+                  onClick={() => upgrade("pro")}
+                  disabled={busy || isPro}
+                >
+                  {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : isPro ? "Current ✓" : "Upgrade →"}
+                </Button>
+              </div>
+            </div>
 
-                {/* ── Identity ── */}
-                <SectionRow label="Identity & Domains" />
-                <FRow
-                  icon={<MailOpen className="w-4 h-4" />}
-                  label="Custom email prefix"
-                  hint="e.g. yourname@ditmail.info"
-                  guest={false}
-                  free={true}
-                  pro={true}
-                />
-                <FRow
-                  icon={<Globe className="w-4 h-4" />}
-                  label="Custom domain"
-                  hint="Receive mail at your own domain"
-                  guest={false}
-                  free={false}
-                  pro={true}
-                />
+            {/* ── Retention ── */}
+            <SectionRow label="Retention" />
 
-                {/* ── Smart Features ── */}
-                <SectionRow label="Smart Features" />
-                <FRow
-                  icon={<MessageSquareCode className="w-4 h-4" />}
-                  label="Auto OTP extraction"
-                  hint="Login codes shown instantly in inbox list"
-                  isNew
-                  guest={false}
-                  free={
-                    <div className="flex flex-col items-center gap-1">
-                      <OtpChip blurred />
-                      <span className="text-[9px] text-muted-foreground">Pro only</span>
-                    </div>
-                  }
-                  pro={<OtpChip blurred={false} />}
-                />
-                <FRow
-                  icon={<Link2 className="w-4 h-4" />}
-                  label="Verification link detection"
-                  hint="One-click verify button extracted from email"
-                  isNew
-                  guest={false}
-                  free={
-                    <div className="flex flex-col items-center gap-1">
-                      <VerifyChip blurred />
-                      <span className="text-[9px] text-muted-foreground">Pro only</span>
-                    </div>
-                  }
-                  pro={<VerifyChip blurred={false} />}
-                />
-                <FRow
-                  icon={<Zap className="w-4 h-4" />}
-                  label="Real-time delivery"
-                  hint="WebSocket push — emails arrive without reloading"
-                  guest={true}
-                  free={true}
-                  pro={true}
-                />
-                <FRow
-                  icon={<Shield className="w-4 h-4" />}
-                  label="Inbox layouts"
-                  hint="Classic, split, compact, zen, mobile & more"
-                  guest={<V v="2 layouts" />}
-                  free={<V v="4 layouts" />}
-                  pro={<V v="All 8" accent />}
-                />
+            <FRow
+              icon={<Clock className="h-3.5 w-3.5" />}
+              label="Email retention"
+              hint="How long emails stay on our server"
+              guest={<V v="1 day" />}
+              free={<V v="7 days" />}
+              pro={<V v="Forever" accent />}
+            />
+            <FRow
+              icon={<MailOpen className="h-3.5 w-3.5" />}
+              label="Inbox capacity"
+              hint="Max emails stored per address"
+              guest={<V v="10" />}
+              free={<V v="50" />}
+              pro={<V v="∞" accent />}
+            />
+            <FRow
+              icon={<Star className="h-3.5 w-3.5" />}
+              label="Saved inboxes"
+              hint="Addresses remembered across sessions"
+              guest={<V v="1" />}
+              free={<V v="5" />}
+              pro={<V v="∞" accent />}
+            />
 
-                {/* ── Attachments ── */}
-                <SectionRow label="Attachments & Privacy" />
-                <FRow
-                  icon={<Paperclip className="w-4 h-4" />}
-                  label="Attachment downloads"
-                  guest={false}
-                  free={<V v="Up to 1 MB" />}
-                  pro={<V v="Up to 25 MB" accent />}
-                />
-                <FRow
-                  icon={<Sparkles className="w-4 h-4" />}
-                  label="5 GB email storage"
-                  hint="Persistent email + attachment archive"
-                  guest={false}
-                  free={false}
-                  pro={true}
-                />
-                <FRow
-                  icon={<EyeOff className="w-4 h-4" />}
-                  label="Ad-free"
-                  guest={false}
-                  free={false}
-                  pro={true}
-                />
-              </tbody>
-            </table>
+            {/* ── Identity ── */}
+            <SectionRow label="Identity" />
+
+            <FRow
+              icon={<Mail className="h-3.5 w-3.5" />}
+              label="Custom email prefix"
+              hint="e.g. yourname@ditmail.info"
+              guest={false}
+              free={true}
+              pro={true}
+            />
+            <FRow
+              icon={<Globe className="h-3.5 w-3.5" />}
+              label="Custom domain"
+              hint="Receive mail at your own domain"
+              guest={false}
+              free={false}
+              pro={true}
+            />
+
+            {/* ── Smart Features ── */}
+            <SectionRow label="Smart Features" />
+
+            <FRow
+              icon={<Zap className="h-3.5 w-3.5" />}
+              label="Auto OTP extraction"
+              hint="Login codes shown instantly in inbox list"
+              isNew
+              guest={false}
+              free={
+                <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
+                  Pro only
+                </span>
+              }
+              pro={true}
+            />
+            <FRow
+              icon={<Link2 className="h-3.5 w-3.5" />}
+              label="Verification link detection"
+              hint="One-click verify button extracted from email"
+              isNew
+              guest={false}
+              free={
+                <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
+                  Pro only
+                </span>
+              }
+              pro={true}
+            />
+            <FRow
+              icon={<MessageSquareCode className="h-3.5 w-3.5" />}
+              label="Real-time delivery"
+              hint="WebSocket push — emails arrive without reloading"
+              guest={true}
+              free={true}
+              pro={true}
+            />
+            <FRow
+              icon={<Sparkles className="h-3.5 w-3.5" />}
+              label="Inbox layouts"
+              hint="Classic, split, compact, zen, mobile & more"
+              guest={<V v="1" />}
+              free={<V v="3" />}
+              pro={<V v="All" accent />}
+            />
+
+            {/* ── Attachments ── */}
+            <SectionRow label="Storage & Extras" />
+
+            <FRow
+              icon={<Paperclip className="h-3.5 w-3.5" />}
+              label="Attachment downloads"
+              guest={false}
+              free={<V v="Limited" />}
+              pro={true}
+            />
+            <FRow
+              icon={<Shield className="h-3.5 w-3.5" />}
+              label="5 GB email storage"
+              hint="Persistent email + attachment archive"
+              guest={false}
+              free={false}
+              pro={true}
+            />
+            <FRow
+              icon={<EyeOff className="h-3.5 w-3.5" />}
+              label="Ad-free"
+              guest={false}
+              free={false}
+              pro={true}
+            />
           </div>
 
-          {/* Billing change note */}
-          <p className="mt-5 text-xs text-center text-muted-foreground max-w-md">
-            Want to switch from <span className="text-foreground font-medium">weekly → monthly</span> or{" "}
-            <span className="text-foreground font-medium">monthly → yearly</span>?{" "}
-            <Link href="/contact" className="text-primary underline underline-offset-2 hover:no-underline inline-flex items-center gap-0.5">
-              Contact us <ArrowRight className="w-3 h-3" />
-            </Link>{" "}
-            and we'll apply your remaining credit to the new plan.
+          {/* Guest column note on mobile */}
+          <p className="mt-2 text-center text-[11px] text-muted-foreground sm:hidden">
+            * Guest plan available without an account.{" "}
+            <button onClick={() => router.push("/")} className="underline underline-offset-2">
+              Try it free →
+            </button>
           </p>
 
-          {/* Pro CTA */}
+          {/* ── Billing change note ── */}
+          <p className="mt-4 text-center text-xs text-muted-foreground px-2">
+            Want to switch from weekly → monthly or monthly → yearly?{" "}
+            <Link href="/contact" className="underline underline-offset-2 hover:text-foreground">
+              Contact us
+            </Link>{" "}
+            and we&apos;ll apply your remaining credit to the new plan.
+          </p>
+
+          {/* ── Pro CTA banner ── */}
           {!isPro && (
-            <div className="mt-12 w-full max-w-sm">
-              <div className="relative rounded-2xl border border-primary/20 bg-primary/[0.03] p-6 text-center overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5 pointer-events-none" />
-                <Crown className="w-7 h-7 text-primary fill-current mx-auto mb-3" />
-                <h3 className="text-lg font-bold mb-0.5">Go Pro today</h3>
-                <div className="flex items-baseline justify-center gap-1 mb-1">
-                  <span className="text-3xl font-extrabold">{price}</span>
-                  <span className="text-sm text-muted-foreground">{sub}</span>
+            <div className="mt-10 rounded-xl border border-primary/20 bg-primary/5 p-6 sm:p-8 text-center space-y-4">
+              <Crown className="mx-auto h-8 w-8 text-primary" />
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold">Go Pro today</h2>
+                <div className="mt-1 flex flex-wrap items-baseline justify-center gap-1.5">
+                  <span className="text-3xl sm:text-4xl font-extrabold">{price}</span>
+                  <span className="text-base text-muted-foreground">{sub}</span>
+                  {save && (
+                    <Badge className="rounded-sm px-1.5 bg-emerald-500 text-white border-0 text-xs">
+                      {save} vs monthly
+                    </Badge>
+                  )}
                 </div>
-                {save && <Badge className="mb-3 bg-emerald-500 text-white border-0 text-[10px]">{save} vs monthly</Badge>}
-                <p className="text-xs text-muted-foreground mb-4">
-                  Auto OTP, verify links, custom domains, unlimited storage, no ads.
-                </p>
-                <Button
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-primary to-violet-600 hover:opacity-90 text-white border-0 shadow-md"
-                  onClick={() => upgrade("pro")}
-                  disabled={busy}
-                >
-                  {busy
-                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Processing…</>
-                    : <><Crown className="w-4 h-4 mr-2 fill-current" />Upgrade to Pro</>
-                  }
-                </Button>
-                <p className="text-[10px] text-muted-foreground mt-2.5">
-                  Cancel anytime.{" "}
-                  <Link href="/contact" className="underline underline-offset-2 hover:text-foreground">
-                    Need a different billing cycle?
-                  </Link>
-                </p>
               </div>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                Auto OTP, verify links, custom domains, unlimited storage, no ads.
+              </p>
+              <Button
+                size="lg"
+                className="w-full sm:w-auto px-8"
+                onClick={() => upgrade("pro")}
+                disabled={busy}
+              >
+                {busy ? <>Processing…</> : <>Upgrade to Pro</>}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Cancel anytime.{" "}
+                <Link href="/contact" className="underline underline-offset-2">
+                  Need a different billing cycle?
+                </Link>
+              </p>
             </div>
           )}
 
-          {/* FAQ */}
-          <div className="w-full max-w-2xl mt-14">
-            <h2 className="text-xl font-bold text-center mb-5">FAQ</h2>
+          {/* ── FAQ ── */}
+          <div className="mt-14">
+            <h2 className="mb-5 text-center text-xl sm:text-2xl font-bold">FAQ</h2>
             <Accordion type="single" collapsible className="space-y-2">
               {[
                 {
-                  id: "otp", q: "How does auto OTP extraction work?",
-                  a: "Our SMTP plugin scans the subject and body the moment an email arrives. It uses layered regex patterns to detect 4–8 digit codes near keywords like 'OTP', 'code', 'verification', and 'pin' — in any order. The code is stored alongside the message and appears instantly in your inbox list. Pro only."
+                  id: "otp",
+                  q: "How does auto OTP extraction work?",
+                  a: "Our SMTP plugin scans the subject and body the moment an email arrives. It uses layered regex patterns to detect 4–8 digit codes near keywords like 'OTP', 'code', 'verification', and 'pin' — in any order. The code is stored alongside the message and appears instantly in your inbox list. Pro only.",
                 },
                 {
-                  id: "verify", q: "What is verification link detection?",
-                  a: "When an email contains a Verify, Confirm, Activate, or Magic Link button, our server extracts the URL from the HTML. You'll see a blue Verify chip in your inbox list — click it to open the link without opening the email. Pro only."
+                  id: "verify",
+                  q: "What is verification link detection?",
+                  a: "When an email contains a Verify, Confirm, Activate, or Magic Link button, our server extracts the URL from the HTML. You'll see a blue Verify chip in your inbox list — click it to open the link without opening the email. Pro only.",
                 },
+                { id: "domain",  q: t("faq_domain_title"),  a: t("faq_domain_desc") },
+                { id: "storage", q: t("faq_storage_title"), a: t("faq_storage_desc") },
                 {
-                  id: "domain", q: t("faq_domain_title"), a: t("faq_domain_desc")
-                },
-                {
-                  id: "storage", q: t("faq_storage_title"), a: t("faq_storage_desc")
-                },
-                {
-                  id: "billing", q: "Can I change my billing cycle?",
-                  a: "Yes. We support switching between weekly, monthly, and yearly plans. Contact us with your account email and we'll calculate remaining credit from your current cycle and apply it to the new one. No double charging."
+                  id: "billing",
+                  q: "Can I change my billing cycle?",
+                  a: "Yes. We support switching between weekly, monthly, and yearly plans. Contact us with your account email and we'll calculate remaining credit from your current cycle and apply it to the new one. No double charging.",
                 },
               ].map(({ id, q, a }) => (
-                <AccordionItem key={id} value={id} className="border rounded-xl px-4">
-                  <AccordionTrigger className="text-sm font-medium py-3 text-left">{q}</AccordionTrigger>
-                  <AccordionContent className="text-sm text-muted-foreground pb-3 leading-relaxed">{a}</AccordionContent>
+                <AccordionItem key={id} value={id} className="rounded-lg border border-border px-4">
+                  <AccordionTrigger className="text-sm sm:text-base text-left">{q}</AccordionTrigger>
+                  <AccordionContent className="text-sm text-muted-foreground">{a}</AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
           </div>
 
-        </div>
+        </main>
       </div>
     </ThemeProvider>
   );

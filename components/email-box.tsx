@@ -227,13 +227,13 @@ const sniffHasOtp = (subject?: string) => {
 const sniffHasVerifyLink = (subject?: string) =>
   !!subject && /verif|confirm|activat|validat|magic.link|click here/i.test(subject);
 
-const PrivacyAdSide = ({openUpsell}: {openUpsell: (f: string) => void}) => (
+const PrivacyAdSide = ({ openUpsell }: { openUpsell: (f: string) => void }) => (
   <div className="border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
     <div className="flex justify-between px-2">
       <p className="px-1 text-[10px] justify-start">Sponsored</p>
-      <button onClick={() => openUpsell('No Ads')} className="px-1 text-[10px] justify-start hover:text-yellow-500 transition-all duration-200">Remove Ads</button>
+      <button onClick={() => openUpsell('AD Free')} className="px-1 text-[10px] justify-start hover:text-yellow-500 transition-all duration-200">Remove Ads</button>
     </div>
-    <script async="async" data-cfasync="false" src="https://pl28737055.effectivegatecpm.com/4e07f31d89752ce266992c1cda339536/invoke.js"></script>
+    <script async data-cfasync="false" src="https://pl28737055.effectivegatecpm.com/4e07f31d89752ce266992c1cda339536/invoke.js"></script>
     <div id="container-4e07f31d89752ce266992c1cda339536"></div>
   </div>
 );
@@ -312,6 +312,20 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const isClassic = userSettings.layout === "classic";
   const isMobile = userSettings.layout === "mobile" && isPro;
   const isRetro = userSettings.layout === "retro" && isPro;
+
+
+  // for ADS
+  const lastAdRefreshRef = useRef<number>(0);
+  const AD_REFRESH_COOLDOWN_MS = 30_000;
+
+  const tryRefreshAd = useCallback(() => {
+    const now = Date.now();
+    if (now - lastAdRefreshRef.current >= AD_REFRESH_COOLDOWN_MS) {
+      lastAdRefreshRef.current = now;
+      window.location.reload();
+    }
+  }, []);
+
 
   // ── Inline badges — gated for non-pro ──────────────────────────────────────
   // Pro: real otp/link from SMTP plugin.
@@ -511,7 +525,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         setSavedMessageIds(ids);
       }
     } catch (e) { console.error(e); }
-    finally { setIsRefreshing(false); }
+    finally {
+      setIsRefreshing(false);
+    }
+
   };
 
   const copyEmail = async () => { await navigator.clipboard.writeText(email); setCopied(true); setTimeout(() => setCopied(false), 2000); };
@@ -550,6 +567,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     const d = getPreferredDomain(availableDomains, localStorage.getItem("lastUsedDomain"));
     const ne = generateRandomEmail(d);
     setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set());
+    tryRefreshAd();
   };
 
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
@@ -814,7 +832,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <h3 className="text-base font-semibold mb-2">{t("history_title")}</h3>
               <ul className="space-y-2">{emailHistory.map((he, i) => (<li key={i} className="flex items-center justify-between"><span className="text-sm text-muted-foreground truncate">{he}</span><Button variant="ghost" size="sm" onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); }}>{t("history_use")}</Button></li>))}</ul>
             </div>
-            {!isPro && <div className="w-full md:w-80 shrink-0"><PrivacyAdSide openUpsell={(f) => openUpsell(f)}/></div>}
+            {!isPro && <div className="w-full md:w-80 shrink-0"><PrivacyAdSide openUpsell={(f) => openUpsell(f)} /></div>}
           </div>
         )}
       </CardContent>
