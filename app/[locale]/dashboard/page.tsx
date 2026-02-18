@@ -37,7 +37,7 @@ export default async function DashboardPage({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <div className="min-h-screen max-w-[100vw] bg-background">
                 <AppHeader initialSession={session} />
-                
+
                 <main className="container mx-auto px-4 py-8">
                     {/* Page Header */}
                     <div className="flex flex-col gap-2 mb-8 text-center max-w-2xl mx-auto">
@@ -49,34 +49,28 @@ export default async function DashboardPage({
 
                     {/* Functional Managers */}
                     <div className="grid gap-8 max-w-6xl mx-auto lg:grid-cols-2">
-                        <CustomDomainManager 
-                            initialDomains={data.customDomains} 
-                            isPro={isPro} 
+                        <CustomDomainManager
+                            initialDomains={data.customDomains}
+                            isPro={isPro}
                         />
                         <div className="space-y-8">
-                            <MuteListManager 
-                                initialSenders={data.mutedSenders} 
-                                isPro={isPro} 
+                            <MuteListManager
+                                initialSenders={data.mutedSenders}
+                                isPro={isPro}
                             />
-                            
+
                             {!isPro && (
-                                <div className="w-full p-6 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center">
-                                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground uppercase tracking-widest mb-2">
-                                        <EyeOff className="w-4 h-4" /> {t('ad_label')}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t('ad_text')} <br/>
-                                        <span className="font-semibold text-primary cursor-pointer hover:underline">
-                                            {t('ad_upgrade')}
-                                        </span>
-                                    </p>
+                                <div className="border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
+                                    <p className="px-1 text-[10px] justify-start">Sponsored</p>
+                                    <script async="async" data-cfasync="false" src="https://pl28737055.effectivegatecpm.com/4e07f31d89752ce266992c1cda339536/invoke.js"></script>
+                                    <div id="container-4e07f31d89752ce266992c1cda339536"></div>
                                 </div>
                             )}
                         </div>
                     </div>
 
                     {/* Informational / Marketing Content */}
-                   {!isPro && <div className="mt-16 max-w-5xl mx-auto space-y-8">
+                    {!isPro && <div className="mt-16 max-w-5xl mx-auto space-y-8">
                         <div className="text-center space-y-4">
                             <h2 className="text-2xl font-bold">{t('info_title')}</h2>
                             <p className="text-muted-foreground max-w-2xl mx-auto">

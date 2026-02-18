@@ -68,7 +68,7 @@ function OtpBadge({
         title="Click to copy OTP"
       >
         <span className="font-bold tracking-wider">{otp}</span>
-        {copied ? <Check className="h-2.5 w-2.5"/> : <Copy className="h-2.5 w-2.5" />}
+        {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
       </div>
     );
   }
@@ -228,9 +228,10 @@ const sniffHasVerifyLink = (subject?: string) =>
   !!subject && /verif|confirm|activat|validat|magic.link|click here/i.test(subject);
 
 const PrivacyAdSide = () => (
-  <div className="p-4 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
-    <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1"><EyeOff className="w-3 h-3" />Privacy-Safe Ad</div>
-    <div className="text-xs text-muted-foreground">Keeping this service free & private.<br /><span className="font-semibold text-primary">Upgrade to remove.</span></div>
+  <div className="border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
+    <p className="px-1 text-[10px] justify-start">Sponsored</p>
+    <script async="async" data-cfasync="false" src="https://pl28737055.effectivegatecpm.com/4e07f31d89752ce266992c1cda339536/invoke.js"></script>
+    <div id="container-4e07f31d89752ce266992c1cda339536"></div>
   </div>
 );
 
@@ -291,7 +292,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const currentEmailRef = useRef("");
-  const sendNotificationRef = useRef<(t: string, b: string) => void>(() => {});
+  const sendNotificationRef = useRef<(t: string, b: string) => void>(() => { });
   const setMessagesRef = useRef(setMessages);
 
   const openUpsell = (feature: string) => { setUpsellFeature(feature); setIsUpsellOpen(true); };
@@ -362,9 +363,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           sendNotificationRef.current(`New Email from ${msg.from}`, msg.subject || "(No Subject)");
           return [msg, ...prev];
         });
-      } catch (_) {}
+      } catch (_) { }
     };
-    ws.onerror = () => {};
+    ws.onerror = () => { };
     ws.onclose = (ev) => {
       if (ev.code === 1000) return;
       const delay = Math.min(500 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
@@ -393,12 +394,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       try {
         const saved = localStorage.getItem("userSettings");
         if (saved) setUserSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
-      } catch {}
+      } catch { }
 
       try {
         setReadMessageIds(new Set(JSON.parse(localStorage.getItem("readMessageIds") || "[]")));
         setDismissedMessageIds(new Set(JSON.parse(localStorage.getItem("dismissedMessageIds") || "[]")));
-      } catch {} finally { setIsStorageLoaded(true); }
+      } catch { } finally { setIsStorageLoaded(true); }
 
       if (initialInboxes.length > 0) {
         hist = initialInboxes; initEmail = initialCurrentInbox || initialInboxes[0];
@@ -427,7 +428,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             localStorage.setItem("userSettings", JSON.stringify({ ...DEFAULT_SETTINGS, ...d.settings }));
           }
         }
-      } catch {}
+      } catch { }
     };
     if (isStorageLoaded) fetch_();
   }, [isAuthenticated, isStorageLoaded]);
@@ -437,7 +438,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (skipNextSettingsSave.current) { skipNextSettingsSave.current = false; return; }
     localStorage.setItem("userSettings", JSON.stringify(userSettings));
     if (isAuthenticated)
-      fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => {});
+      fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => { });
   }, [userSettings, isStorageLoaded, isAuthenticated]);
 
   // Page title unread count
@@ -448,7 +449,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   }, [messages, readMessageIds, dismissedMessageIds]);
 
   const sendNotification = (title: string, body: string) => {
-    if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => {}); } catch {}
+    if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => { }); } catch { }
     if (userSettings.notifications && document.visibilityState !== "visible")
       new Notification(title, { body, icon: "/logo.webp" });
   };
@@ -461,7 +462,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   useEffect(() => {
     if (!email) return;
     if (!isAuthenticated) return;
-    fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => {});
+    fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => { });
     const h: string[] = JSON.parse(localStorage.getItem("emailHistory") || "[]");
     let next = [email, ...h.filter(e => e !== email)];
     if (userPlan === "free") next = next.slice(0, 7);
@@ -484,7 +485,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       const r = await fetch("/api/auth", { method: "POST" });
       const d = await r.json() as { token?: string };
       if (d.token) { setToken(d.token); setCookie("authToken", d.token, { maxAge: 3600 }); return d.token; }
-    } catch {}
+    } catch { }
     return null;
   };
 
@@ -801,7 +802,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           </div>
         ) : isClassic ? renderClassicMessageList()
           : isMobile ? renderMobileMessageList()
-          : renderNewMessageList()
+            : renderNewMessageList()
         }
 
         {!isZen && (
@@ -810,7 +811,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <h3 className="text-base font-semibold mb-2">{t("history_title")}</h3>
               <ul className="space-y-2">{emailHistory.map((he, i) => (<li key={i} className="flex items-center justify-between"><span className="text-sm text-muted-foreground truncate">{he}</span><Button variant="ghost" size="sm" onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); }}>{t("history_use")}</Button></li>))}</ul>
             </div>
-            {!isPro && <div className="w-full md:w-64 shrink-0"><PrivacyAdSide /></div>}
+            {!isPro && <div className="w-full md:w-80 shrink-0"><PrivacyAdSide /></div>}
           </div>
         )}
       </CardContent>
