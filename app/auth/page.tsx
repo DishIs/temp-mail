@@ -11,7 +11,6 @@ import { FaGoogle, FaGithub } from "react-icons/fa"; // Using standard React Ico
 import { AppHeader } from "@/components/nLHeader"; // Standardized import
 import { ThemeProvider } from "@/components/theme-provider";
 import Link from "next/link";
-import Image from "next/image";
 
 function AuthForm() {
     const searchParams = useSearchParams();
@@ -42,20 +41,16 @@ function AuthForm() {
                 <Button
                     variant="default"
                     size="lg"
-                    className="w-full relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-md transition-all hover:shadow-lg"
-                    onClick={() => handleLogin('wyi')}
+                    className="w-full relative hover:bg-muted/50 transition-colors"
+                    onClick={() => handleLogin('google')}
                     disabled={!!isLoading}
                 >
-                    {isLoading === 'wyi' ? (
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    {isLoading === 'google' ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                        // Fallback or Image for WYI logo
-                        <div className="mr-3 h-6 w-6 flex items-center justify-center">
-                             {/* Replace with <Image> if you have the asset config set up */}
-                             <img src="https://whatsyour.info/logo-login.png" alt="WYI" className="h-6 w-6 object-contain" />
-                        </div>
+                        <FaGoogle className="mr-2 h-4 w-4 text-blue-500" />
                     )}
-                    <span className="font-semibold">Continue with WhatsYourInfo</span>
+                    Google
                 </Button>
 
                 <div className="relative my-2">
@@ -68,24 +63,11 @@ function AuthForm() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <Button 
-                        variant="outline" 
+
+                    <Button
+                        variant="outline"
                         size="lg"
-                        onClick={() => handleLogin('google')} 
-                        disabled={!!isLoading}
-                        className="hover:bg-muted/50 transition-colors"
-                    >
-                        {isLoading === 'google' ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <FaGoogle className="mr-2 h-4 w-4 text-blue-500" />
-                        )}
-                        Google
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        size="lg"
-                        onClick={() => handleLogin('github')} 
+                        onClick={() => handleLogin('github')}
                         disabled={!!isLoading}
                         className="hover:bg-muted/50 transition-colors"
                     >
@@ -96,10 +78,20 @@ function AuthForm() {
                         )}
                         GitHub
                     </Button>
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => { }}
+                        disabled={true}
+                        className="hover:bg-muted/50 transition-colors disabled:"
+
+                    >
+                        Others coming soon
+                    </Button>
                 </div>
 
             </CardContent>
-            
+
             <CardFooter className="flex flex-col gap-4 text-center text-sm border-t bg-muted/20 pt-6 pb-6 rounded-b-xl">
                 <p className="text-muted-foreground text-xs px-6">
                     By clicking continue, you agree to our{" "}
