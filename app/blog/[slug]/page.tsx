@@ -6,6 +6,7 @@ import { Comment } from "@dishistech/blogs-sdk";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, User } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import './blog.scss';
@@ -63,6 +64,19 @@ function addHeadingIds(html: string): string {
             if (/id=/i.test(attrs)) return `<h${level}${attrs}>${inner}</h${level}>`;
             return `<h${level}${attrs} id="${id}">${inner}</h${level}>`;
         }
+    );
+}
+
+/**
+ * Wrap every bare <table> in a .table-scroll-wrapper div so it scrolls
+ * horizontally on narrow screens instead of breaking the layout.
+ * Skips tables that are already wrapped to avoid double-wrapping.
+ */
+function wrapTables(html: string): string {
+    // Match <table ...>...</table> blocks not already inside our wrapper
+    return html.replace(
+        /(?<!<div class="table-scroll-wrapper">)(<table[\s\S]*?<\/table>)/gi,
+        '<div class="table-scroll-wrapper">$1</div>'
     );
 }
 
@@ -185,7 +199,7 @@ export default async function SinglePostPage({ params }: { params: { slug: strin
     if (!post) notFound();
 
     // ── Process HTML once ──────────────────────────────────────────────
-    const processedContent = addHeadingIds(post.content || '');
+    const processedContent = wrapTables(addHeadingIds(post.content || ''));
     const headings = extractHeadings(post.content || '');
     const faqs = extractFAQs(post.content || '');
 
@@ -214,6 +228,7 @@ export default async function SinglePostPage({ params }: { params: { slug: strin
         ...(post.tags?.length
             ? { keywords: post.tags.map((t: { name: string }) => t.name).join(', ') }
             : {}),
+        ...(post.featuredImage ? { image: post.featuredImage } : {}),
     };
 
     // ── JSON-LD: FAQPage (only if FAQs found) ─────────────────────────
@@ -309,6 +324,20 @@ export default async function SinglePostPage({ params }: { params: { slug: strin
                                     )}
                                 </div>
                             </header>
+
+                            {/* Featured image */}
+                            {post.featuredImage && (
+                                <div className="mb-10 max-w-4xl mx-auto rounded-xl overflow-hidden border border-border">
+                                    <Image
+                                        src={post.featuredImage}
+                                        alt={post.title}
+                                        width={1200}
+                                        height={630}
+                                        className="w-full h-auto object-cover"
+                                        priority
+                                    />
+                                </div>
+                            )}
 
                             {/* Post body */}
                             <div
