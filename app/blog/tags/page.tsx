@@ -8,8 +8,8 @@ import { AppHeader } from '@/components/nLHeader';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata = {
-  title: 'All Tags | WhatsYour.Info Blog',
-  description: 'Explore all tags and topics on the WhatsYour.Info blog.',
+  title: 'All Tags | FreeCustom.Email Blog',
+  description: 'Explore all tags and topics on the FreeCustom.Email blog.',
 };
 
 export default async function AllTagsPage() {

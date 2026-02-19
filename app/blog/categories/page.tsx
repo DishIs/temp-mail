@@ -16,8 +16,8 @@ const iconMap: { [key: string]: React.ElementType } = {
 };
 
 export const metadata = {
-  title: 'All Categories | WhatsYour.Info Blog',
-  description: 'Browse all topics and categories on the WhatsYour.Info blog.',
+  title: 'All Categories | FreeCustom.Email Blog',
+  description: 'Browse all topics and categories on the FreeCustom.Email blog.',
 };
 
 export default async function AllCategoriesPage() {

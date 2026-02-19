@@ -41,7 +41,7 @@ function AuthForm() {
                 <Button
                     variant="default"
                     size="lg"
-                    className="w-full relative hover:bg-muted/50 transition-colors"
+                    className="w-full relative hover:bg-muted/50 transition-colors dark:hover:text-white hover:text-black"
                     onClick={() => handleLogin('google')}
                     disabled={!!isLoading}
                 >
@@ -83,7 +83,7 @@ function AuthForm() {
                         size="lg"
                         onClick={() => { }}
                         disabled={true}
-                        className="hover:bg-muted/50 transition-colors disabled:"
+                        className="hover:bg-muted/50 transition-colors disabled"
 
                     >
                         Others coming soon
