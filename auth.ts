@@ -84,75 +84,6 @@ async function upsertUser(user: { id: string; email?: string | null; name?: stri
   }
 }
 
-// ─── Custom WYI Provider ──────────────────────────────────────────────────────
-
-const WYIProvider: OAuthConfig<WYIProfile> = {
-  id: 'wyi',
-  name: 'WhatsYourInfo',
-  type: 'oauth',
-
-  // ✅ Disable PKCE — v5 enables it by default; WYI doesn't support it
-  checks: ['state'],
-
-  authorization: {
-    url: 'https://whatsyour.info/oauth/authorize',
-    params: { scope: 'profile:read email:read' },
-  },
-
-  token: {
-    url: 'https://whatsyour.info/api/v1/oauth/token',
-    async request(context: TokenRequestContext) {
-      // ✅ Build redirect_uri explicitly — don't rely on context.provider.callbackUrl
-      //    which may be undefined in v5's internal context shape
-      const redirectUri = `${process.env.NEXTAUTH_URL}/api/auth/callback/wyi`;
-
-      const response = await fetch('https://whatsyour.info/api/v1/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          grant_type: 'authorization_code',
-          code: context.params.code,
-          redirect_uri: redirectUri,
-          client_id: context.provider.clientId,
-          client_secret: context.provider.clientSecret,
-        }),
-      });
-
-      const tokens = await response.json();
-      if (!response.ok) {
-        throw new Error(tokens.error_description || 'Token request failed');
-      }
-      return { tokens };
-    },
-  },
-
-  userinfo: {
-    url: 'https://whatsyour.info/api/v1/me',
-    async request(context: UserinfoRequestContext) {
-      const response = await fetch('https://whatsyour.info/api/v1/me', {
-        headers: {
-          Authorization: `Bearer ${context.tokens.access_token}`,
-          'User-Agent': 'freecustom-email-app',
-        },
-      });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json();
-    },
-  },
-
-  clientId: process.env.WYI_CLIENT_ID,
-  clientSecret: process.env.WYI_CLIENT_SECRET,
-
-  profile(profile: WYIProfile) {
-    return {
-      id: String(profile._id),
-      name: `${profile.firstName} ${profile.lastName}`.trim(),
-      email: profile.email,
-      image: `https://whatsyour.info/api/v1/avatar/${profile.username}`,
-      plan: 'free' as const,
-    };
-  },
-};
 // ─── Auth Config ──────────────────────────────────────────────────────────────
 
 const config: NextAuthConfig = {
@@ -175,9 +106,7 @@ const config: NextAuthConfig = {
           image: profile.avatar_url,
         };
       },
-    }),
-
-    WYIProvider,
+    })
   ],
 
   secret: process.env.AUTH_SECRET,
