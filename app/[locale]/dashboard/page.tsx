@@ -61,7 +61,7 @@ export default async function DashboardPage({
                                 isPro={isPro}
                             />
                             {/* ── Placement 2: Below custom domain input — highest conversion ── */}
-                            {!isPro && (
+                            {(!data.customDomains || data.customDomains.length === 0) && (
                                 <p className="text-xs text-muted-foreground px-1">
                                     Don&apos;t own a domain yet?{" "}
                                     <a
