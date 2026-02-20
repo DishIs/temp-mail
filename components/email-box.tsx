@@ -6,7 +6,7 @@ import {
   Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck,
   Star, ListOrdered, Clock, EyeOff, Archive, ArchiveRestore,
   Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck,
-  Lock, ExternalLink
+  Lock, ExternalLink, Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -32,6 +32,9 @@ import { UpsellModal } from "./upsell-modal";
 import { AuthNeed } from "./auth-needed-moda";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 
+// ── Affiliate link ────────────────────────────────────────────────────────────
+const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Attachment {
   filename: string;
@@ -51,9 +54,31 @@ interface Message {
   body?: string;
   hasAttachments?: boolean;
   attachments?: Attachment[];
-  /** Pro-only: extracted by SMTP plugin on server */
   otp?: string | null;
   verificationLink?: string | null;
+}
+
+// ── Domain promo — sidebar card (replaces ad) ─────────────────────────────────
+function DomainPromoCard() {
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mb-6 space-y-3">
+      <div className="flex items-center gap-2">
+        <Globe className="h-4 w-4 text-primary shrink-0" />
+        <p className="text-sm font-semibold text-foreground">Own your email permanently</p>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Get a domain + private email in 2 minutes. No more expiring addresses.
+      </p>
+      <a
+        rel="sponsored"
+        href={DOMAIN_AFFILIATE_URL}
+        target="_blank"
+        className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
+      >
+        Find your domain name today →
+      </a>
+    </div>
+  );
 }
 
 // ── OTP badge — real code for Pro, blurred •••••• + Crown for others ──────────
@@ -72,7 +97,6 @@ function OtpBadge({
       </div>
     );
   }
-  // Non-pro: blurred tease with Crown → click opens upsell
   return (
     <button
       type="button"
@@ -86,7 +110,7 @@ function OtpBadge({
   );
 }
 
-// ── Verification link badge — clickable link for Pro, locked chip for others ──
+// ── Verification link badge ───────────────────────────────────────────────────
 function VerifyLinkBadge({
   url, isPro, onUpsell,
 }: { url: string; isPro: boolean; onUpsell: () => void }) {
@@ -213,9 +237,6 @@ const getExpiry = (dateStr: string, hours: number) => {
   return `Today at ${timeStr}`;
 };
 
-// ── Client-side OTP/link sniffer (for non-pro tease only) ────────────────────
-// Pro users get real values from the SMTP plugin. Non-pro: quick subject scan
-// so the blurred badge still shows up as a feature preview.
 const sniffHasOtp = (subject?: string) => {
   if (!subject) return false;
   return (
@@ -226,17 +247,6 @@ const sniffHasOtp = (subject?: string) => {
 };
 const sniffHasVerifyLink = (subject?: string) =>
   !!subject && /verif|confirm|activat|validat|magic.link|click here/i.test(subject);
-
-const PrivacyAdSide = ({ openUpsell }: { openUpsell: (f: string) => void }) => (
-  <div className="border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20 text-center mb-6">
-    <div className="flex justify-between px-2">
-      <p className="px-1 text-[10px] justify-start">Sponsored</p>
-      <button onClick={() => openUpsell('AD Free')} className="px-1 text-[10px] justify-start hover:text-yellow-500 transition-all duration-200">Remove Ads</button>
-    </div>
-    <script async data-cfasync="false" src="https://pl28737055.effectivegatecpm.com/4e07f31d89752ce266992c1cda339536/invoke.js"></script>
-    <div id="container-4e07f31d89752ce266992c1cda339536"></div>
-  </div>
-);
 
 interface EmailBoxProps {
   initialSession: Session | null;
@@ -313,23 +323,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const isMobile = userSettings.layout === "mobile" && isPro;
   const isRetro = userSettings.layout === "retro" && isPro;
 
-
-  // for ADS
-  const lastAdRefreshRef = useRef<number>(0);
-  const AD_REFRESH_COOLDOWN_MS = 30_000;
-
-  const tryRefreshAd = useCallback(() => {
-    const now = Date.now();
-    if (now - lastAdRefreshRef.current >= AD_REFRESH_COOLDOWN_MS) {
-      lastAdRefreshRef.current = now;
-      window.location.reload();
-    }
-  }, []);
-
-
-  // ── Inline badges — gated for non-pro ──────────────────────────────────────
-  // Pro: real otp/link from SMTP plugin.
-  // Non-pro: client-side subject sniff shows blurred tease badge that opens upsell.
+  // ── Inline badges ─────────────────────────────────────────────────────────
   const renderBadges = useCallback((msg: Message) => {
     const hasOtp = isPro ? !!msg.otp : sniffHasOtp(msg.subject);
     const hasVerify = isPro ? !!msg.verificationLink : sniffHasVerifyLink(msg.subject);
@@ -356,7 +350,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     );
   }, [isPro]);
 
-  // ── Persistent WebSocket ────────────────────────────────────────────────────
+  // ── WebSocket ─────────────────────────────────────────────────────────────
   const connectWebSocket = useCallback((mailbox: string) => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     const prev = wsRef.current;
@@ -399,7 +393,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (ws) { ws.onclose = null; ws.close(1000, "unmount"); }
   }, []);
 
-  // ── Init ──
+  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       await fetchToken();
@@ -431,7 +425,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     init();
   }, []);
 
-  // Settings sync
   useEffect(() => {
     const fetch_ = async () => {
       if (!isAuthenticated) return;
@@ -458,7 +451,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => { });
   }, [userSettings, isStorageLoaded, isAuthenticated]);
 
-  // Page title unread count
   useEffect(() => {
     const n = messages.filter(m => !readMessageIds.has(m.id) && !dismissedMessageIds.has(m.id)).length;
     const base = originalTitle.current.replace(/^\(\d+\)\s*/, "");
@@ -488,7 +480,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     setEmailHistory(next);
   }, [email, session]);
 
-  // Connect WS + load inbox on email/token change
   useEffect(() => {
     if (!email) return;
     if (isAuthenticated && !token) return;
@@ -525,10 +516,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         setSavedMessageIds(ids);
       }
     } catch (e) { console.error(e); }
-    finally {
-      setIsRefreshing(false);
-    }
-
+    finally { setIsRefreshing(false); }
   };
 
   const copyEmail = async () => { await navigator.clipboard.writeText(email); setCopied(true); setTimeout(() => setCopied(false), 2000); };
@@ -567,7 +555,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     const d = getPreferredDomain(availableDomains, localStorage.getItem("lastUsedDomain"));
     const ne = generateRandomEmail(d);
     setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set());
-    tryRefreshAd();
   };
 
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
@@ -628,7 +615,28 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     return () => { if (h) h.style.display = ""; if (f) f.style.display = ""; if (n) n.style.display = ""; };
   }, [userSettings.layout, isZen, isMinimal, isRetro]);
 
-  // ── Renderers ─────────────────────────────────────────────────────────────
+  // ── Placement 3: Empty state domain promo (free users only) ───────────────
+  const renderEmptyStateDomainPromo = () => {
+    if (isPro) return null;
+    return (
+      <div className="mt-4 px-4 py-3 rounded-lg border border-dashed border-primary/30 bg-primary/5 text-center space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Stop losing emails. Use your own permanent address with a custom domain.
+        </p>
+        <a
+          rel="sponsored"
+          href={DOMAIN_AFFILIATE_URL}
+          target="_blank"
+          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+        >
+          <Globe className="h-3 w-3" />
+          Get your .COM domain →
+        </a>
+      </div>
+    );
+  };
+
+  // ── Renderers ──────────────────────────────────────────────────────────────
   const renderClassicMessageList = () => (
     <div className="overflow-x-auto">
       <Table>
@@ -638,6 +646,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <Mail className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-base font-medium">{activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}</p>
               <p className="text-sm text-muted-foreground">{activeTab === "all" ? t("inbox_empty_subtitle") : "Dismissed emails appear here."}</p>
+              {activeTab === "all" && renderEmptyStateDomainPromo()}
             </td></tr>
           ) : filteredMessages.map((msg, i) => (
             <tr key={msg.id} className={cn("border-b", i % 2 === 0 ? "bg-muted/20" : "bg-background")}>
@@ -679,7 +688,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           <ChevronRight className="w-5 h-5 text-muted-foreground/50 shrink-0" />
         </div>
       ))}
-      {filteredMessages.length === 0 && <div className="text-center p-10 text-muted-foreground">Empty inbox</div>}
+      {filteredMessages.length === 0 && (
+        <div className="text-center p-10 text-muted-foreground">
+          Empty inbox
+          {renderEmptyStateDomainPromo()}
+        </div>
+      )}
     </div>
   );
 
@@ -705,6 +719,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           <div className="bg-muted/30 p-4 rounded-full mb-4">{activeTab === "all" ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}</div>
           <p className="text-base font-medium">{activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}</p>
           <p className="text-sm text-muted-foreground max-w-xs mt-1">{activeTab === "all" ? t("inbox_empty_subtitle") : "Emails you dismiss appear here."}</p>
+          {/* ── Placement 3: Empty inbox domain promo ── */}
+          {activeTab === "all" && renderEmptyStateDomainPromo()}
         </div>
       ) : filteredMessages.map((msg) => {
         const isRead = readMessageIds.has(msg.id);
@@ -755,7 +771,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   return (
     <Card className={cn("border-dashed", isZen && "border-0 shadow-none bg-transparent")}>
       <CardContent className="space-y-2 pt-3">
-        {/* Email input row */}
+        {/* ── Placement 4: Email bar domain hint (free users only) ── */}
         <div className="flex items-center gap-2">
           {isEditing ? (
             <div className="flex flex-1 items-center gap-2">
@@ -777,7 +793,25 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          ) : <div className="flex-1 rounded-md bg-muted p-2 text-sm">{email || t("loading")}</div>}
+          ) : (
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="rounded-md bg-muted p-2 text-sm">{email || t("loading")}</div>
+              {/* ── Placement 4: subtle text under email bar ── */}
+              {!isPro && (
+                <p className="text-[10px] text-muted-foreground/70 pl-1">
+                  Want your own domain like this?{" "}
+                  <a
+                    rel="sponsored"
+                    href={DOMAIN_AFFILIATE_URL}
+                    target="_blank"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Get it here
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
           <TooltipProvider delayDuration={200}>
             <div className="flex gap-2">
               <Tooltip><TooltipTrigger asChild>
@@ -832,7 +866,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <h3 className="text-base font-semibold mb-2">{t("history_title")}</h3>
               <ul className="space-y-2">{emailHistory.map((he, i) => (<li key={i} className="flex items-center justify-between"><span className="text-sm text-muted-foreground truncate">{he}</span><Button variant="ghost" size="sm" onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); }}>{t("history_use")}</Button></li>))}</ul>
             </div>
-            {!isPro && <div className="w-full md:w-80 shrink-0"><PrivacyAdSide openUpsell={(f) => openUpsell(f)} /></div>}
+            {/* ── Placement 1: Native domain promo card (replaces ad) ── */}
+            {!isPro && (
+              <div className="w-full md:w-80 shrink-0">
+                <DomainPromoCard />
+              </div>
+            )}
           </div>
         )}
       </CardContent>
