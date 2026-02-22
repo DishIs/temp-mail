@@ -744,10 +744,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               </div>
               {!isCompact && (
                 <div className="flex items-center justify-between mt-1">
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 cursor-pointer" onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Storage"); }}>
+                  {/* Expiry timer: hidden on mobile (touch devices have no hover), visible on sm+ */}
+                  <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 cursor-pointer" onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Storage"); }}>
                     <Clock className="h-3 w-3" /><span>{isPro ? "Permanent" : getExpiry(msg.date, 24)}</span>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Action buttons: always visible on mobile, hover-only on sm+ */}
+                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     {userPlan === "free" && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-4 w-4", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}><Trash2 className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>{activeTab === "dismissed" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>

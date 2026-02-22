@@ -30,8 +30,13 @@ export function AwardsSection() {
             />
           </a>
           <a href="https://www.producthunt.com/products/fce?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-fce" target="_blank" rel="noopener noreferrer"><img alt="FCE - FreeCustom.Email is a temp mail platform | Product Hunt" width="200" height="40" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1079765&amp;theme=light&amp;t=1771253835806" /></a>
+
+          <a href="https://startupfound.com/s/freecustomemail" target="_blank">
+            <img alt="Find FreeCustom.Email on StartupFound" loading="lazy" width="180" height="54" src="https://startupfound.com/badges/badge-light.svg" />
+          </a>
+
         </div>
-        
+
       </div>
     </section>
   );
