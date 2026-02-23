@@ -20,6 +20,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import toast from "react-hot-toast";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
+import { SiVisa, SiMastercard, SiAmericanexpress, SiPaypal, SiApplepay, SiGooglepay } from "react-icons/si";
 
 type BillingCycle = "weekly" | "monthly" | "yearly";
 
@@ -203,12 +204,33 @@ export default function PricingPage() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <p className="text-center text-xs text-muted-foreground max-w-sm px-2">
-              Need to change billing cycle?{" "}
-              <Link href="/contact" className="underline underline-offset-2 hover:text-foreground">
-                Contact us
-              </Link>{" "}
-              — we&apos;ll apply your remaining credit.
+          </div>
+
+          {/* ── Payment trust bar ── */}
+          <div className="mb-6 flex flex-col items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {/* Provider icons */}
+              {[
+                { icon: <SiVisa className="h-5 w-auto" />, label: "Visa" },
+                { icon: <SiMastercard className="h-5 w-auto" />, label: "Mastercard" },
+                { icon: <SiAmericanexpress className="h-5 w-auto" />, label: "Amex" },
+                { icon: <SiPaypal className="h-5 w-auto" />, label: "PayPal" },
+                { icon: <SiApplepay className="h-6 w-auto" />, label: "Apple Pay" },
+                { icon: <SiGooglepay className="h-6 w-auto" />, label: "Google Pay" },
+              ].map(({ icon, label }) => (
+                <span
+                  key={label}
+                  title={label}
+                  className="flex items-center justify-center rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+                >
+                  {icon}
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground text-center">
+              Secure checkout via{" "}
+              <span className="font-medium text-foreground">Paddle</span>
+              {" "}· 200+ countries · All major cards &amp; wallets accepted
             </p>
           </div>
 
