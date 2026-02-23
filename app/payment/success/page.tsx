@@ -43,26 +43,26 @@ function usePaddleVerification(ptxn: string | null) {
         clearInterval(interval);
 
         // ── Fallback: explicit server-side verify using Paddle transaction ID ──
-        if (ptxn) {
-          toast.loading("Still confirming — checking directly with Paddle…", { id: tid });
-          try {
-            const res = await fetch('/api/paddle/verify-transaction', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ transactionId: ptxn }),
-            });
-            const data = await res.json();
+        // if (ptxn) {
+        //   toast.loading("Still confirming — checking directly with Paddle…", { id: tid });
+        //   try {
+        //     const res = await fetch('/api/paddle/verify-transaction', {
+        //       method: 'POST',
+        //       headers: { 'Content-Type': 'application/json' },
+        //       body: JSON.stringify({ transactionId: ptxn }),
+        //     });
+        //     const data = await res.json();
 
-            if (data.success) {
-              await update();
-              toast.success("Welcome to Pro! Subscription active.", { id: tid });
-              setStatus('success');
-              return;
-            }
-          } catch {
-            // fall through to error state
-          }
-        }
+        //     if (data.success) {
+        //       await update();
+        //       toast.success("Welcome to Pro! Subscription active.", { id: tid });
+        //       setStatus('success');
+        //       return;
+        //     }
+        //   } catch {
+        //     // fall through to error state
+        //   }
+        // }
 
         toast.error(
           "Activation is taking longer than expected. Try refreshing your dashboard.",
