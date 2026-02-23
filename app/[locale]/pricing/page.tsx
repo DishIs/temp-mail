@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { ThemeProvider } from "@/components/theme-provider";
 import toast from "react-hot-toast";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 
 type BillingCycle = "weekly" | "monthly" | "yearly";
@@ -91,6 +91,8 @@ export default function PricingPage() {
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [busy, setBusy] = useState(false);
   const t = useTranslations("Pricing");
+  // add inside PricingPage() alongside other hooks
+  const locale = useLocale();
 
   const isPro = session?.user?.plan === "pro";
   const isFree = session?.user?.plan === "free";
@@ -139,13 +141,15 @@ export default function PricingPage() {
       window.Paddle.Checkout.open({
         settings: {
           displayMode: "overlay",
-          theme: "light",
-          locale: "en",
+          theme: "light",  // follows user's theme
+          locale: locale,                                        // e.g. "en", "de", "fr"
+          successUrl: `${window.location.origin}/payment/success?provider=paddle`,
         },
         items: [{ priceId: d.priceId, quantity: 1 }],
         customer: session.user?.email ? { email: session.user.email } : undefined,
         customData: { userId: session.user.id },
-        eventCallback: (event: any) => {
+        onEvent: (event: any) => {
+          console.log('[Paddle] event:', event.name);
           if (event.name === "checkout.completed") {
             const txnId: string | undefined = event.data?.transaction_id;
             window.location.href = `/payment/success?provider=paddle${txnId ? `&_ptxn=${txnId}` : ""}`;
