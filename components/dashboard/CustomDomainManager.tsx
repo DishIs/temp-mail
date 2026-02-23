@@ -413,7 +413,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
             <CardDescription>{t('domains_desc')}</CardDescription>
           </div>
           {!isPro && (
-            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+            <Badge onClick={() => openUpsell("Custom Domains")} variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
               <Crown className="w-3 h-3 mr-1" /> {t('domains_pro_badge')}
             </Badge>
           )}

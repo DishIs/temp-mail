@@ -179,7 +179,7 @@ export function MessageModal({ message, isOpen, onClose, isPro, userPlan, onUpse
                 ${fullMessage.html}`}
               className="w-full h-full border-none block"
               title={fullMessage.subject}
-              sandbox="allow-same-origin allow-popups"
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
             />
           ) : (
             <div className="h-full overflow-y-auto p-6">

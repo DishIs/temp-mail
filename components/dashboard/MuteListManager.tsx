@@ -99,7 +99,7 @@ export function MuteListManager({ initialSenders, isPro }: MuteListManagerProps)
                         <CardDescription>{t('mute_desc')}</CardDescription>
                     </div>
                     {!isPro && (
-                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                        <Badge onClick={() => setIsUpsellOpen(true)} variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                             <Crown className="w-3 h-3 mr-1" /> {t('domains_pro_badge')}
                         </Badge>
                     )}
