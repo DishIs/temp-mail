@@ -164,10 +164,10 @@ export default function ProfilePage() {
 
     if (status === "loading" || loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-background">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-muted-foreground animate-pulse">{t('loading')}</p>
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-3 text-muted-foreground text-sm">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <p className="text-muted-foreground">{t('loading')}</p>
                 </div>
             </div>
         );
