@@ -165,7 +165,7 @@ const linksToShow = INTERNAL_LINKS
 
   // Detect which section groups exist
   const hasBullets = (prefix: string) => !!t[`${prefix}1`];
-  const hasSection = (key: string) => !!t[key];
+  const hasAll = (...keys: string[]) => keys.every(k => !!t[k]);
 
   return (
     <div className="space-y-8">
@@ -193,14 +193,14 @@ const linksToShow = INTERNAL_LINKS
         {/* Dynamic content sections - rendered based on available translation keys */}
 
         {/* What Is / Definition section */}
-        {hasSection("whatIsTitle") && (
+        {hasAll("whatIsTitle") && (
           <Section title={t["whatIsTitle"]}>
             <p className="text-muted-foreground leading-relaxed"
               dangerouslySetInnerHTML={{ __html: t["whatIsBody"] || "" }} />
           </Section>
         )}
 
-        {hasSection("definitionTitle") && (
+        {hasAll("definitionTitle") && (
           <Section title={t["definitionTitle"]}>
             <p className="text-muted-foreground leading-relaxed"
               dangerouslySetInnerHTML={{ __html: t["definitionBody"] || "" }} />
@@ -208,96 +208,96 @@ const linksToShow = INTERNAL_LINKS
         )}
 
         {/* Why Use section */}
-        {hasSection("whyUseTitle") && (
+        {hasAll("whyUseTitle") && (
           <Section title={t["whyUseTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["whyUseBody"]}</p>
           </Section>
         )}
 
-        {hasSection("whyTitle") && (
+        {hasAll("whyTitle") && (
           <Section title={t["whyTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["whyBody"]}</p>
           </Section>
         )}
 
         {/* Benefits / Features list */}
-        {(hasSection("benefitsTitle") || hasBullets("benefit")) && (
+        {(hasAll("benefitsTitle") || hasBullets("benefit")) && (
           <Section title={t["benefitsTitle"]}>
             {renderBulletList(t, "benefit")}
           </Section>
         )}
 
-        {(hasSection("featuresTitle") || hasBullets("feature")) && (
+        {(hasAll("featuresTitle") || hasBullets("feature")) && (
           <Section title={t["featuresTitle"]}>
             {renderBulletList(t, "feature")}
           </Section>
         )}
 
         {/* Free features */}
-        {(hasSection("whatYouGetTitle") || hasBullets("freeFeature")) && (
+        {(hasAll("whatYouGetTitle") || hasBullets("freeFeature")) && (
           <Section title={t["whatYouGetTitle"]}>
             {renderBulletList(t, "freeFeature")}
           </Section>
         )}
 
         {/* Forever Free / Ad Free sections */}
-        {hasSection("foreverFreeTitle") && (
+        {hasAll("foreverFreeTitle") && (
           <Section title={t["foreverFreeTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["foreverFreeBody"]}</p>
           </Section>
         )}
 
-        {hasSection("adFreeTitle") && (
+        {hasAll("adFreeTitle") && (
           <Section title={t["adFreeTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["adFreeBody"]}</p>
           </Section>
         )}
 
-        {hasSection("speedTitle") && (
+        {hasAll("speedTitle") && (
           <Section title={t["speedTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["speedBody"]}</p>
           </Section>
         )}
 
-        {hasSection("howWeDoItTitle") && (
+        {hasAll("howWeDoItTitle") && (
           <Section title={t["howWeDoItTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["howWeDoItBody"]}</p>
           </Section>
         )}
 
         {/* Spam protection */}
-        {hasSection("spamProtectionTitle") && (
+        {hasAll("spamProtectionTitle") && (
           <Section title={t["spamProtectionTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["spamProtectionBody"]}</p>
           </Section>
         )}
 
         {/* Privacy sections */}
-        {hasSection("privacyTitle") && (
+        {hasAll("privacyTitle") && (
           <Section title={t["privacyTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["privacyBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("privacyThreatsTitle") || hasBullets("privacyThreat")) && (
+        {(hasAll("privacyThreatsTitle") || hasBullets("privacyThreat")) && (
           <Section title={t["privacyThreatsTitle"]}>
             {renderBulletList(t, "privacyThreat")}
           </Section>
         )}
 
-        {hasSection("ourApproachTitle") && (
+        {hasAll("ourApproachTitle") && (
           <Section title={t["ourApproachTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["ourApproachBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("trackingTitle")) && (
+        {(hasAll("trackingTitle")) && (
           <Section title={t["trackingTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["trackingBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("securityTitle") || hasBullets("securityItem")) && (
+        {(hasAll("securityTitle") || hasBullets("securityItem")) && (
           <Section title={t["securityTitle"]}>
             <p className="text-muted-foreground leading-relaxed mb-3">{t["securityBody"]}</p>
             {renderBulletList(t, "securityItem")}
@@ -305,118 +305,118 @@ const linksToShow = INTERNAL_LINKS
         )}
 
         {/* Use cases */}
-        {(hasSection("useCasesTitle") || hasBullets("useCase")) && (
+        {(hasAll("useCasesTitle") || hasBullets("useCase")) && (
           <Section title={t["useCasesTitle"]}>
             {renderBulletList(t, "useCase")}
           </Section>
         )}
 
-        {(hasSection("signupUseCasesTitle") || hasBullets("signupUseCase")) && (
+        {(hasAll("signupUseCasesTitle") || hasBullets("signupUseCase")) && (
           <Section title={t["signupUseCasesTitle"]}>
             {renderBulletList(t, "signupUseCase")}
           </Section>
         )}
 
         {/* How to use steps */}
-        {(hasSection("howToUseTitle") || hasBullets("howToStep")) && (
+        {(hasAll("howToUseTitle") || hasBullets("howToStep")) && (
           <Section title={t["howToUseTitle"]}>
             {renderStepList(t, "howToStep")}
           </Section>
         )}
 
-        {(hasSection("howItWorksTitle")) && (
+        {(hasAll("howItWorksTitle")) && (
           <Section title={t["howItWorksTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["howItWorksBody"]}</p>
           </Section>
         )}
 
         {/* Setup steps */}
-        {(hasSection("setupTitle") || hasBullets("setupStep")) && (
+        {(hasAll("setupTitle") || hasBullets("setupStep")) && (
           <Section title={t["setupTitle"]}>
             {renderStepList(t, "setupStep", 3)}
           </Section>
         )}
 
         {/* Customization */}
-        {(hasSection("customizationTitle") || hasBullets("customization")) && (
+        {(hasAll("customizationTitle") || hasBullets("customization")) && (
           <Section title={t["customizationTitle"]}>
             {renderBulletList(t, "customization", 4)}
           </Section>
         )}
 
         {/* Pro features */}
-        {(hasSection("proFeaturesTitle") || hasBullets("proFeature")) && (
+        {(hasAll("proFeaturesTitle") || hasBullets("proFeature")) && (
           <Section title={t["proFeaturesTitle"]}>
             {renderBulletList(t, "proFeature", 6, <Zap className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />)}
           </Section>
         )}
 
         {/* Specific features */}
-        {hasSection("customPrefixTitle") && (
+        {hasAll("customPrefixTitle") && (
           <Section title={t["customPrefixTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["customPrefixBody"]}</p>
           </Section>
         )}
 
-        {hasSection("customDomainTitle") && (
+        {hasAll("customDomainTitle") && (
           <Section title={t["customDomainTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["customDomainBody"]}</p>
           </Section>
         )}
 
-        {hasSection("websocketTitle") && (
+        {hasAll("websocketTitle") && (
           <Section title={t["websocketTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["websocketBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("performanceTitle") || hasBullets("perf")) && (
+        {(hasAll("performanceTitle") || hasBullets("perf")) && (
           <Section title={t["performanceTitle"]}>
             {renderBulletList(t, "perf", 4, <Zap className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />)}
           </Section>
         )}
 
         {/* Security measures */}
-        {/* {(hasSection("securityMeasuresTitle") || hasBullets("measure")) && (
+        {/* {(hasAll("securityMeasuresTitle") || hasBullets("measure")) && (
           <Section title={t["securityMeasuresTitle"]}>
             {renderBulletList(t, "measure", 6, <Shield className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />)}
           </Section>
         )} */}
 
-        {(hasSection("threatModelTitle") || hasBullets("threatModel")) && (
+        {(hasAll("threatModelTitle") || hasBullets("threatModel")) && (
           <Section title={t["threatModelTitle"]}>
             {renderBulletList(t, "threatModel", 4)}
           </Section>
         )}
 
         {/* Comparison table for competitor pages */}
-        {hasSection("comparisonTitle") && (
+        {hasAll("comparisonTitle") && (
           <Section title={t["comparisonTitle"]}>
             {renderComparisonTable(t)}
           </Section>
         )}
 
-        {hasSection("whySwitchTitle") && (
+        {hasAll("whySwitchTitle") && (
           <Section title={t["whySwitchTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["whySwitchBody"]}</p>
           </Section>
         )}
 
         {/* Problems / Solutions (comparison pages) */}
-        {(hasSection("problemsTitle") || hasBullets("problem")) && (
+        {(hasAll("problemsTitle") || hasBullets("problem")) && (
           <Section title={t["problemsTitle"]}>
             {renderBulletList(t, "problem", 4)}
           </Section>
         )}
 
-        {(hasSection("ourSolutionTitle") || hasBullets("solution")) && (
+        {(hasAll("ourSolutionTitle") || hasBullets("solution")) && (
           <Section title={t["ourSolutionTitle"]}>
             {renderBulletList(t, "solution", 4)}
           </Section>
         )}
 
         {/* Services comparison (best services page) */}
-        {hasSection("servicesTitle") && (
+        {hasAll("servicesTitle") && (
           <Section title={t["servicesTitle"]}>
             <div className="space-y-4">
               {[1, 2, 3].map(i => t[`service${i}Name`] ? (
@@ -433,171 +433,171 @@ const linksToShow = INTERNAL_LINKS
           </Section>
         )}
 
-        {hasSection("verdictTitle") && (
+        {hasAll("verdictTitle") && (
           <Section title={t["verdictTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["verdictBody"]}</p>
           </Section>
         )}
 
         {/* Privacy levels */}
-        {(hasSection("choicesTitle") || hasBullets("privacyLevel")) && (
+        {(hasAll("choicesTitle") || hasBullets("privacyLevel")) && (
           <Section title={t["choicesTitle"]}>
             {renderBulletList(t, "privacyLevel", 3)}
           </Section>
         )}
 
         {/* No account section */}
-        {hasSection("noAccountTitle") && (
+        {hasAll("noAccountTitle") && (
           <Section title={t["noAccountTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["noAccountBody"]}</p>
           </Section>
         )}
 
         {/* Best practices */}
-        {(hasSection("bestPracticesTitle") || hasBullets("bestPractice")) && (
+        {(hasAll("bestPracticesTitle") || hasBullets("bestPractice")) && (
           <Section title={t["bestPracticesTitle"]}>
             {renderBulletList(t, "bestPractice", 5)}
           </Section>
         )}
 
         {/* Limits section */}
-        {hasSection("limitsTitle") && (
+        {hasAll("limitsTitle") && (
           <Section title={t["limitsTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["limitsBody"]}</p>
           </Section>
         )}
 
         {/* Developer / Test types */}
-        {(hasSection("testingChallengesTitle") || hasBullets("challenge")) && (
+        {(hasAll("testingChallengesTitle") || hasBullets("challenge")) && (
           <Section title={t["testingChallengesTitle"]}>
             {renderBulletList(t, "challenge", 4)}
           </Section>
         )}
 
-        {(hasSection("testTypesTitle") || hasBullets("testType")) && (
+        {(hasAll("testTypesTitle") || hasBullets("testType")) && (
           <Section title={t["testTypesTitle"]}>
             {renderBulletList(t, "testType", 4)}
           </Section>
         )}
 
         {/* Platform-specific */}
-        {hasSection("discordVerificationTitle") && (
+        {hasAll("discordVerificationTitle") && (
           <Section title={t["discordVerificationTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["discordVerificationBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("discordUseCasesTitle") || hasBullets("discordUseCase")) && (
+        {(hasAll("discordUseCasesTitle") || hasBullets("discordUseCase")) && (
           <Section title={t["discordUseCasesTitle"]}>
             {renderBulletList(t, "discordUseCase", 4)}
           </Section>
         )}
 
-        {hasSection("metaTrackingTitle") && (
+        {hasAll("metaTrackingTitle") && (
           <Section title={t["metaTrackingTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["metaTrackingBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("instagramUseCasesTitle") || hasBullets("instagramUseCase")) && (
+        {(hasAll("instagramUseCasesTitle") || hasBullets("instagramUseCase")) && (
           <Section title={t["instagramUseCasesTitle"]}>
             {renderBulletList(t, "instagramUseCase", 4)}
           </Section>
         )}
 
-        {hasSection("telegramEmailTitle") && (
+        {hasAll("telegramEmailTitle") && (
           <Section title={t["telegramEmailTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["telegramEmailBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("telegramUseCasesTitle") || hasBullets("telegramUseCase")) && (
+        {(hasAll("telegramUseCasesTitle") || hasBullets("telegramUseCase")) && (
           <Section title={t["telegramUseCasesTitle"]}>
             {renderBulletList(t, "telegramUseCase", 3)}
           </Section>
         )}
 
         {/* OTP */}
-        {hasSection("otpExplainerTitle") && (
+        {hasAll("otpExplainerTitle") && (
           <Section title={t["otpExplainerTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["otpExplainerBody"]}</p>
           </Section>
         )}
 
-        {hasSection("smartOtpTitle") && (
+        {hasAll("smartOtpTitle") && (
           <Section title={t["smartOtpTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["smartOtpBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("otpUseCasesTitle") || hasBullets("otpUseCase")) && (
+        {(hasAll("otpUseCasesTitle") || hasBullets("otpUseCase")) && (
           <Section title={t["otpUseCasesTitle"]}>
             {renderBulletList(t, "otpUseCase", 4)}
           </Section>
         )}
 
         {/* Verification */}
-        {hasSection("howVerificationWorksTitle") && (
+        {hasAll("howVerificationWorksTitle") && (
           <Section title={t["howVerificationWorksTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["howVerificationWorksBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("verificationTypesTitle") || hasBullets("verificationType")) && (
+        {(hasAll("verificationTypesTitle") || hasBullets("verificationType")) && (
           <Section title={t["verificationTypesTitle"]}>
             {renderBulletList(t, "verificationType", 4)}
           </Section>
         )}
 
-        {(hasSection("tipsTitle") || hasBullets("tip")) && (
+        {(hasAll("tipsTitle") || hasBullets("tip")) && (
           <Section title={t["tipsTitle"]}>
             {renderBulletList(t, "tip", 4)}
           </Section>
         )}
 
         {/* Instant / Fast / Regenerate */}
-        {(hasSection("instantFeaturesTitle") || hasBullets("instantFeature")) && (
+        {(hasAll("instantFeaturesTitle") || hasBullets("instantFeature")) && (
           <Section title={t["instantFeaturesTitle"]}>
             {renderBulletList(t, "instantFeature", 3, <Zap className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />)}
           </Section>
         )}
 
-        {hasSection("regenerateTitle") && (
+        {hasAll("regenerateTitle") && (
           <Section title={t["regenerateTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["regenerateBody"]}</p>
           </Section>
         )}
 
         {/* Disposable vs Permanent */}
-        {hasSection("disposableVsPermanentTitle") && (
+        {hasAll("disposableVsPermanentTitle") && (
           <Section title={t["disposableVsPermanentTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["disposableVsPermanentBody"]}</p>
           </Section>
         )}
 
         {/* Free vs Paid */}
-        {hasSection("freeVsPaidTitle") && (
+        {hasAll("freeVsPaidTitle") && (
           <Section title={t["freeVsPaidTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["freeVsPaidBody"]}</p>
           </Section>
         )}
 
         {/* Privacy first */}
-        {hasSection("privacyFirstTitle") && (
+        {hasAll("privacyFirstTitle") && (
           <Section title={t["privacyFirstTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["privacyFirstBody"]}</p>
           </Section>
         )}
 
         {/* Criteria */}
-        {(hasSection("criteriaTitle") || hasBullets("criterion")) && (
+        {(hasAll("criteriaTitle") || hasBullets("criterion")) && (
           <Section title={t["criteriaTitle"]}>
             {renderBulletList(t, "criterion", 4)}
           </Section>
         )}
 
         {/* Problem (singular) */}
-        {hasSection("problemTitle") && (
+        {hasAll("problemTitle") && (
           <Section title={t["problemTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["problemBody"]}</p>
           </Section>
@@ -611,15 +611,15 @@ const linksToShow = INTERNAL_LINKS
         ) : null)}
 
         {/* API */}
-        {hasSection("whatItDoesTitle") && (
+        {hasAll("whatItDoesTitle") && (
           <Section title={t["whatItDoesTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["whatItDoesBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("useCasesTitle") || hasBullets("useCase")) && !hasSection("whatItDoesTitle") && null}
+        {(hasAll("useCasesTitle") || hasBullets("useCase")) && !hasAll("whatItDoesTitle") && null}
 
-        {hasSection("exampleTitle") && (
+        {hasAll("exampleTitle") && (
           <Section title={t["exampleTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["exampleBody"]}</p>
             <div className="bg-muted/50 rounded-md p-4 font-mono text-xs overflow-x-auto">
@@ -632,7 +632,7 @@ const linksToShow = INTERNAL_LINKS
           </Section>
         )}
 
-        {hasSection("docsTitle") && (
+        {hasAll("docsTitle") && (
           <Section title={t["docsTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["docsBody"]}</p>
             <Link href="/api-docs" className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-medium">
@@ -642,30 +642,30 @@ const linksToShow = INTERNAL_LINKS
         )}
 
         {/* Twitter-specific */}
-        {hasSection("twitterXTitle") && (
+        {hasAll("twitterXTitle") && (
           <Section title={t["twitterXTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["twitterXBody"]}</p>
           </Section>
         )}
 
         {/* Reddit-specific */}
-        {hasSection("redditPrivacyTitle") && (
+        {hasAll("redditPrivacyTitle") && (
           <Section title={t["redditPrivacyTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["redditPrivacyBody"]}</p>
           </Section>
         )}
 
-        {(hasSection("redditUseCasesTitle") || hasBullets("redditUseCase")) && (
+        {(hasAll("redditUseCasesTitle") || hasBullets("redditUseCase")) && (
           <Section title={t["redditUseCasesTitle"]}>
             {renderBulletList(t, "redditUseCase", 4)}
           </Section>
         )}
 
         {/* Facebook-specific */}
-        {(hasSection("useCasesTitle") || hasBullets("facebookUseCase")) && false && null}
+        {(hasAll("useCasesTitle") || hasBullets("facebookUseCase")) && false && null}
 
         {/* Speed */}
-        {hasSection("speedTitle") && !hasSection("adFreeTitle") && (
+        {hasAll("speedTitle") && !hasAll("adFreeTitle") && (
           <Section title={t["speedTitle"]}>
             <p className="text-muted-foreground leading-relaxed">{t["speedBody"]}</p>
           </Section>

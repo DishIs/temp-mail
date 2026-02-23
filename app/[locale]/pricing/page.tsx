@@ -4,6 +4,7 @@ import {
   Check, X, Crown, Loader2, EyeOff, Zap, Globe, Link2,
   Paperclip, Clock, Mail, MessageSquareCode, ExternalLink,
   ArrowRight, Infinity, Star, MailOpen, Shield, Sparkles,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,30 +29,6 @@ const Tick = () => (
 );
 const Cross = () => (
   <X className="mx-auto h-4 w-4 text-muted-foreground/40" />
-);
-
-// ── OTP demo chip ─────────────────────────────────────────────────────────────
-const OtpChip = ({ blurred }: { blurred: boolean }) => (
-  <span
-    className={cn(
-      "inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-50 px-2 py-0.5 text-xs font-mono font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400",
-      blurred && "blur-[3px] select-none",
-    )}
-  >
-    {blurred ? <>847291</> : <>847291</>}
-  </span>
-);
-
-// ── Verify link chip ──────────────────────────────────────────────────────────
-const VerifyChip = ({ blurred }: { blurred: boolean }) => (
-  <span
-    className={cn(
-      "inline-flex items-center gap-1 rounded-full border border-blue-400/40 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
-      blurred && "blur-[3px] select-none",
-    )}
-  >
-    {blurred ? <>Verify →</> : <>Verify</>}
-  </span>
 );
 
 // ── Section divider row ───────────────────────────────────────────────────────
@@ -82,15 +59,7 @@ const FRow = ({ icon, label, hint, isNew, guest, free, pro }: FRowProps) => {
   };
 
   return (
-    /* 
-      Mobile:  3 cols — [feature label takes remaining space] [free] [pro]
-      Desktop: 4 cols — [feature] [guest] [free] [pro]
-      
-      We hide the guest column on mobile via `hidden sm:flex` on the guest cell,
-      and adjust grid-cols accordingly with a responsive class.
-    */
     <div className="grid grid-cols-[1fr_64px_72px] sm:grid-cols-[1fr_80px_80px_80px] items-center gap-x-1 border-b border-border/50 px-3 py-2.5 last:border-0 hover:bg-muted/20 transition-colors">
-      {/* Feature label */}
       <div className="min-w-0 pr-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-muted-foreground/70 shrink-0">{icon}</span>
@@ -103,18 +72,13 @@ const FRow = ({ icon, label, hint, isNew, guest, free, pro }: FRowProps) => {
         </div>
         {hint && <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug pl-5">{hint}</p>}
       </div>
-
-      {/* Guest — hidden on mobile */}
       <div className="hidden sm:flex justify-center">{cell(guest)}</div>
-      {/* Free */}
       <div className="flex justify-center">{cell(free)}</div>
-      {/* Pro */}
       <div className="flex justify-center">{cell(pro)}</div>
     </div>
   );
 };
 
-// ── Value text helper ─────────────────────────────────────────────────────────
 const V = ({ v, accent }: { v: string; accent?: boolean }) => (
   <span className={cn("text-xs font-semibold tabular-nums", accent ? "text-primary" : "text-foreground")}>
     {v}
@@ -149,7 +113,7 @@ export default function PricingPage() {
     setBusy(true);
     const tid = toast.loading(t("toasts.init_payment"));
     try {
-      const res = await fetch("/api/paypal/create-subscription", {
+      const res = await fetch("/api/paddle/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cycle }),
@@ -183,7 +147,7 @@ export default function PricingPage() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-background">
-        <AppHeader />
+        <AppHeader initialSession={session} />
 
         <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pb-20 pt-10 sm:pt-16">
 
@@ -226,7 +190,6 @@ export default function PricingPage() {
 
             {/* ── Plan headers ── */}
             <div className="grid grid-cols-[1fr_64px_72px] sm:grid-cols-[1fr_80px_80px_80px] bg-muted/30 border-b border-border">
-              {/* Feature col */}
               <div className="px-3 py-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Feature
               </div>
@@ -289,13 +252,12 @@ export default function PricingPage() {
 
             {/* ── Retention ── */}
             <SectionRow label="Retention" />
-
             <FRow
               icon={<Clock className="h-3.5 w-3.5" />}
               label="Email retention"
               hint="How long emails stay on our server"
-              guest={<V v="1 day" />}
-              free={<V v="7 days" />}
+              guest={<V v="10 hrs" />}
+              free={<V v="24 hrs" />}
               pro={<V v="Forever" accent />}
             />
             <FRow
@@ -310,14 +272,13 @@ export default function PricingPage() {
               icon={<Star className="h-3.5 w-3.5" />}
               label="Saved inboxes"
               hint="Addresses remembered across sessions"
-              guest={<V v="1" />}
-              free={<V v="5" />}
+              guest={false}
+              free={<V v="1" />}
               pro={<V v="∞" accent />}
             />
 
             {/* ── Identity ── */}
             <SectionRow label="Identity" />
-
             <FRow
               icon={<Mail className="h-3.5 w-3.5" />}
               label="Custom email prefix"
@@ -337,18 +298,13 @@ export default function PricingPage() {
 
             {/* ── Smart Features ── */}
             <SectionRow label="Smart Features" />
-
             <FRow
               icon={<Zap className="h-3.5 w-3.5" />}
               label="Auto OTP extraction"
               hint="Login codes shown instantly in inbox list"
               isNew
               guest={false}
-              free={
-                <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
-                  Pro only
-                </span>
-              }
+              free={<span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">Pro only</span>}
               pro={true}
             />
             <FRow
@@ -357,11 +313,7 @@ export default function PricingPage() {
               hint="One-click verify button extracted from email"
               isNew
               guest={false}
-              free={
-                <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
-                  Pro only
-                </span>
-              }
+              free={<span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">Pro only</span>}
               pro={true}
             />
             <FRow
@@ -380,10 +332,17 @@ export default function PricingPage() {
               free={<V v="3" />}
               pro={<V v="All" accent />}
             />
+            <FRow
+              icon={<Keyboard className="h-3.5 w-3.5" />}
+              label="Keyboard shortcuts"
+              hint="Press C for copy, R for refresh & more"
+              guest={false}
+              free={<span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">Basics</span>}
+              pro={<span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">All</span>}
+            />
 
-            {/* ── Attachments ── */}
+            {/* ── Storage & Extras ── */}
             <SectionRow label="Storage & Extras" />
-
             <FRow
               icon={<Paperclip className="h-3.5 w-3.5" />}
               label="Attachment downloads"

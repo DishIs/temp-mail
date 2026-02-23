@@ -2,6 +2,7 @@ import { GoogleAnalytics } from '@next/third-parties/google';
 import "@/styles/global.css";
 import Providers from "@/components/Providers";
 import NextTopLoader from 'nextjs-toploader';
+import { PaddleInit } from '@/components/paddle-init';
 
 export const metadata = {
   title: 'Custom Temp Mail – Fastest Ad‑Free Disposable Email',
@@ -44,6 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           {children}
         </Providers>
+        <PaddleInit />
       </body>
     </html>
   );
