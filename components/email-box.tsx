@@ -237,17 +237,6 @@ const getExpiry = (dateStr: string, hours: number) => {
   return `Today at ${timeStr}`;
 };
 
-const sniffHasOtp = (subject?: string) => {
-  if (!subject) return false;
-  return (
-    /\b\d{6}\b/.test(subject) ||
-    /(?:code|otp|verification|pin|token)[^0-9]{0,15}\d{4,8}/i.test(subject) ||
-    /\d{4,8}[^0-9]{0,30}(?:code|otp|pin|token)/i.test(subject)
-  );
-};
-const sniffHasVerifyLink = (subject?: string) =>
-  !!subject && /verif|confirm|activat|validat|magic.link|click here/i.test(subject);
-
 interface EmailBoxProps {
   initialSession: Session | null;
   initialCustomDomains: any[];
@@ -325,15 +314,21 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   // ── Inline badges ─────────────────────────────────────────────────────────
   const renderBadges = useCallback((msg: Message) => {
-    const hasOtp = isPro ? !!msg.otp : sniffHasOtp(msg.subject);
-    const hasVerify = isPro ? !!msg.verificationLink : sniffHasVerifyLink(msg.subject);
+    // Server now sends '__DETECTED__' sentinel for free/anonymous users,
+    // and the real value for pro — no client-side sniffing needed.
+    const hasOtp = !!msg.otp;
+    const hasVerify = !!msg.verificationLink;
     if (!hasOtp && !hasVerify) return null;
+
+    const isRealOtp = msg.otp !== '__DETECTED__';
+    const isRealLink = msg.verificationLink !== '__DETECTED__';
+
     return (
       <>
         {hasOtp && (
           <OtpBadge
-            otp={msg.otp ?? "??????"}
-            isPro={isPro}
+            otp={isRealOtp ? msg.otp! : '••••••'}
+            isPro={isPro && isRealOtp}
             onCopy={() => { navigator.clipboard.writeText(msg.otp!); setOTPCopied(true); setTimeout(() => setOTPCopied(false), 2000); }}
             onUpsell={() => openUpsell("Auto OTP Extraction")}
             copied={otpCopied}
@@ -341,15 +336,15 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
         {hasVerify && (
           <VerifyLinkBadge
-            url={msg.verificationLink ?? "#"}
-            isPro={isPro}
+            url={isRealLink ? msg.verificationLink! : '#'}
+            isPro={isPro && isRealLink}
             onUpsell={() => openUpsell("Verification Link Detection")}
           />
         )}
       </>
     );
-  }, [isPro]);
-
+  }, [isPro, otpCopied]);
+  
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const connectWebSocket = useCallback((mailbox: string) => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
