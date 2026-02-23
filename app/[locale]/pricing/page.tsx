@@ -110,8 +110,10 @@ export default function PricingPage() {
       router.push("/dashboard");
       return;
     }
+
     setBusy(true);
-    const tid = toast.loading(t("toasts.init_payment"));
+    const tid = toast.loading("Opening checkout…");
+
     try {
       const res = await fetch("/api/paddle/create-checkout", {
         method: "POST",
@@ -119,28 +121,49 @@ export default function PricingPage() {
         body: JSON.stringify({ cycle }),
       });
       const d = await res.json();
+
       if (d.error) {
-        toast.error(d.error || t("toasts.payment_fail"), { id: tid });
+        toast.error(d.error, { id: tid });
         setBusy(false);
         return;
       }
-      if (d.url) {
-        toast.success(t("toasts.redirect"), { id: tid });
-        window.location.href = d.url;
-      } else {
-        toast.error(t("toasts.no_url"), { id: tid });
+
+      if (!window.Paddle) {
+        toast.error("Paddle.js not loaded. Please refresh and try again.", { id: tid });
         setBusy(false);
+        return;
       }
+
+      toast.dismiss(tid);
+
+      window.Paddle.Checkout.open({
+        settings: {
+          displayMode: "overlay",
+          theme: "light",
+          locale: "en",
+        },
+        items: [{ priceId: d.priceId, quantity: 1 }],
+        customer: session.user?.email ? { email: session.user.email } : undefined,
+        customData: { userId: session.user.id },
+        eventCallback: (event: any) => {
+          if (event.name === "checkout.completed") {
+            const txnId: string | undefined = event.data?.transaction_id;
+            window.location.href = `/payment/success?provider=paddle${txnId ? `&_ptxn=${txnId}` : ""}`;
+          }
+        },
+      });
     } catch {
-      toast.error(t("toasts.conn_err"), { id: tid });
-      setBusy(false);
+      toast.error("Connection error. Please try again.", { id: tid });
     }
+
+    setBusy(false);
   };
 
+
   const prices: Record<BillingCycle, { price: string; sub: string; save?: string }> = {
-    weekly:  { price: "$1.99", sub: "/ week" },
+    weekly: { price: "$1.99", sub: "/ week" },
     monthly: { price: "$3.99", sub: "/ month" },
-    yearly:  { price: "$19.99", sub: "/ year", save: "Save 58%" },
+    yearly: { price: "$19.99", sub: "/ year", save: "Save 58%" },
   };
   const { price, sub, save } = prices[cycle];
 
@@ -166,9 +189,9 @@ export default function PricingPage() {
           <div className="mb-6 flex flex-col items-center gap-3">
             <Tabs value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
               <TabsList className="h-9">
-                <TabsTrigger value="weekly"  className="text-xs sm:text-sm px-3 sm:px-4">Weekly</TabsTrigger>
+                <TabsTrigger value="weekly" className="text-xs sm:text-sm px-3 sm:px-4">Weekly</TabsTrigger>
                 <TabsTrigger value="monthly" className="text-xs sm:text-sm px-3 sm:px-4">Monthly</TabsTrigger>
-                <TabsTrigger value="yearly"  className="text-xs sm:text-sm px-3 sm:px-4">
+                <TabsTrigger value="yearly" className="text-xs sm:text-sm px-3 sm:px-4">
                   Yearly
                   <Badge className="ml-1.5 h-4 rounded-sm px-1 text-[10px] font-bold bg-emerald-500 text-white border-0 hidden sm:inline-flex">
                     -58%
@@ -435,7 +458,7 @@ export default function PricingPage() {
                   q: "What is verification link detection?",
                   a: "When an email contains a Verify, Confirm, Activate, or Magic Link button, our server extracts the URL from the HTML. You'll see a blue Verify chip in your inbox list — click it to open the link without opening the email. Pro only.",
                 },
-                { id: "domain",  q: t("faq_domain_title"),  a: t("faq_domain_desc") },
+                { id: "domain", q: t("faq_domain_title"), a: t("faq_domain_desc") },
                 { id: "storage", q: t("faq_storage_title"), a: t("faq_storage_desc") },
                 {
                   id: "billing",
