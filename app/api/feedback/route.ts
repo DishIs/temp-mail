@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { transporter } from '@/lib/mailer';
 import { verifyTurnstileToken } from '@/lib/turnstile';
 
 export async function POST(request: Request) {
@@ -15,16 +15,6 @@ export async function POST(request: Request) {
     if (!type || !rating || !message) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER_HOST,
-      port: Number(process.env.EMAIL_SERVER_PORT),
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_SERVER_USER,
-        pass: process.env.EMAIL_SERVER_PASSWORD,
-      },
-    });
 
     const mailOptions = {
       from: `"Feedback System" <${process.env.EMAIL_FROM}>`,

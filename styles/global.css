@@ -82,19 +82,3 @@
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
 }
-
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: var(--muted) transparent;
-}
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-thumb {
-  background-color: var(--muted);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}

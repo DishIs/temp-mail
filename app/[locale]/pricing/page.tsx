@@ -5,6 +5,7 @@ import {
   Paperclip, Clock, Mail, MessageSquareCode, ExternalLink,
   ArrowRight, Infinity, Star, MailOpen, Shield, Sparkles,
   Keyboard,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -324,6 +325,14 @@ export default function PricingPage() {
               guest={false}
               free={<V v="1" />}
               pro={<V v="∞" accent />}
+            />
+            <FRow
+              icon={<Lock className="h-3.5 w-3.5" />}
+              label="Private inboxes"
+              hint="All emails in your active address are private to you, no one can view it"
+              guest={false}
+              free={false}
+              pro={true}
             />
 
             {/* ── Identity ── */}

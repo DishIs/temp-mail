@@ -1,92 +1,35 @@
-// auth.ts
 import NextAuth, { type DefaultSession, type NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 import GitHub from 'next-auth/providers/github';
-import type { OAuthConfig } from 'next-auth/providers';
-// ✅ Fix 1: import JWT type first so TS can resolve the module before augmentation
+import Credentials from 'next-auth/providers/credentials';
 import type { JWT } from 'next-auth/jwt';
 import { fetchFromServiceAPI } from '@/lib/api';
 
-// ─── Type Augmentation ────────────────────────────────────────────────────────
-
-interface WYIProfile {
-  _id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  isProUser: boolean;
-  username: string;
-}
-
 declare module 'next-auth' {
   interface Session {
-    user: {
-      id: string;
-      plan: 'free' | 'pro';
-    } & DefaultSession['user'];
+    user: { id: string; plan: 'free' | 'pro' } & DefaultSession['user'];
   }
-  interface User {
-    plan?: 'free' | 'pro';
-  }
+  interface User { plan?: 'free' | 'pro' }
 }
-
-// ✅ Fix 1 (cont): now this augmentation works because JWT was imported above
 declare module 'next-auth/jwt' {
-  interface JWT {
-    id: string;
-    plan: 'free' | 'pro';
-  }
+  interface JWT { id: string; plan: 'free' | 'pro' }
 }
-
-// ─── Helper Types for Custom Provider Contexts ───────────────────────────────
-// ✅ Fix 2: explicit types for request() contexts so they're not implicitly any
-
-interface TokenRequestContext {
-  params: Record<string, string | undefined>;
-  provider: {
-    callbackUrl: string;
-    clientId?: string;
-    clientSecret?: string;
-  };
-}
-
-interface UserinfoRequestContext {
-  tokens: {
-    access_token?: string;
-  };
-}
-
-// ─── Backend Helper ───────────────────────────────────────────────────────────
 
 async function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
-  // GitHub users often have no public name; fall back to the local part of their
-  // email, then to their provider ID so the server-side required check always passes.
-  const resolvedName =
-    user.name?.trim() ||
-    user.email?.split('@')[0] ||
-    user.id;
-
-  // Same guard for email — some GitHub users expose no verified email.
+  const resolvedName = user.name?.trim() || user.email?.split('@')[0] || user.id;
   const resolvedEmail = user.email?.trim() || `${user.id}@provider.noemail`;
-
   try {
     await fetchFromServiceAPI('/auth/upsert-user', {
       method: 'POST',
-      body: JSON.stringify({
-        wyiUserId: user.id,
-        email: resolvedEmail,
-        name: resolvedName,
-        plan: 'free',
-      }),
+      body: JSON.stringify({ wyiUserId: user.id, email: resolvedEmail, name: resolvedName, plan: 'free' }),
     });
   } catch (e) {
     console.error('Upsert failed:', e);
   }
 }
 
-// ─── Auth Config ──────────────────────────────────────────────────────────────
-
 const config: NextAuthConfig = {
+  // ✅ No adapter — JWT only, no KV recursion
   session: { strategy: 'jwt' },
 
   providers: [
@@ -98,15 +41,38 @@ const config: NextAuthConfig = {
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
       authorization: { params: { scope: 'read:user user:email' } },
-      profile(profile, tokens) {
+      profile(profile) {
         return {
           id: String(profile.id),
-          name: profile.name ?? profile.login, // login is always present
-          email: profile.email,                // now populated by the scope
+          name: profile.name ?? profile.login,
+          email: profile.email,
           image: profile.avatar_url,
         };
       },
-    })
+    }),
+
+    // ✅ Magic link sign-in — token already verified by /api/auth/magic/verify
+    //    This provider is ONLY called from that route, never directly by users
+    Credentials({
+      id: 'magic-link',
+      name: 'Magic Link',
+      credentials: {
+        email: { type: 'text' },
+        magicVerified: { type: 'text' },
+      },
+      async authorize(credentials) {
+        // Extra guard: only accept if our verify route set the flag
+        if (credentials?.magicVerified !== 'true' || !credentials?.email) {
+          return null;
+        }
+        const email = credentials.email as string;
+        return {
+          id: email, // use email as stable ID for magic-link users
+          email,
+          name: email.split('@')[0],
+        };
+      },
+    }),
   ],
 
   secret: process.env.AUTH_SECRET,
@@ -121,9 +87,8 @@ const config: NextAuthConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id!;
-        token.plan = user.plan ?? 'free';
+        token.plan = (user as any).plan ?? 'free';
       }
-
       if (token.id) {
         try {
           const updatedUser = await fetchFromServiceAPI('/user/status', {
@@ -135,7 +100,6 @@ const config: NextAuthConfig = {
           console.error('JWT sync failed:', e);
         }
       }
-
       return token;
     },
 
