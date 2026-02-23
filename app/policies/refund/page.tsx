@@ -97,37 +97,24 @@ export default function RefundPolicyPage() {
             </Card>
           </div>
 
-          {/* Payment Processors Info */}
+          {/* Payment Processor Info */}
           <div className="max-w-4xl w-full mb-16">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <CreditCard className="w-5 h-5" /> Payment Providers
+              <CreditCard className="w-5 h-5" /> Payment Provider
             </h2>
             <div className="bg-muted/30 border border-muted rounded-xl p-6">
               <p className="mb-4 text-muted-foreground">
-                We use secure third-party processors to handle your payments. Refund processing times depend on their policies.
+                We use Paddle as our secure payment processor. Refund processing times depend on their policies and your bank.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                    <span className="font-bold text-blue-700 dark:text-blue-400">PayPal</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">PayPal Refunds</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Refunds typically appear in your PayPal balance immediately, or within 3-5 business days if paid via card.
-                    </p>
-                  </div>
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                  <span className="font-bold text-green-700 dark:text-green-400">Paddle</span>
                 </div>
-                <div className="flex items-start gap-4">
-                   <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                    <span className="font-bold text-green-700 dark:text-green-400">Paddle</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">Paddle Refunds</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Refunds typically take 5-10 business days to appear on your bank statement, depending on your bank.
-                    </p>
-                  </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Paddle Refunds</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Refunds typically take 5-10 business days to appear on your bank statement, depending on your bank.
+                  </p>
                 </div>
               </div>
             </div>
@@ -142,25 +129,25 @@ export default function RefundPolicyPage() {
               <AccordionItem value="item-1">
                 <AccordionTrigger>How do I request a refund?</AccordionTrigger>
                 <AccordionContent>
-                  Please contact our support team at <a href="mailto:support@example.com" className="text-primary underline">support@freecustom.email</a> within 14 days of your purchase. Include your Order ID or the email address used for purchase.
+                  Please contact our support team at <a href="mailto:support@freecustom.email" className="text-primary underline">support@freecustom.email</a> within 14 days of your purchase. Include your Order ID or the email address used for purchase.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-2">
                 <AccordionTrigger>I forgot to cancel my subscription. Can I get a refund?</AccordionTrigger>
                 <AccordionContent>
-                   As per our policy, we do not refund renewals. However, you can cancel immediately to prevent future charges. You will retain access to Pro features until the end of your current billing period.
+                  As per our policy, we do not refund renewals. However, you can cancel immediately to prevent future charges. You will retain access to Pro features until the end of your current billing period.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-3">
-                <AccordionTrigger>What happens if I dispute the charge with PayPal/Bank?</AccordionTrigger>
+                <AccordionTrigger>What happens if I dispute the charge with my bank?</AccordionTrigger>
                 <AccordionContent>
-                   We strongly recommend contacting us first. Opening a dispute freezes your account immediately. We resolve 99% of refund requests within 24 hours when contacted directly.
+                  We strongly recommend contacting us first. Opening a dispute freezes your account immediately. We resolve 99% of refund requests within 24 hours when contacted directly.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-4">
                 <AccordionTrigger>Are technical issues grounds for a refund?</AccordionTrigger>
                 <AccordionContent>
-                   Yes. If our service is not working as advertised and we cannot fix the issue for you, you are eligible for a refund even outside the 14-day window in specific cases.
+                  Yes. If our service is not working as advertised and we cannot fix the issue for you, you are eligible for a refund even outside the 14-day window in specific cases.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -175,7 +162,7 @@ export default function RefundPolicyPage() {
               </Link>
               <Link href="/contact">
                 <Button>
-                    <Mail className="w-4 h-4 mr-2" /> Contact Support
+                  <Mail className="w-4 h-4 mr-2" /> Contact Support
                 </Button>
               </Link>
             </div>
