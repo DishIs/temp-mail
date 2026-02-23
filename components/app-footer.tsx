@@ -105,7 +105,7 @@ export function AppFooter() {
 
             {/* Brand column */}
             <div className="col-span-2 sm:col-span-1 space-y-4">
-              <p className="text-sm font-bold tracking-tight">FreeCustomEmail</p>
+              <p className="text-sm font-bold tracking-tight">FreeCustom.Email</p>
               <p className="text-xs leading-relaxed text-muted-foreground max-w-[180px]">
                 Disposable email with smart features. Private, fast, and free.
               </p>
