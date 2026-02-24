@@ -4,16 +4,18 @@ import { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export function AutoSubmitForm({ action }: { action: () => Promise<void> }) {
-  const formRef = useRef<HTMLFormElement>(null);
+  const called = useRef(false);
 
   useEffect(() => {
-    // Auto-submit as soon as the page mounts — no user click needed
-    formRef.current?.requestSubmit();
-  }, []);
+    if (called.current) return;
+    called.current = true; // prevent double-fire in React StrictMode
 
-  return (
-    <form ref={formRef} action={action}>
-      <Loader2 className="h-6 w-6 animate-spin" />
-    </form>
-  );
+    action().finally(() => {
+      // Hard navigate so SessionProvider re-hydrates from the new cookie.
+      // A soft (client-side) redirect leaves useSession() stale until manual refresh.
+      window.location.replace('/dashboard');
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return <Loader2 className="h-6 w-6 animate-spin" />;
 }
