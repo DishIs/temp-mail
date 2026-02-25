@@ -52,30 +52,35 @@ export const metadata = {
   },
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <head>
         <GoogleAnalytics gaId="G-RXTEEVC8C4" />
-        <link rel="icon" href="/favicon.ico" />
-        <meta name='impact-site-verification' content='7df37ce6-8617-4606-8ba2-9a78bf367429' />
+        <meta
+          name="impact-site-verification"
+          content="7df37ce6-8617-4606-8ba2-9a78bf367429"
+        />
       </head>
+
       <body>
         <NextTopLoader
           color="#2299DD"
           initialPosition={0.08}
           crawlSpeed={200}
           height={3}
-          crawl={true}
+          crawl
           showSpinner={false}
           easing="ease"
           speed={200}
           shadow="0 0 10px #2299DD,0 0 5px #2299DD"
         />
-        <Providers>
-          {children}
-        </Providers>
+
+        <Providers>{children}</Providers>
         <PaddleInit />
       </body>
     </html>
