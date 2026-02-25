@@ -13,83 +13,54 @@ export default function Status() {
   const [status, setStatus] = useState({ queued: 0, denied: 0 });
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const hasFetchedInitial = useRef(false);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
 
-  const fetchStatus = async (token: string | undefined) => {
-    if (!token) return;
+  const fetchStats = async () => {
     try {
-      const response = await fetch('/api/stats', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json() as {
-        data: {
-          queued?: number, denied?: number
-        },
-        success: boolean
-      };
+      const response = await fetch('/api/stats');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json() as { data: { queued?: number; denied?: number }; success: boolean };
       if (data.success) {
-        setStatus(prevStatus => ({
-          queued: data.data.queued || prevStatus.queued,
-          denied: data.data.denied || prevStatus.denied
+        setStatus(prev => ({
+          queued: data.data.queued ?? prev.queued,
+          denied: data.data.denied ?? prev.denied,
         }));
       }
-    } catch (error) {
-      console.error('Failed to fetch status:', error);
-      // Optionally set an error state to display in the UI
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
     }
   };
 
-  const fetchToken = async () => {
+  const connectWebSocket = async () => {
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+
+    // Fetch a short-lived ticket scoped to the "stats" mailbox
+    let wsToken = '';
     try {
-      const response = await fetch("/api/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+      const res = await fetch('/api/ws-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mailbox: 'stats' }),
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json() as { token?: string };
-      if (data.token) {
-        fetchStatus(data.token);
-      } else {
-        throw new Error("No token received from server");
-      }
-    } catch (error) {
-      setError(`Error fetching token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const data = await res.json();
+      wsToken = data.token ?? '';
+    } catch {
+      // proceed without token — backend will reject if invalid
     }
-  };
 
-
-  // Initial stats fetch (runs only once)
-  useEffect(() => {
-    if (hasFetchedInitial.current) return;
-    hasFetchedInitial.current = true;
-    fetchToken();
-  }, []);
-
-  // WebSocket connection
-  useEffect(() => {
-    const ws = new WebSocket(`wss://api2.freecustom.email/?mailbox=stats`);
+    const ws = new WebSocket(
+      `wss://api2.freecustom.email/?mailbox=stats&token=${encodeURIComponent(wsToken)}`
+    );
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-    };
+    ws.onopen = () => { reconnectAttemptsRef.current = 0; };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as StatsEvent;
         if (data.type === "stats") {
-          setStatus((prev) => ({
+          setStatus(prev => ({
             queued: data.queued ?? prev.queued,
             denied: data.denied ?? prev.denied,
           }));
@@ -99,16 +70,25 @@ export default function Status() {
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("WebSocket error", err);
-      setError("WebSocket connection error.");
-    };
+    ws.onerror = () => {};
 
-    ws.onclose = () => {
-      console.log("WebSocket disconnected");
+    ws.onclose = (ev) => {
+      if (ev.code === 1000) return;
+      const delay = Math.min(500 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
+      reconnectAttemptsRef.current++;
+      reconnectTimerRef.current = setTimeout(() => connectWebSocket(), delay);
     };
+  };
 
-    return () => ws.close();
+  useEffect(() => {
+    fetchStats();
+    connectWebSocket();
+
+    return () => {
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      const ws = wsRef.current;
+      if (ws) { ws.onclose = null; ws.close(1000, "unmount"); }
+    };
   }, []);
 
   if (error) {
@@ -121,22 +101,18 @@ export default function Status() {
   }
 
   return (
-    // --- REVISED: Updated styles for main container ---
     <div className="bg-white dark:bg-black p-6 mt-5 rounded-xl border border-gray-200 dark:border-gray-700">
-      {/* --- REVISED: Updated titles and added SEO text --- */}
       <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2 tracking-wide">Emails Passing Through Our Service</h2>
       <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
         Track the real-time flow of temporary emails processed by our servers. 'Queued' shows successfully delivered emails, while 'Denied' reflects messages blocked by our filters.
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* --- REVISED: Removed bg colors, using borders --- */}
         <div className="border border-gray-200 dark:border-gray-700 p-5 rounded-xl">
           <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">Queued</p>
           <div className="text-4xl font-extrabold text-gray-800 dark:text-gray-200">
             <CountUp start={status.queued > 100 ? status.queued - 100 : 0} end={status.queued} duration={2.75} separator="," />
           </div>
         </div>
-        {/* --- REVISED: Removed bg colors, using borders --- */}
         <div className="border border-gray-200 dark:border-gray-700 p-5 rounded-xl">
           <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">Denied</p>
           <div className="text-4xl font-extrabold text-gray-800 dark:text-gray-200">
