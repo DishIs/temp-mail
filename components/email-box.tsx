@@ -344,15 +344,31 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       </>
     );
   }, [isPro, otpCopied]);
-  
+
   // ── WebSocket ─────────────────────────────────────────────────────────────
-  const connectWebSocket = useCallback((mailbox: string) => {
+  const connectWebSocket = useCallback(async (mailbox: string) => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     const prev = wsRef.current;
     if (prev) { prev.onclose = null; if (prev.readyState < 2) prev.close(1000, "mailbox_change"); }
 
-    const ws = new WebSocket(`wss://api2.freecustom.email/?mailbox=${encodeURIComponent(mailbox)}`);
+    // Fetch a short-lived ticket scoped to this mailbox
+    let wsToken = '';
+    try {
+      const res = await fetch('/api/ws-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mailbox }),
+      });
+      const data = await res.json();
+      wsToken = data.token ?? '';
+    } catch {
+      // Proceed without token — backend will reject if auth required
+    }
+
+    const url = `wss://api2.freecustom.email/?mailbox=${encodeURIComponent(mailbox)}&token=${encodeURIComponent(wsToken)}`;
+    const ws = new WebSocket(url);
     wsRef.current = ws;
+
     ws.onopen = () => { reconnectAttemptsRef.current = 0; };
     ws.onmessage = (ev) => {
       try {
