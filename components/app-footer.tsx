@@ -20,6 +20,7 @@ const FOOTER_LINKS = [
       { label: "API",             href: "https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1", external: true },
       { label: "Updates",         href: null,                  external: false, action: "changelog" },
       { label: "Feedback",        href: "/feedback",           external: false },
+      { label: "Blog",        href: "/blog",           external: false },
     ],
   },
   {
