@@ -29,48 +29,48 @@ import { Session } from "next-auth";
 // ---------------------------------------------------------------
 
 interface ScheduledChange {
-  action: string;           // e.g. "cancel" | "pause" | "resume"
-  effective_at: string;
-  resume_at?: string;
+    action: string;           // e.g. "cancel" | "pause" | "resume"
+    effective_at: string;
+    resume_at?: string;
 }
 
 interface SubscriptionData {
-  provider:        "paypal" | "paddle" | "manual";
-  subscriptionId:  string;
-  planId?:         string;
-  status:          "TRIALING" | "ACTIVE" | "SUSPENDED" | "CANCELLED" | "EXPIRED" | "APPROVAL_PENDING";
-  startTime:       string;
-  payerEmail?:     string;
-  payerName?:      string;
-  lastUpdated?:    string;
-  // Paddle-specific
-  nextBilledAt?:   string;
-  scheduledChange?: ScheduledChange;
-  pausedAt?:       string;
-  canceledAt?:     string;
+    provider: "paypal" | "paddle" | "manual";
+    subscriptionId: string;
+    planId?: string;
+    status: "TRIALING" | "ACTIVE" | "SUSPENDED" | "CANCELLED" | "EXPIRED" | "APPROVAL_PENDING";
+    startTime: string;
+    payerEmail?: string;
+    payerName?: string;
+    lastUpdated?: string;
+    // Paddle-specific
+    nextBilledAt?: string;
+    scheduledChange?: ScheduledChange;
+    pausedAt?: string;
+    canceledAt?: string;
 }
 
 interface UserProfile {
-  wyiUserId:    string;
-  name:         string;
-  email:        string;
-  image?:       string;
-  plan:         "free" | "pro";
-  subscription?: SubscriptionData;
-  createdAt?:   string;
+    wyiUserId: string;
+    name: string;
+    email: string;
+    image?: string;
+    plan: "free" | "pro";
+    subscription?: SubscriptionData;
+    createdAt?: string;
 }
 
 interface StorageStats {
-  success:                boolean;
-  storageUsed:            number;
-  storageLimit:           number;
-  percentUsed:            string;
-  emailCount:             number;
-  storageUsedFormatted:   string;
-  storageLimitFormatted:  string;
-  storageRemaining:       number;
-  storageRemainingFormatted: string;
-  message:                string;
+    success: boolean;
+    storageUsed: number;
+    storageLimit: number;
+    percentUsed: string;
+    emailCount: number;
+    storageUsedFormatted: string;
+    storageLimitFormatted: string;
+    storageRemaining: number;
+    storageRemainingFormatted: string;
+    message: string;
 }
 
 // ---------------------------------------------------------------
@@ -78,495 +78,522 @@ interface StorageStats {
 // ---------------------------------------------------------------
 
 function safeFormat(dateStr?: string | null, fmt = "MMM d, yyyy"): string {
-  if (!dateStr) return "N/A";
-  try { return format(parseISO(dateStr), fmt); } catch { return "N/A"; }
+    if (!dateStr) return "N/A";
+    try { return format(parseISO(dateStr), fmt); } catch { return "N/A"; }
 }
 
 function statusBadgeProps(status: SubscriptionData["status"]) {
-  switch (status) {
-    case "ACTIVE":
-      return { label: "Active",    className: "bg-green-600 text-white" };
-    case "TRIALING":
-      return { label: "Trial",     className: "bg-blue-600 text-white" };
-    case "SUSPENDED":
-      return { label: "Suspended", className: "bg-amber-500 text-white" };
-    case "CANCELLED":
-      return { label: "Cancelled", className: "bg-destructive text-white" };
-    case "EXPIRED":
-      return { label: "Expired",   className: "bg-muted text-muted-foreground" };
-    default:
-      return { label: status,      className: "bg-secondary" };
-  }
+    switch (status) {
+        case "ACTIVE":
+            return { label: "Active", className: "bg-green-600 text-white" };
+        case "TRIALING":
+            return { label: "Trial", className: "bg-blue-600 text-white" };
+        case "SUSPENDED":
+            return { label: "Suspended", className: "bg-amber-500 text-white" };
+        case "CANCELLED":
+            return { label: "Cancelled", className: "bg-destructive text-white" };
+        case "EXPIRED":
+            return { label: "Expired", className: "bg-muted text-muted-foreground" };
+        default:
+            return { label: status, className: "bg-secondary" };
+    }
 }
 
 // ---------------------------------------------------------------
 // Sub-component: Paddle Subscription Detail Grid
 // ---------------------------------------------------------------
 function PaddleSubscriptionDetails({ sub }: { sub: SubscriptionData }) {
-  const badge = statusBadgeProps(sub.status);
+    const badge = statusBadgeProps(sub.status);
 
-  const rows: { icon: React.ReactNode; label: string; value: React.ReactNode }[] = [
-    {
-      icon: <CreditCard className="h-4 w-4 text-muted-foreground" />,
-      label: "Subscription ID",
-      value: (
-        <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded select-all">
-          {sub.subscriptionId}
-        </span>
-      ),
-    },
-    {
-      icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
-      label: "Started",
-      value: safeFormat(sub.startTime, "MMMM d, yyyy"),
-    },
-    ...(sub.nextBilledAt ? [{
-      icon: <RefreshCw className="h-4 w-4 text-muted-foreground" />,
-      label: "Next Billing Date",
-      value: safeFormat(sub.nextBilledAt, "MMMM d, yyyy"),
-    }] : []),
-    ...(sub.payerEmail ? [{
-      icon: <Mail className="h-4 w-4 text-muted-foreground" />,
-      label: "Billing Email",
-      value: sub.payerEmail,
-    }] : []),
-    ...(sub.planId ? [{
-      icon: <Zap className="h-4 w-4 text-muted-foreground" />,
-      label: "Price ID",
-      value: (
-        <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded select-all">
-          {sub.planId}
-        </span>
-      ),
-    }] : []),
-    ...(sub.pausedAt ? [{
-      icon: <PauseCircle className="h-4 w-4 text-amber-500" />,
-      label: "Paused At",
-      value: <span className="text-amber-600 font-medium">{safeFormat(sub.pausedAt, "MMM d, yyyy · h:mm a")}</span>,
-    }] : []),
-    ...(sub.canceledAt ? [{
-      icon: <Ban className="h-4 w-4 text-destructive" />,
-      label: "Cancelled At",
-      value: <span className="text-destructive font-medium">{safeFormat(sub.canceledAt, "MMM d, yyyy · h:mm a")}</span>,
-    }] : []),
-    ...(sub.lastUpdated ? [{
-      icon: <Clock className="h-4 w-4 text-muted-foreground" />,
-      label: "Last Updated",
-      value: safeFormat(sub.lastUpdated, "MMM d, yyyy · h:mm a"),
-    }] : []),
-  ];
+    const rows: { icon: React.ReactNode; label: string; value: React.ReactNode }[] = [
+        {
+            icon: <CreditCard className="h-4 w-4 text-muted-foreground" />,
+            label: "Subscription ID",
+            value: (
+                <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded select-all">
+                    {sub.subscriptionId}
+                </span>
+            ),
+        },
+        {
+            icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
+            label: "Started",
+            value: safeFormat(sub.startTime, "MMMM d, yyyy"),
+        },
+        ...(sub.nextBilledAt ? [{
+            icon: <RefreshCw className="h-4 w-4 text-muted-foreground" />,
+            label: "Next Billing Date",
+            value: safeFormat(sub.nextBilledAt, "MMMM d, yyyy"),
+        }] : []),
+        ...(sub.payerEmail ? [{
+            icon: <Mail className="h-4 w-4 text-muted-foreground" />,
+            label: "Billing Email",
+            value: sub.payerEmail,
+        }] : []),
+        ...(sub.planId ? [{
+            icon: <Zap className="h-4 w-4 text-muted-foreground" />,
+            label: "Price ID",
+            value: (
+                <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded select-all">
+                    {sub.planId}
+                </span>
+            ),
+        }] : []),
+        ...(sub.pausedAt ? [{
+            icon: <PauseCircle className="h-4 w-4 text-amber-500" />,
+            label: "Paused At",
+            value: <span className="text-amber-600 font-medium">{safeFormat(sub.pausedAt, "MMM d, yyyy · h:mm a")}</span>,
+        }] : []),
+        ...(sub.canceledAt ? [{
+            icon: <Ban className="h-4 w-4 text-destructive" />,
+            label: "Cancelled At",
+            value: <span className="text-destructive font-medium">{safeFormat(sub.canceledAt, "MMM d, yyyy · h:mm a")}</span>,
+        }] : []),
+        ...(sub.lastUpdated ? [{
+            icon: <Clock className="h-4 w-4 text-muted-foreground" />,
+            label: "Last Updated",
+            value: safeFormat(sub.lastUpdated, "MMM d, yyyy · h:mm a"),
+        }] : []),
+    ];
 
-  return (
-    <div className="space-y-4">
-      {/* Status + Provider row */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Badge className={badge.className}>{badge.label}</Badge>
-        <Badge variant="outline" className="text-emerald-600 border-emerald-300 font-semibold">
-          Paddle
-        </Badge>
-        {sub.status === "TRIALING" && (
-          <span className="text-xs text-muted-foreground">
-            Trial ends {sub.nextBilledAt ? `on ${safeFormat(sub.nextBilledAt)}` : "soon"} — no charge until then
-          </span>
-        )}
-      </div>
+    return (
+        <div className="space-y-4">
+            {/* Status + Provider row */}
+            <div className="flex items-center gap-3 flex-wrap">
+                <Badge className={badge.className}>{badge.label}</Badge>
+                <Badge variant="outline" className="text-emerald-600 border-emerald-300 font-semibold">
+                    Paddle
+                </Badge>
+                {sub.status === "TRIALING" && (
+                    <span className="text-xs text-muted-foreground">
+                        Trial ends {sub.nextBilledAt ? `on ${safeFormat(sub.nextBilledAt)}` : "soon"} — no charge until then
+                    </span>
+                )}
+            </div>
 
-      {/* Detail grid */}
-      <div className="grid gap-3">
-        {rows.map(({ icon, label, value }) => (
-          <div key={label} className="flex items-center justify-between gap-4 text-sm py-1.5 border-b border-dashed border-muted last:border-0">
-            <span className="flex items-center gap-2 text-muted-foreground shrink-0">
-              {icon} {label}
-            </span>
-            <span className="text-right font-medium">{value}</span>
-          </div>
-        ))}
-      </div>
+            {/* Detail grid */}
+            <div className="grid gap-3">
+                {rows.map(({ icon, label, value }) => (
+                    <div key={label} className="flex items-center justify-between gap-4 text-sm py-1.5 border-b border-dashed border-muted last:border-0">
+                        <span className="flex items-center gap-2 text-muted-foreground shrink-0">
+                            {icon} {label}
+                        </span>
+                        <span className="text-right font-medium">{value}</span>
+                    </div>
+                ))}
+            </div>
 
-      {/* Scheduled change banner */}
-      {sub.scheduledChange && (
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 mt-2">
-          <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-          <div className="text-sm">
-            <p className="font-medium text-amber-800 dark:text-amber-300 capitalize">
-              Scheduled {sub.scheduledChange.action}
-            </p>
-            <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
-              Effective {safeFormat(sub.scheduledChange.effective_at, "MMMM d, yyyy")}
-              {sub.scheduledChange.resume_at && (
-                <> · Resumes {safeFormat(sub.scheduledChange.resume_at, "MMMM d, yyyy")}</>
-              )}
-            </p>
-          </div>
+            {/* Scheduled change banner */}
+            {sub.scheduledChange && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 mt-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                        <p className="font-medium text-amber-800 dark:text-amber-300 capitalize">
+                            Scheduled {sub.scheduledChange.action}
+                        </p>
+                        <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
+                            Effective {safeFormat(sub.scheduledChange.effective_at, "MMMM d, yyyy")}
+                            {sub.scheduledChange.resume_at && (
+                                <> · Resumes {safeFormat(sub.scheduledChange.resume_at, "MMMM d, yyyy")}</>
+                            )}
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }
 
 // ---------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const t = useTranslations("Profile");
+    const { data: session, status } = useSession();
+    const router = useRouter();
+    const t = useTranslations("Profile");
 
-  const [loading, setLoading]       = useState(true);
-  const [userData, setUserData]     = useState<UserProfile | null>(null);
-  const [storageData, setStorageData] = useState<StorageStats | null>(null);
-  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
-  const [upsellFeature, setUpsellFeature] = useState("Pro Plan");
+    const [loading, setLoading] = useState(true);
+    const [userData, setUserData] = useState<UserProfile | null>(null);
+    const [storageData, setStorageData] = useState<StorageStats | null>(null);
+    const [isUpsellOpen, setIsUpsellOpen] = useState(false);
+    const [upsellFeature, setUpsellFeature] = useState("Pro Plan");
 
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/auth");
-  }, [status, router]);
+    useEffect(() => {
+        if (status === "unauthenticated") router.push("/auth");
+    }, [status, router]);
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchUserData();
-      fetchStorageData();
-    }
-  }, [status]);
+    useEffect(() => {
+        if (status === "authenticated") {
+            fetchUserData();
+            fetchStorageData();
+        }
+    }, [status]);
 
-  const fetchUserData = async () => {
-    try {
-      const response = await fetch('/api/user/me');
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Failed to fetch profile");
-      if (data.success && data.user) {
-        setUserData(data.user);
-      } else {
-        toast.error(t('toasts.fetch_error'));
-      }
-    } catch (error) {
-      console.error("Failed to load profile data", error);
-      toast.error(t('toasts.load_error'));
-    }
-  };
+    const fetchUserData = async () => {
+        try {
+            const response = await fetch('/api/user/me');
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || "Failed to fetch profile");
+            if (data.success && data.user) {
+                setUserData(data.user);
+            } else {
+                toast.error(t('toasts.fetch_error'));
+            }
+        } catch (error) {
+            console.error("Failed to load profile data", error);
+            toast.error(t('toasts.load_error'));
+        }
+    };
 
-  const fetchStorageData = async () => {
-    try {
-      const response = await fetch('/api/user/storage');
-      const data = await response.json();
-      if (data.success) setStorageData(data);
-    } catch (error) {
-      console.error("Failed to load storage stats", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchStorageData = async () => {
+        try {
+            const response = await fetch('/api/user/storage');
+            const data = await response.json();
+            if (data.success) setStorageData(data);
+        } catch (error) {
+            console.error("Failed to load storage stats", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const handleManageSubscription = () => {
-    const sub = userData?.subscription;
-    if (!sub) { router.push('/pricing'); return; }
-    if (sub.provider === 'paddle') {
-      window.open('https://customer.paddle.com/subscriptions', '_blank');
-    } else {
-      window.open(`https://www.paypal.com/myaccount/autopay/connect/${sub.subscriptionId}`, '_blank');
-    }
-  };
+    const [portalLoading, setPortalLoading] = useState(false);
 
-  const getProviderDetails = (session: Session) => {
-    if (!session.user) return { label: "Unknown", icon: null };
-    const image = session.user.image || "";
-    if (image.includes("googleusercontent.com"))
-      return { label: "Google", icon: <FaGoogle className="w-5 h-5 text-blue-500" /> };
-    if (image.includes("githubusercontent.com"))
-      return { label: "GitHub", icon: <FaGithub className="w-5 h-5 text-gray-700 dark:text-white" /> };
-    return { label: "Email", icon: <Mail className="h-5 w-5" /> };
-  };
+    const handleManageSubscription = async () => {
+        const sub = userData?.subscription;
+        if (!sub) { router.push('/pricing'); return; }
 
-  if (status === "loading" || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground text-sm">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p>{t('loading')}</p>
-        </div>
-      </div>
-    );
-  }
+        if (sub.provider === 'paddle') {
+            // Generate a fresh authenticated portal session URL (short-lived, ~1hr TTL)
+            setPortalLoading(true);
+            try {
+                const res = await fetch('/api/paddle/portal-session', { method: 'POST' });
+                const data = await res.json();
 
-  const isPro = userData?.plan === "pro";
-  const providerDetails = getProviderDetails(session);
-  const sub = userData?.subscription;
-  const subStatus = sub?.status ?? "NONE";
-  const paymentProviderName = sub?.provider === 'paypal' ? 'PayPal' : sub?.provider === 'paddle' ? 'Paddle' : 'N/A';
+                if (!res.ok || !data.url) {
+                    toast.error('Could not open billing portal. Please try again.');
+                    return;
+                }
 
-  const percentUsed = storageData ? parseFloat(storageData.percentUsed) : 0;
-  const usageText = storageData
-    ? `${storageData.storageUsedFormatted || storageData.message} / ${storageData.storageLimitFormatted || storageData.message}`
-    : "Loading...";
+                window.open(data.url, '_blank');
+            } catch {
+                toast.error('Could not open billing portal. Please try again.');
+            } finally {
+                setPortalLoading(false);
+            }
+        } else {
+            // PayPal autopay management
+            window.open(`https://www.paypal.com/myaccount/autopay/connect/${sub.subscriptionId}`, '_blank');
+        }
+    };
 
-  const isActiveOrTrialing = subStatus === "ACTIVE" || subStatus === "TRIALING";
+    // Update the manage button in JSX to show a spinner:
 
-  return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="min-h-screen bg-muted/10">
-        <AppHeader initialSession={session} />
 
-        <div className="container max-w-6xl mx-auto py-10 px-4 sm:px-6">
 
-          {/* Header */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-              <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
+    const getProviderDetails = (session: Session) => {
+        if (!session.user) return { label: "Unknown", icon: null };
+        const image = session.user.image || "";
+        if (image.includes("googleusercontent.com"))
+            return { label: "Google", icon: <FaGoogle className="w-5 h-5 text-blue-500" /> };
+        if (image.includes("githubusercontent.com"))
+            return { label: "GitHub", icon: <FaGithub className="w-5 h-5 text-gray-700 dark:text-white" /> };
+        return { label: "Email", icon: <Mail className="h-5 w-5" /> };
+    };
+
+    if (status === "loading" || loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-3 text-muted-foreground text-sm">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <p>{t('loading')}</p>
+                </div>
             </div>
-            {!isPro && (
-              <Button
-                onClick={() => router.push('/pricing')}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0"
-              >
-                <Zap className="mr-2 h-4 w-4 fill-current" /> {t('upgrade_btn')}
-              </Button>
-            )}
-          </div>
+        );
+    }
 
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="bg-background border">
-              <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
-              <TabsTrigger value="billing">{t('tabs.billing')}</TabsTrigger>
-              <TabsTrigger value="settings">{t('tabs.settings')}</TabsTrigger>
-            </TabsList>
+    const isPro = userData?.plan === "pro";
+    const providerDetails = getProviderDetails(session);
+    const sub = userData?.subscription;
+    const subStatus = sub?.status ?? "NONE";
+    const paymentProviderName = sub?.provider === 'paypal' ? 'PayPal' : sub?.provider === 'paddle' ? 'Paddle' : 'N/A';
 
-            {/* ── OVERVIEW TAB ── */}
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    const percentUsed = storageData ? parseFloat(storageData.percentUsed) : 0;
+    const usageText = storageData
+        ? `${storageData.storageUsedFormatted || storageData.message} / ${storageData.storageLimitFormatted || storageData.message}`
+        : "Loading...";
 
-                {/* Profile Card */}
-                <Card className="md:col-span-2">
-                  <CardHeader className="flex flex-row items-center gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-primary/10">
-                      <AvatarImage src={session?.user?.image || ""} />
-                      <AvatarFallback className="text-lg bg-primary/5">{userData?.name?.charAt(0) || "U"}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <CardTitle>{userData?.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-2 mt-1">
-                        <Mail className="h-3.5 w-3.5" /> {userData?.email}
-                      </CardDescription>
-                    </div>
-                    <div className="ml-auto">
-                      <Badge variant={isPro ? "default" : "secondary"} className="uppercase tracking-wider">
-                        {isPro ? t('overview.plan_pro') : t('overview.plan_free')}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <Separator />
-                  <CardContent className="pt-6 grid gap-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">{t('overview.user_id')}</p>
-                        <p className="text-sm font-mono bg-muted inline-block px-2 py-1 rounded select-all truncate max-w-full" title={userData?.wyiUserId}>
-                          {userData?.wyiUserId || "N/A"}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">{t('overview.member_since')}</p>
-                        <p className="text-sm">{safeFormat(userData?.createdAt, "MMMM d, yyyy")}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">{t('overview.login_method')}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {providerDetails.icon}
-                          <span className="text-sm font-medium">{providerDetails.label}</span>
+    const isActiveOrTrialing = subStatus === "ACTIVE" || subStatus === "TRIALING";
+
+    return (
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <div className="min-h-screen bg-muted/10">
+                <AppHeader initialSession={session} />
+
+                <div className="container max-w-6xl mx-auto py-10 px-4 sm:px-6">
+
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                            <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Storage Stats */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">{t('overview.usage_title')}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('overview.storage_used')}</span>
-                        <span className="font-medium">{percentUsed.toFixed(2)}%</span>
-                      </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{ width: `${percentUsed}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground text-right">{usageText}</p>
-                    </div>
-                    <div className="space-y-2 pt-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Emails Stored</span>
-                        <span className="font-medium">{storageData?.emailCount ?? 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{t('overview.daily_emails')}</span>
-                        <span className="font-medium">{t('overview.unlimited')}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  {!isPro && (
-                    <CardFooter>
-                      <p className="text-xs text-muted-foreground">
-                        <span className="text-amber-500 font-medium">{t('overview.note_label')}</span> {t('overview.note_text')}
-                      </p>
-                    </CardFooter>
-                  )}
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* ── BILLING TAB ── */}
-            <TabsContent value="billing" className="space-y-6">
-
-              <Card className={isPro ? "border-primary/20 bg-primary/5" : ""}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" /> {t('billing.sub_title')}
-                  </CardTitle>
-                </CardHeader>
-
-                <CardContent className="space-y-6">
-                  {/* Plan name + status */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-2xl font-bold capitalize">{t('billing.plan_display', { plan: userData?.plan })}</h3>
-                    {sub && (
-                      <Badge className={statusBadgeProps(sub.status).className}>
-                        {statusBadgeProps(sub.status).label}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground -mt-4">
-                    {isPro ? t('billing.feat_unlocked') : t('billing.feat_basic')}
-                  </p>
-
-                  {/* Paddle-specific detail block */}
-                  {isPro && sub?.provider === 'paddle' && (
-                    <>
-                      <Separator />
-                      <PaddleSubscriptionDetails sub={sub} />
-                    </>
-                  )}
-
-                  {/* PayPal fallback */}
-                  {isPro && sub?.provider === 'paypal' && (
-                    <>
-                      <Separator />
-                      <div className="grid gap-3 text-sm">
-                        <div className="flex items-center justify-between py-1.5 border-b border-dashed border-muted">
-                          <span className="flex items-center gap-2 text-muted-foreground">
-                            <CreditCard className="h-4 w-4" /> Subscription ID
-                          </span>
-                          <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded select-all">{sub.subscriptionId}</span>
-                        </div>
-                        <div className="flex items-center justify-between py-1.5 border-b border-dashed border-muted">
-                          <span className="flex items-center gap-2 text-muted-foreground">
-                            <Calendar className="h-4 w-4" /> Started
-                          </span>
-                          <span className="font-medium">{safeFormat(sub.startTime, "MMMM d, yyyy")}</span>
-                        </div>
-                        {sub.payerEmail && (
-                          <div className="flex items-center justify-between py-1.5">
-                            <span className="flex items-center gap-2 text-muted-foreground">
-                              <Mail className="h-4 w-4" /> PayPal Email
-                            </span>
-                            <span className="font-medium">{sub.payerEmail}</span>
-                          </div>
+                        {!isPro && (
+                            <Button
+                                onClick={() => router.push('/pricing')}
+                                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0"
+                            >
+                                <Zap className="mr-2 h-4 w-4 fill-current" /> {t('upgrade_btn')}
+                            </Button>
                         )}
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-
-                <CardFooter className="bg-muted/30 flex flex-col sm:flex-row gap-3 border-t">
-                  {isPro && isActiveOrTrialing ? (
-                    <Button variant="outline" onClick={handleManageSubscription}>
-                      <ExternalLink className="mr-2 h-4 w-4" /> {t('billing.manage_btn')}
-                    </Button>
-                  ) : (
-                    <Button onClick={() => router.push('/pricing')} className="w-full sm:w-auto">
-                      {t('billing.upgrade_btn')}
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
-
-              {/* Transaction History */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <History className="h-5 w-5" /> {t('billing.trans_title')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('billing.trans_desc', { provider: paymentProviderName })}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
-                    {isPro ? (
-                      <>
-                        <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-full">
-                          <CheckCircle2 className="h-8 w-8 text-green-600" />
-                        </div>
-                        <h3 className="text-lg font-medium">{t('billing.active_title')}</h3>
-                        <p className="text-muted-foreground max-w-md">
-                          {t('billing.active_desc', { provider: paymentProviderName })}
-                        </p>
-                        <Button variant="outline" size="sm" onClick={handleManageSubscription} className="mt-2">
-                          {sub?.provider === 'paddle' ? 'Manage on Paddle →' : t('billing.view_invoice', { provider: 'PayPal' })}
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="bg-muted p-3 rounded-full">
-                          <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <h3 className="text-lg font-medium">{t('billing.no_trans_title')}</h3>
-                        <p className="text-muted-foreground">{t('billing.no_trans_desc')}</p>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* ── SETTINGS TAB ── */}
-            <TabsContent value="settings">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('settings.sec_title')}</CardTitle>
-                  <CardDescription>{t('settings.sec_desc')}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="space-y-0.5">
-                      <h4 className="font-medium text-sm">{t('settings.2fa_title')}</h4>
-                      <p className="text-xs text-muted-foreground">{t('settings.2fa_desc')}</p>
                     </div>
-                    <Button variant="outline" size="sm" disabled>{t('settings.coming_soon')}</Button>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg border-destructive/20 bg-destructive/5">
-                    <div className="space-y-0.5">
-                      <h4 className="font-medium text-sm text-destructive">{t('settings.del_title')}</h4>
-                      <p className="text-xs text-destructive/80">{t('settings.del_desc')}</p>
-                    </div>
-                    <Button variant="destructive" size="sm">{t('settings.del_btn')}</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
 
-        <UpsellModal
-          isOpen={isUpsellOpen}
-          onClose={() => setIsUpsellOpen(false)}
-          featureName={upsellFeature}
-        />
-      </div>
-    </ThemeProvider>
-  );
+                    <Tabs defaultValue="overview" className="space-y-6">
+                        <TabsList className="bg-background border">
+                            <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
+                            <TabsTrigger value="billing">{t('tabs.billing')}</TabsTrigger>
+                            <TabsTrigger value="settings">{t('tabs.settings')}</TabsTrigger>
+                        </TabsList>
+
+                        {/* ── OVERVIEW TAB ── */}
+                        <TabsContent value="overview" className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                                {/* Profile Card */}
+                                <Card className="md:col-span-2">
+                                    <CardHeader className="flex flex-row items-center gap-4">
+                                        <Avatar className="h-16 w-16 border-2 border-primary/10">
+                                            <AvatarImage src={session?.user?.image || ""} />
+                                            <AvatarFallback className="text-lg bg-primary/5">{userData?.name?.charAt(0) || "U"}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <CardTitle>{userData?.name}</CardTitle>
+                                            <CardDescription className="flex items-center gap-2 mt-1">
+                                                <Mail className="h-3.5 w-3.5" /> {userData?.email}
+                                            </CardDescription>
+                                        </div>
+                                        <div className="ml-auto">
+                                            <Badge variant={isPro ? "default" : "secondary"} className="uppercase tracking-wider">
+                                                {isPro ? t('overview.plan_pro') : t('overview.plan_free')}
+                                            </Badge>
+                                        </div>
+                                    </CardHeader>
+                                    <Separator />
+                                    <CardContent className="pt-6 grid gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-medium text-muted-foreground">{t('overview.user_id')}</p>
+                                                <p className="text-sm font-mono bg-muted inline-block px-2 py-1 rounded select-all truncate max-w-full" title={userData?.wyiUserId}>
+                                                    {userData?.wyiUserId || "N/A"}
+                                                </p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-medium text-muted-foreground">{t('overview.member_since')}</p>
+                                                <p className="text-sm">{safeFormat(userData?.createdAt, "MMMM d, yyyy")}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-medium text-muted-foreground">{t('overview.login_method')}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {providerDetails.icon}
+                                                    <span className="text-sm font-medium">{providerDetails.label}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Storage Stats */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-base">{t('overview.usage_title')}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="text-muted-foreground">{t('overview.storage_used')}</span>
+                                                <span className="font-medium">{percentUsed.toFixed(2)}%</span>
+                                            </div>
+                                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary rounded-full transition-all duration-500"
+                                                    style={{ width: `${percentUsed}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-muted-foreground text-right">{usageText}</p>
+                                        </div>
+                                        <div className="space-y-2 pt-2">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="text-muted-foreground">Emails Stored</span>
+                                                <span className="font-medium">{storageData?.emailCount ?? 0}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="text-muted-foreground">{t('overview.daily_emails')}</span>
+                                                <span className="font-medium">{t('overview.unlimited')}</span>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                    {!isPro && (
+                                        <CardFooter>
+                                            <p className="text-xs text-muted-foreground">
+                                                <span className="text-amber-500 font-medium">{t('overview.note_label')}</span> {t('overview.note_text')}
+                                            </p>
+                                        </CardFooter>
+                                    )}
+                                </Card>
+                            </div>
+                        </TabsContent>
+
+                        {/* ── BILLING TAB ── */}
+                        <TabsContent value="billing" className="space-y-6">
+
+                            <Card className={isPro ? "border-primary/20 bg-primary/5" : ""}>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <CreditCard className="h-5 w-5" /> {t('billing.sub_title')}
+                                    </CardTitle>
+                                </CardHeader>
+
+                                <CardContent className="space-y-6">
+                                    {/* Plan name + status */}
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        <h3 className="text-2xl font-bold capitalize">{t('billing.plan_display', { plan: userData?.plan })}</h3>
+                                        {sub && (
+                                            <Badge className={statusBadgeProps(sub.status).className}>
+                                                {statusBadgeProps(sub.status).label}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground -mt-4">
+                                        {isPro ? t('billing.feat_unlocked') : t('billing.feat_basic')}
+                                    </p>
+
+                                    {/* Paddle-specific detail block */}
+                                    {isPro && sub?.provider === 'paddle' && (
+                                        <>
+                                            <Separator />
+                                            <PaddleSubscriptionDetails sub={sub} />
+                                        </>
+                                    )}
+
+                                    {/* PayPal fallback */}
+                                    {isPro && sub?.provider === 'paypal' && (
+                                        <>
+                                            <Separator />
+                                            <div className="grid gap-3 text-sm">
+                                                <div className="flex items-center justify-between py-1.5 border-b border-dashed border-muted">
+                                                    <span className="flex items-center gap-2 text-muted-foreground">
+                                                        <CreditCard className="h-4 w-4" /> Subscription ID
+                                                    </span>
+                                                    <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded select-all">{sub.subscriptionId}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between py-1.5 border-b border-dashed border-muted">
+                                                    <span className="flex items-center gap-2 text-muted-foreground">
+                                                        <Calendar className="h-4 w-4" /> Started
+                                                    </span>
+                                                    <span className="font-medium">{safeFormat(sub.startTime, "MMMM d, yyyy")}</span>
+                                                </div>
+                                                {sub.payerEmail && (
+                                                    <div className="flex items-center justify-between py-1.5">
+                                                        <span className="flex items-center gap-2 text-muted-foreground">
+                                                            <Mail className="h-4 w-4" /> PayPal Email
+                                                        </span>
+                                                        <span className="font-medium">{sub.payerEmail}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </CardContent>
+
+                                <CardFooter className="bg-muted/30 flex flex-col sm:flex-row gap-3 border-t">
+                                    {isPro && isActiveOrTrialing ? (
+                                        <Button variant="outline" onClick={handleManageSubscription}>
+                                            <ExternalLink className="mr-2 h-4 w-4" /> {t('billing.manage_btn')}
+                                        </Button>
+                                    ) : (
+                                        <Button onClick={() => router.push('/pricing')} className="w-full sm:w-auto">
+                                            {t('billing.upgrade_btn')}
+                                        </Button>
+                                    )}
+                                </CardFooter>
+                            </Card>
+
+                            {/* Transaction History */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <History className="h-5 w-5" /> {t('billing.trans_title')}
+                                    </CardTitle>
+                                    <CardDescription>
+                                        {t('billing.trans_desc', { provider: paymentProviderName })}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
+                                        {isPro ? (
+                                            <>
+                                                <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-full">
+                                                    <CheckCircle2 className="h-8 w-8 text-green-600" />
+                                                </div>
+                                                <h3 className="text-lg font-medium">{t('billing.active_title')}</h3>
+                                                <p className="text-muted-foreground max-w-md">
+                                                    {t('billing.active_desc', { provider: paymentProviderName })}
+                                                </p>
+                                                <Button variant="outline" onClick={handleManageSubscription} disabled={portalLoading}>
+                                                    {portalLoading
+                                                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening...</>
+                                                        : <><ExternalLink className="mr-2 h-4 w-4" /> {t('billing.manage_btn')}</>
+                                                    }
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="bg-muted p-3 rounded-full">
+                                                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                                                </div>
+                                                <h3 className="text-lg font-medium">{t('billing.no_trans_title')}</h3>
+                                                <p className="text-muted-foreground">{t('billing.no_trans_desc')}</p>
+                                            </>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* ── SETTINGS TAB ── */}
+                        <TabsContent value="settings">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>{t('settings.sec_title')}</CardTitle>
+                                    <CardDescription>{t('settings.sec_desc')}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                                        <div className="space-y-0.5">
+                                            <h4 className="font-medium text-sm">{t('settings.2fa_title')}</h4>
+                                            <p className="text-xs text-muted-foreground">{t('settings.2fa_desc')}</p>
+                                        </div>
+                                        <Button variant="outline" size="sm" disabled>{t('settings.coming_soon')}</Button>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 border rounded-lg border-destructive/20 bg-destructive/5">
+                                        <div className="space-y-0.5">
+                                            <h4 className="font-medium text-sm text-destructive">{t('settings.del_title')}</h4>
+                                            <p className="text-xs text-destructive/80">{t('settings.del_desc')}</p>
+                                        </div>
+                                        <Button variant="destructive" size="sm">{t('settings.del_btn')}</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
+                </div>
+
+                <UpsellModal
+                    isOpen={isUpsellOpen}
+                    onClose={() => setIsUpsellOpen(false)}
+                    featureName={upsellFeature}
+                />
+            </div>
+        </ThemeProvider>
+    );
 }

@@ -76,16 +76,17 @@ async function handleSubscriptionActivated(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType: 'ACTIVATED',
+      eventType:       'ACTIVATED',
       userId,
-      subscriptionId: data.id,
-      priceId: data.items?.[0]?.price?.id,
-      status: data.status,           // 'active'
-      startTime: data.started_at ?? data.created_at,
-      nextBilledAt: data.next_billed_at,
-      payerEmail: data.customer?.email,
+      subscriptionId:  data.id,
+      customerId:      data.customer_id,          // <-- NEW
+      priceId:         data.items?.[0]?.price?.id,
+      status:          data.status,
+      startTime:       data.started_at ?? data.created_at,
+      nextBilledAt:    data.next_billed_at,
+      payerEmail:      data.customer?.email ?? null,
       scheduledChange: data.scheduled_change ?? null,
-      rawEvent: event,
+      rawEvent:        event,
     }),
   });
 }
@@ -97,19 +98,21 @@ async function handleSubscriptionTrialing(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:      'ACTIVATED',   // grant pro access during trial
+      eventType:       'ACTIVATED',
       userId,
-      subscriptionId: data.id,
-      priceId:        data.items?.[0]?.price?.id,
-      status:         data.status,   // 'trialing'
-      startTime:      data.started_at ?? data.created_at,
-      nextBilledAt:   data.next_billed_at,
-      payerEmail:     data.customer?.email,
+      subscriptionId:  data.id,
+      customerId:      data.customer_id,          // <-- NEW
+      priceId:         data.items?.[0]?.price?.id,
+      status:          data.status,               // 'trialing'
+      startTime:       data.started_at ?? data.created_at,
+      nextBilledAt:    data.next_billed_at,
+      payerEmail:      data.customer?.email ?? null,
       scheduledChange: data.scheduled_change ?? null,
-      rawEvent:       event,
+      rawEvent:        event,
     }),
   });
 }
+
 
 async function handleSubscriptionCanceled(event: any) {
   const userId = getUserIdFromEvent(event);
