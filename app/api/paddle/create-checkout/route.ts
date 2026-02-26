@@ -2,12 +2,11 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 
-type BillingCycle = 'weekly' | 'monthly' | 'yearly';
+type BillingCycle = 'monthly' | 'yearly';
 
 // Map your Paddle Price IDs from the Paddle dashboard.
 // Each price should be a recurring subscription price.
 const PADDLE_PRICES: Record<BillingCycle, string> = {
-  weekly:  process.env.PADDLE_PRICE_WEEKLY!,
   monthly: process.env.PADDLE_PRICE_MONTHLY!,
   yearly:  process.env.PADDLE_PRICE_YEARLY!,
 };
