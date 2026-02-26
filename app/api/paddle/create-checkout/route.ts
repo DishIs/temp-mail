@@ -28,11 +28,9 @@ export async function POST(request: Request) {
       body: JSON.stringify({ userId: session.user.id }),
     });
 
-    if (cycle === 'monthly' && userData.hadTrial) cycle = 'monthly_no_trial'
+    console.log('user status data', userData)
 
-    if (!cycle || !['monthly_no_trial', 'monthly', 'yearly'].includes(cycle)) {
-      return NextResponse.json({ error: 'Invalid billing cycle' }, { status: 400 });
-    }
+    if (cycle === 'monthly' && userData?.hadTrial) cycle = 'monthly_no_trial'
 
     const allowed: BillingCycle[] = ['monthly', 'monthly_no_trial', 'yearly'];
     if (!allowed.includes(cycle)) {

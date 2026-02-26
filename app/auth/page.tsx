@@ -5,12 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useRef } from "react"; // Added useRef
 import { Loader2, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
 import Link from "next/link";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"; // Import Turnstile
 
 const ERROR_MESSAGES: Record<string, string> = {
   expired: "Your sign-in link has expired. Please request a new one.",
@@ -39,6 +40,10 @@ function AuthForm() {
   const [email, setEmail] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [emailError, setEmailError] = useState("");
+  
+  // Turnstile State
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const handleOAuth = async (provider: string) => {
     setIsLoading(provider);
@@ -61,18 +66,37 @@ function AuthForm() {
       setEmailError("Please enter a valid email address.");
       return;
     }
+    
+    // Check Captcha
+    if (!captchaToken) {
+      setEmailError("Please complete the security check.");
+      return;
+    }
+
     setEmailError("");
     setIsLoading("email");
     try {
       const res = await fetch('/api/auth/magic/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          email, 
+          token: captchaToken // Send token to backend
+        }),
       });
-      if (!res.ok) throw new Error('Failed');
+      
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Reset captcha on failure so user can try again
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
+        throw new Error(data.error || 'Failed');
+      }
+      
       setMagicLinkSent(true);
-    } catch {
-      setEmailError("Couldn't send the link. Please try again.");
+    } catch (err: any) {
+      setEmailError(err.message || "Couldn't send the link. Please try again.");
     } finally {
       setIsLoading(null);
     }
@@ -92,7 +116,7 @@ function AuthForm() {
             Click it to sign in — the link expires in 10 minutes.
           </p>
           <button
-            onClick={() => { setMagicLinkSent(false); setEmail(""); }}
+            onClick={() => { setMagicLinkSent(false); setEmail(""); setCaptchaToken(null); }}
             className="text-xs text-muted-foreground underline underline-offset-4 hover:text-primary transition-colors mt-2"
           >
             Use a different email
@@ -112,10 +136,8 @@ function AuthForm() {
       </CardHeader>
 
       <CardContent className="grid gap-5">
-        {/* ── Error banner ── */}
         {urlError && <ErrorBanner error={urlError} />}
 
-        {/* ── Magic Link (Primary) ── */}
         <form onSubmit={handleMagicLink} className="grid gap-3">
           <div className="grid gap-1.5">
             <Input
@@ -135,11 +157,27 @@ function AuthForm() {
               <p className="text-xs text-destructive pl-0.5">{emailError}</p>
             )}
           </div>
+
+          {/* Turnstile Widget */}
+          <div className="flex justify-center py-2">
+            <Turnstile 
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+              onSuccess={setCaptchaToken}
+              onError={() => setEmailError("Security check failed. Please refresh.")}
+              onExpire={() => setCaptchaToken(null)}
+              options={{
+                theme: 'auto',
+                size: 'flexible',
+              }}
+            />
+          </div>
+
           <Button
             type="submit"
             size="lg"
             className="w-full font-semibold"
-            disabled={!!isLoading}
+            disabled={!!isLoading || !captchaToken} // Disable if no token
           >
             {isLoading === "email" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -150,7 +188,6 @@ function AuthForm() {
           </Button>
         </form>
 
-        {/* ── Divider ── */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t border-border" />
@@ -160,15 +197,13 @@ function AuthForm() {
           </div>
         </div>
 
-        {/* ── OAuth row ── */}
         <div className="grid grid-cols-2 gap-3">
           <Button
             variant="outline"
             size="lg"
             onClick={() => handleOAuth("google")}
             disabled={!!isLoading}
-            className="w-full border-border bg-background text-foreground
-              hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="w-full border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >
             {isLoading === "google" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -183,8 +218,7 @@ function AuthForm() {
             size="lg"
             onClick={() => handleOAuth("github")}
             disabled={!!isLoading}
-            className="w-full border-border bg-background text-foreground
-              hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="w-full border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >
             {isLoading === "github" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,3 +1,4 @@
+// app/api/auth/magic/send/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { transporter } from '@/lib/mailer';
@@ -57,20 +58,57 @@ function getMagicLinkHtml(url: string): string {
 </html>`;
 }
 
-
 export async function POST(req: NextRequest) {
-  const { email } = await req.json();
+  const { email, token } = await req.json();
+
+  // 1. Basic Input Validation
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
   }
 
+  // 2. Validate Turnstile Token
+  if (!token) {
+    return NextResponse.json({ error: 'CAPTCHA missing' }, { status: 400 });
+  }
+
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  if (!secretKey) {
+    console.error("TURNSTILE_SECRET_KEY is not defined");
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
+  try {
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip');
+    
+    const formData = new FormData();
+    formData.append('secret', secretKey);
+    formData.append('response', token);
+    if (ip) formData.append('remoteip', ip);
+
+    const turnstileRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const turnstileOutcome = await turnstileRes.json() as any;
+
+    if (!turnstileOutcome.success) {
+      console.error("Turnstile verification failed:", turnstileOutcome);
+      return NextResponse.json({ error: 'Security check failed. Please try again.' }, { status: 403 });
+    }
+  } catch (err) {
+    console.error("Turnstile error:", err);
+    return NextResponse.json({ error: 'Failed to verify security check' }, { status: 500 });
+  }
+
+  // 3. Logic to Send Email
   const ctx = await getCloudflareContext<{ AUTH_KV: KVNamespace }>();
   const kv = ctx.env.AUTH_KV;
 
-  const token = randomBytes(32).toString('hex');
-  await kv.put(`magic:${token}`, email, { expirationTtl: TOKEN_TTL });
+  const magicToken = randomBytes(32).toString('hex');
+  await kv.put(`magic:${magicToken}`, email, { expirationTtl: TOKEN_TTL });
 
-  const url = new URL(`/api/auth/magic/verify?token=${token}`, req.url).toString();
+  const url = new URL(`/api/auth/magic/verify?token=${magicToken}`, req.url).toString();
 
   await transporter.sendMail({
     to: email,
