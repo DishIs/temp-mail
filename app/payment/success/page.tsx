@@ -23,7 +23,8 @@ function usePaddleVerification(ptxn: string | null) {
     if (hasRun.current) return;
     hasRun.current = true;
 
-    const MAX_POLL = 8;    // 8 × 1.5 s = 12 s polling window
+    // CHANGED: Increased from 8 to 20 attempts
+    const MAX_POLL = 20;    // 20 × 1.5 s = 30 s polling window
     const INTERVAL = 1500;
     let   attempts = 0;
     const tid      = toast.loading("Confirming your subscription…");
