@@ -9,25 +9,33 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
-    // 1. Get the user's subscription data (customerId + subscriptionId) from our service
-    const userRes = await fetchFromServiceAPI('/user/me', {
-      method: 'GET',
-      headers: { 'x-user-id': (session.user as any).wyiUserId ?? '' },
-    });
+  const wyiUserId = (session.user as any).wyiUserId ?? session.user.id;
 
-    const sub = userRes?.user?.subscription;
+  try {
+    // Use the same endpoint /api/user/me already uses successfully
+    const userRes = await fetchFromServiceAPI(`/user/profile/${wyiUserId}`);
+
+    if (!userRes?.success || !userRes?.user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const sub = userRes.user.subscription;
 
     if (!sub || sub.provider !== 'paddle') {
       return NextResponse.json({ error: 'No Paddle subscription found' }, { status: 404 });
     }
 
     if (!sub.customerId) {
-      return NextResponse.json({ error: 'Paddle customer ID not found — please contact support' }, { status: 404 });
+      // customerId wasn't saved for subscriptions created before the webhook fix.
+      // Fall back to the generic portal homepage — user can still manage from there.
+      // Run the backfill script below to fix existing records.
+      console.warn(`[Paddle Portal] No customerId for user ${wyiUserId} — falling back to portal homepage`);
+      return NextResponse.json({
+        url: 'https://customer.paddle.com/subscriptions',
+        warning: 'no_customer_id',
+      });
     }
 
-    // 2. Call Paddle API to create an authenticated portal session
-    //    Passing subscription_ids generates a deep-link directly to that subscription's management page.
     const paddleApiUrl = process.env.PADDLE_ENV === 'sandbox'
       ? 'https://sandbox-api.paddle.com'
       : 'https://api.paddle.com';
@@ -37,7 +45,7 @@ export async function POST() {
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.PADDLE_API_KEY}`,
+          Authorization: `Bearer ${process.env.PADDLE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -48,7 +56,7 @@ export async function POST() {
 
     if (!paddleRes.ok) {
       const err = await paddleRes.json().catch(() => ({}));
-      console.error('[Paddle Portal] API error:', err);
+      console.error('[Paddle Portal] Paddle API error:', paddleRes.status, err);
       return NextResponse.json(
         { error: 'Failed to create Paddle portal session' },
         { status: paddleRes.status }
@@ -56,13 +64,9 @@ export async function POST() {
     }
 
     const paddleData = await paddleRes.json();
-
-    // The overview URL is a short-lived authenticated link (~1 hour TTL)
-    // subscriptions[0].cancel_subscription etc. are the deep-link URLs
     const overviewUrl: string = paddleData.data.urls.general.overview;
-
-    // If Paddle returned a subscription deep-link, prefer that
     const subLinks = paddleData.data.urls.subscriptions ?? [];
+    // Prefer the subscription management deep-link, fall back to overview
     const manageUrl: string = subLinks[0]?.update_payment_method ?? overviewUrl;
 
     return NextResponse.json({ url: manageUrl });
