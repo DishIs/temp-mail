@@ -76,16 +76,37 @@ async function handleSubscriptionActivated(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:       'ACTIVATED',
+      eventType: 'ACTIVATED',
       userId,
-      subscriptionId:  data.id,
-      priceId:         data.items?.[0]?.price?.id,
-      status:          data.status,           // 'active'
-      startTime:       data.started_at ?? data.created_at,
-      nextBilledAt:    data.next_billed_at,
-      payerEmail:      data.customer?.email,
+      subscriptionId: data.id,
+      priceId: data.items?.[0]?.price?.id,
+      status: data.status,           // 'active'
+      startTime: data.started_at ?? data.created_at,
+      nextBilledAt: data.next_billed_at,
+      payerEmail: data.customer?.email,
       scheduledChange: data.scheduled_change ?? null,
-      rawEvent:        event,
+      rawEvent: event,
+    }),
+  });
+}
+
+async function handleSubscriptionTrialing(event: any) {
+  const userId = getUserIdFromEvent(event);
+  const data = event.data;
+
+  await fetchFromServiceAPI('/paddle/subscription-event', {
+    method: 'POST',
+    body: JSON.stringify({
+      eventType:      'ACTIVATED',   // grant pro access during trial
+      userId,
+      subscriptionId: data.id,
+      priceId:        data.items?.[0]?.price?.id,
+      status:         data.status,   // 'trialing'
+      startTime:      data.started_at ?? data.created_at,
+      nextBilledAt:   data.next_billed_at,
+      payerEmail:     data.customer?.email,
+      scheduledChange: data.scheduled_change ?? null,
+      rawEvent:       event,
     }),
   });
 }
@@ -97,12 +118,12 @@ async function handleSubscriptionCanceled(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:      'CANCELLED',
+      eventType: 'CANCELLED',
       userId,
       subscriptionId: data.id,
-      status:         data.status,           // 'canceled'
-      canceledAt:     data.canceled_at,
-      rawEvent:       event,
+      status: data.status,           // 'canceled'
+      canceledAt: data.canceled_at,
+      rawEvent: event,
     }),
   });
 }
@@ -114,12 +135,12 @@ async function handleSubscriptionPaused(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:      'SUSPENDED',
+      eventType: 'SUSPENDED',
       userId,
       subscriptionId: data.id,
-      status:         data.status,           // 'paused'
-      pausedAt:       data.paused_at,
-      rawEvent:       event,
+      status: data.status,           // 'paused'
+      pausedAt: data.paused_at,
+      rawEvent: event,
     }),
   });
 }
@@ -131,11 +152,11 @@ async function handleSubscriptionResumed(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:      'ACTIVATED',           // Reuse ACTIVATED to restore pro plan
+      eventType: 'ACTIVATED',           // Reuse ACTIVATED to restore pro plan
       userId,
       subscriptionId: data.id,
-      status:         data.status,           // 'active'
-      rawEvent:       event,
+      status: data.status,           // 'active'
+      rawEvent: event,
     }),
   });
 }
@@ -147,12 +168,12 @@ async function handleSubscriptionUpdated(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:      'UPDATED',
+      eventType: 'UPDATED',
       userId,
       subscriptionId: data.id,
-      priceId:        data.items?.[0]?.price?.id,
-      status:         data.status,
-      rawEvent:       event,
+      priceId: data.items?.[0]?.price?.id,
+      status: data.status,
+      rawEvent: event,
     }),
   });
 }
@@ -167,12 +188,12 @@ async function handleTransactionCompleted(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:      'PAYMENT_COMPLETED',
-      userId:         getUserIdFromEvent(event),
+      eventType: 'PAYMENT_COMPLETED',
+      userId: getUserIdFromEvent(event),
       subscriptionId,
-      amount:         data.details?.totals?.grand_total,
-      currency:       data.currency_code,
-      rawEvent:       event,
+      amount: data.details?.totals?.grand_total,
+      currency: data.currency_code,
+      rawEvent: event,
     }),
   });
 }
@@ -184,10 +205,10 @@ async function handleTransactionPaymentFailed(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:      'PAYMENT_FAILED',
-      userId:         getUserIdFromEvent(event),
+      eventType: 'PAYMENT_FAILED',
+      userId: getUserIdFromEvent(event),
       subscriptionId,
-      rawEvent:       event,
+      rawEvent: event,
     }),
   });
 }
@@ -199,11 +220,11 @@ async function handleTransactionRefunded(event: any) {
   await fetchFromServiceAPI('/paddle/subscription-event', {
     method: 'POST',
     body: JSON.stringify({
-      eventType:   'REFUNDED',
+      eventType: 'REFUNDED',
       subscriptionId,
-      amount:      data.details?.totals?.grand_total,
-      currency:    data.currency_code,
-      rawEvent:    event,
+      amount: data.details?.totals?.grand_total,
+      currency: data.currency_code,
+      rawEvent: event,
     }),
   });
 }
@@ -237,6 +258,14 @@ export async function POST(request: Request) {
 
   try {
     switch (eventType) {
+      case 'subscription.created':
+        await handleSubscriptionActivated(event); // reuse existing handler
+        break;
+
+      case 'subscription.trialing':
+        await handleSubscriptionTrialing(event);
+        break;
+
       // Subscription lifecycle
       case 'subscription.activated':
         await handleSubscriptionActivated(event);
