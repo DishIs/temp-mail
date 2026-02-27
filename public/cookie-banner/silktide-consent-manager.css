@@ -229,7 +229,7 @@
   opacity: 0;
   transform: translateY(8px) scale(0.99);
   animation: ck-modal-in var(--ck-dur) var(--ck-ease) forwards;
-  overflow: hidden;
+  overflow: visible;
 }
 
 #silktide-modal header {
@@ -263,7 +263,8 @@
 #silktide-modal .modal-close svg { fill: currentColor; width: 11px; height: 11px; }
 
 #silktide-modal > p,
-#silktide-modal section ~ p {
+#silktide-modal section ~ p,
+#silktide-modal header ~ p {
   font-size: 11px;
   line-height: 1.6;
   color: var(--text);
@@ -273,6 +274,7 @@
 
 #silktide-modal section {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
