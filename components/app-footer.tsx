@@ -16,38 +16,39 @@ const FOOTER_LINKS = [
   {
     heading: "Product",
     links: [
-      { label: "Pricing",         href: "/pricing",            external: false },
-      { label: "API",             href: "https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1", external: true },
-      { label: "Updates",         href: null,                  external: false, action: "changelog" },
-      { label: "Feedback",        href: "/feedback",           external: false },
-      { label: "Blog",        href: "/blog",           external: false },
+      { label: "Pricing",          href: "/pricing",            external: false },
+      { label: "API",              href: "https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1", external: true },
+      { label: "Updates",          href: null,                  external: false, action: "changelog" },
+      { label: "Feedback",         href: "/feedback",           external: false },
+      { label: "Blog",             href: "/blog",               external: false },
     ],
   },
   {
     heading: "Legal",
     links: [
-      { label: "Privacy Policy",  href: "/policies/privacy",  external: false },
-      { label: "Terms of Service",href: "/policies/terms",    external: false },
-      { label: "Refund Policy",   href: "/policies/refund",   external: false },
+      { label: "Privacy Policy",   href: "/policies/privacy",  external: false },
+      { label: "Cookie Policy",    href: "/policies/cookie",   external: false }, // ← added
+      { label: "Terms of Service", href: "/policies/terms",    external: false },
+      { label: "Refund Policy",    href: "/policies/refund",   external: false },
     ],
   },
   {
     heading: "Support",
     links: [
-      { label: "Contact",         href: "/contact",            external: false },
-      { label: "Discord",         href: "https://discord.com/invite/Ztp7kT2QBz", external: true },
-      { label: "Reddit",          href: "https://www.reddit.com/r/FreeCustomEmail/", external: true },
-      { label: "GitHub",          href: "https://github.com/DishIs/temp-mail",       external: true },
+      { label: "Contact",          href: "/contact",            external: false },
+      { label: "Discord",          href: "https://discord.com/invite/Ztp7kT2QBz",                    external: true },
+      { label: "Reddit",           href: "https://www.reddit.com/r/FreeCustomEmail/",                external: true },
+      { label: "GitHub",           href: "https://github.com/DishIs/temp-mail",                      external: true },
     ],
   },
 ];
 
 const PAYMENT_METHODS = [
-  { icon: SiVisa,            label: "Visa" },
+  { icon: SiVisa,            label: "Visa"       },
   { icon: SiMastercard,      label: "Mastercard" },
-  { icon: SiAmericanexpress, label: "Amex" },
-  { icon: SiPaypal,          label: "PayPal" },
-  { icon: SiApplepay,        label: "Apple Pay" },
+  { icon: SiAmericanexpress, label: "Amex"       },
+  { icon: SiPaypal,          label: "PayPal"     },
+  { icon: SiApplepay,        label: "Apple Pay"  },
   { icon: SiGooglepay,       label: "Google Pay" },
 ];
 
@@ -80,7 +81,7 @@ export function AppFooter() {
     <>
       <footer className="border-t border-border bg-muted/30">
 
-        {/* ── Trust / payment bar ─────────────────────────────────────────── */}
+        {/* ── Trust / payment bar ── */}
         <div className="border-b border-border/60 py-4">
           <div className="container mx-auto flex flex-col items-center gap-3 px-4 sm:flex-row sm:justify-between">
             <p className="text-[11px] font-medium text-muted-foreground">
@@ -100,7 +101,7 @@ export function AppFooter() {
           </div>
         </div>
 
-        {/* ── Main footer grid ─────────────────────────────────────────────── */}
+        {/* ── Main footer grid ── */}
         <div className="container mx-auto px-4 py-10">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
 
@@ -114,9 +115,9 @@ export function AppFooter() {
               {/* Social icons */}
               <div className="flex items-center gap-3">
                 {[
-                  { icon: SiGithub,  href: "https://github.com/DishIs/temp-mail",                        label: "GitHub"  },
-                  { icon: SiReddit,  href: "https://www.reddit.com/r/FreeCustomEmail/",                   label: "Reddit"  },
-                  { icon: SiDiscord, href: "https://discord.com/invite/Ztp7kT2QBz",                       label: "Discord" },
+                  { icon: SiGithub,  href: "https://github.com/DishIs/temp-mail",              label: "GitHub"  },
+                  { icon: SiReddit,  href: "https://www.reddit.com/r/FreeCustomEmail/",         label: "Reddit"  },
+                  { icon: SiDiscord, href: "https://discord.com/invite/Ztp7kT2QBz",             label: "Discord" },
                 ].map(({ icon: Icon, href, label }) => (
                   <a
                     key={label}
@@ -192,7 +193,7 @@ export function AppFooter() {
           </div>
         </div>
 
-        {/* ── Bottom bar ───────────────────────────────────────────────────── */}
+        {/* ── Bottom bar ── */}
         <div className="border-t border-border/60 py-4">
           <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-4 sm:flex-row">
             <p className="text-xs text-muted-foreground">
