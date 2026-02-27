@@ -23,12 +23,10 @@ export async function POST(request: Request) {
   try {
     let { cycle } = await request.json() as { cycle: BillingCycle };
 
-    const { data: userData } = await fetchFromServiceAPI('/user/status', {
+    const userData = await fetchFromServiceAPI('/user/status', {
       method: 'POST',
       body: JSON.stringify({ userId: session.user.id }),
     });
-
-    console.log('user status data', userData)
 
     if (cycle === 'monthly' && userData?.hadTrial) cycle = 'monthly_no_trial'
 
