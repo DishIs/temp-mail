@@ -49,7 +49,31 @@ interface DnsRecord {
   ttl?: string;
 }
 
+// ---------------------------------------------------------------------------
+// ICANN-compliant domain validation
+// Labels: 1–63 chars, [a-z0-9] + hyphens (not at start/end), 2+ labels, TLD ≥ 2 alpha chars
+// ---------------------------------------------------------------------------
+const DOMAIN_LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
+
+function isValidDomain(value: string): boolean {
+  if (!value || value.length > 253) return false;
+  const labels = value.split(".");
+  if (labels.length < 2) return false;
+  const tld = labels[labels.length - 1];
+  if (!/^[a-z]{2,}$/i.test(tld)) return false; // TLD must be all-alpha, ≥ 2 chars
+  return labels.every((label) => DOMAIN_LABEL_RE.test(label));
+}
+
+// Strip characters that are never valid in a domain name
+function sanitizeDomainInput(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9.\-]/g, ""); // only allow: letters, digits, dots, hyphens
+}
+
+// ---------------------------------------------------------------------------
 // Copy button with transient "copied" feedback
+// ---------------------------------------------------------------------------
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -78,7 +102,9 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
+// ---------------------------------------------------------------------------
 // DNS Records Table inside the guide dialog
+// ---------------------------------------------------------------------------
 function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRecord: string; txtRecord: string }) {
   const records: DnsRecord[] = [
     {
@@ -149,7 +175,9 @@ function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRe
   );
 }
 
+// ---------------------------------------------------------------------------
 // Separate component to handle its own translations and state
+// ---------------------------------------------------------------------------
 function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxRecord: string; txtRecord: string }) {
   const t = useTranslations('Dashboard');
   const [open, setOpen] = useState(false);
@@ -257,6 +285,9 @@ function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxR
   );
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 function normalizeDomain(input: Partial<CustomDomain> & { domain?: string }): CustomDomain | null {
   if (!input || !input.domain) return null;
   return {
@@ -267,6 +298,9 @@ function normalizeDomain(input: Partial<CustomDomain> & { domain?: string }): Cu
   };
 }
 
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManagerProps) {
   const t = useTranslations('Dashboard');
   const { data: session } = useSession();
@@ -275,6 +309,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
     (initialDomains ?? []).map((d) => normalizeDomain(d)!).filter(Boolean)
   );
   const [newDomain, setNewDomain] = useState("");
+  const [domainError, setDomainError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState<string | null>(null);
 
@@ -303,6 +338,12 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
     e.preventDefault();
     if (!isPro) { openUpsell(t('domains_title')); return; }
     if (!newDomain || !user) return;
+
+    if (!isValidDomain(newDomain)) {
+      setDomainError("Enter a valid domain (e.g. example.com)");
+      return;
+    }
+
     setIsLoading(true);
     const toastId = toast.loading(t('domains_add_btn') + "...");
     try {
@@ -326,6 +367,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
         if (built) pushDomainSafe(built);
       }
       setNewDomain("");
+      setDomainError(null);
       toast.success(t('domains_add_success'), { id: toastId });
     } catch (error: any) {
       toast.error(error?.message ?? t('domains_add_fail'), { id: toastId });
@@ -422,15 +464,37 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
         <CardContent>
           {/* ADD DOMAIN FORM */}
           <form onSubmit={handleAddDomain} className="flex flex-col sm:flex-row gap-2 mb-6">
-            <Input
-              placeholder={t('domains_placeholder')}
-              value={newDomain}
-              onChange={(e) => setNewDomain(e.target.value)}
-              disabled={isLoading}
-              className="w-full sm:flex-1"
-            />
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isLoading || !newDomain}>
+            <div className="relative w-full sm:flex-1">
+              <Input
+                placeholder={t('domains_placeholder')}
+                value={newDomain}
+                onChange={(e) => {
+                  const sanitized = sanitizeDomainInput(e.target.value);
+                  setNewDomain(sanitized);
+                  if (sanitized && !isValidDomain(sanitized)) {
+                    setDomainError("Enter a valid domain (e.g. example.com)");
+                  } else {
+                    setDomainError(null);
+                  }
+                }}
+                onBlur={() => {
+                  if (newDomain && !isValidDomain(newDomain)) {
+                    setDomainError("Enter a valid domain (e.g. example.com)");
+                  }
+                }}
+                disabled={isLoading}
+                className={`w-full ${domainError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                aria-invalid={!!domainError}
+                aria-describedby={domainError ? "domain-error" : undefined}
+              />
+              {domainError && (
+                <p id="domain-error" className="absolute top-full left-0 mt-1 text-xs text-destructive">
+                  {domainError}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2 mt-4 sm:mt-0">
+              <Button type="submit" disabled={isLoading || !newDomain || !!domainError}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {t('domains_add_btn')}
               </Button>
