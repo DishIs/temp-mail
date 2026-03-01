@@ -1,7 +1,6 @@
-// app/api/auth/magic/send/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { transporter } from '@/lib/mailer';
+import { resend } from '@/lib/resend';
 import { randomBytes } from 'crypto';
 
 const TOKEN_TTL = 600;
@@ -19,16 +18,12 @@ function getMagicLinkHtml(url: string): string {
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border:1px solid #e5e5e5;border-radius:8px;">
-
-          <!-- Logo -->
           <tr>
             <td style="padding:32px 40px 24px;border-bottom:1px solid #f0f0f0;">
               <img src="https://www.freecustom.email/favicon.ico" width="24" height="24" alt="" style="vertical-align:middle;margin-right:8px;">
               <span style="font-size:14px;font-weight:600;color:#111;vertical-align:middle;">FreeCustom.Email</span>
             </td>
           </tr>
-
-          <!-- Body -->
           <tr>
             <td style="padding:40px 40px 32px;">
               <p style="margin:0 0 8px;font-size:20px;font-weight:600;color:#111;">Sign in link</p>
@@ -42,14 +37,11 @@ function getMagicLinkHtml(url: string): string {
               </p>
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="padding:20px 40px;border-top:1px solid #f0f0f0;">
               <p style="margin:0;font-size:12px;color:#bbb;">© 2026 FreeCustom.Email</p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
@@ -73,13 +65,13 @@ export async function POST(req: NextRequest) {
 
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
   if (!secretKey) {
-    console.error("TURNSTILE_SECRET_KEY is not defined");
+    console.error('TURNSTILE_SECRET_KEY is not defined');
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
 
   try {
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip');
-    
+
     const formData = new FormData();
     formData.append('secret', secretKey);
     formData.append('response', token);
@@ -90,14 +82,14 @@ export async function POST(req: NextRequest) {
       body: formData,
     });
 
-    const turnstileOutcome = await turnstileRes.json() as any;
+    const turnstileOutcome = (await turnstileRes.json()) as any;
 
     if (!turnstileOutcome.success) {
-      console.error("Turnstile verification failed:", turnstileOutcome);
+      console.error('Turnstile verification failed:', turnstileOutcome);
       return NextResponse.json({ error: 'Security check failed. Please try again.' }, { status: 403 });
     }
   } catch (err) {
-    console.error("Turnstile error:", err);
+    console.error('Turnstile error:', err);
     return NextResponse.json({ error: 'Failed to verify security check' }, { status: 500 });
   }
 
@@ -110,13 +102,18 @@ export async function POST(req: NextRequest) {
 
   const url = new URL(`/api/auth/magic/verify?token=${magicToken}`, req.url).toString();
 
-  await transporter.sendMail({
+  const { error } = await resend.emails.send({
+    from: `FreeCustom.Email <noreply@freecustom.email>`,
     to: email,
-    from: 'FreeCustom.Email <' + process.env.EMAIL_FROM! + '>',
     subject: 'Sign in to FreeCustom.Email',
     text: `Sign in to FreeCustom.Email:\n\n${url}\n\nExpires in 10 minutes.`,
     html: getMagicLinkHtml(url),
   });
+
+  if (error) {
+    console.error('Resend error:', error);
+    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
