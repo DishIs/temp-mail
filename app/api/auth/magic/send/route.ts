@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   const url = new URL(`/api/auth/magic/verify?token=${magicToken}`, req.url).toString();
 
   const { error } = await resend.emails.send({
-    from: `FreeCustom.Email <noreply@freecustom.email>`,
+    from: `FreeCustom.Email <auth@freecustom.email>`,
     to: email,
     subject: 'Sign in to FreeCustom.Email',
     text: `Sign in to FreeCustom.Email:\n\n${url}\n\nExpires in 10 minutes.`,
