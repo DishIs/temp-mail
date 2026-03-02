@@ -1,5 +1,6 @@
 "use client";
 
+import { setCookie } from "cookies-next";
 import { useEffect, useRef, useState } from "react";
 import CountUp from "react-countup";
 
@@ -16,9 +17,23 @@ export default function Status() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
 
+  const fetchToken = async () => {
+    try {
+      const r = await fetch("/api/auth", { method: "POST" });
+      const d = await r.json() as { token?: string };
+      if (d.token) { setCookie("authToken", d.token, { maxAge: 3600 }); return d.token; }
+    } catch { }
+    return null;
+  };
+
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/stats');
+      const token = await fetchToken()
+      const headers: Record<string, string> = { "x-fce-client": "web-client" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const response = await fetch('/api/stats', {
+        headers
+      });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json() as { data: { queued?: number; denied?: number }; success: boolean };
       if (data.success) {
@@ -70,7 +85,7 @@ export default function Status() {
       }
     };
 
-    ws.onerror = () => {};
+    ws.onerror = () => { };
 
     ws.onclose = (ev) => {
       if (ev.code === 1000) return;

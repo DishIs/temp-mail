@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback, MouseEventHandler } from "react";
-import { getCookie, setCookie } from "cookies-next";
+import { setCookie } from "cookies-next";
 import {
   Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck,
   Star, ListOrdered, Clock, EyeOff, Archive, ArchiveRestore,
