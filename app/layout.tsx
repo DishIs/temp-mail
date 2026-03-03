@@ -2,7 +2,6 @@ import { GoogleAnalytics } from '@next/third-parties/google';
 import "@/styles/global.css";
 import Providers from "@/components/Providers";
 import NextTopLoader from 'nextjs-toploader';
-import { PaddleInit } from '@/components/paddle-init';
 import Script from 'next/script';
 
 const BASE_URL = 'https://www.freecustom.email';
@@ -135,7 +134,6 @@ window.addEventListener('load', function () {
           shadow="0 0 10px #2299DD,0 0 5px #2299DD"
         />
         <Providers>{children}</Providers>
-        <PaddleInit />
       </body>
     </html>
   );

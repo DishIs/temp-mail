@@ -19,8 +19,8 @@ import { toast } from "sonner"; // Using sonner for notifications, see step 3
 import { FaTwitter, FaFacebook, FaLinkedin, FaReddit, FaWhatsapp, FaTelegramPlane, FaEnvelope } from "react-icons/fa";
 import Image from "next/image";
 
-const shareUrl = "https://www.freecustom.email";
-const shareText = "Create your free custom email address today! Check out FreeCustom.Email";
+const shareUrl = "https://www.freecustom.email/en";
+const shareText = "Create your free temporary email address today! Check out FreeCustom.Email";
 
 // 1. Define your sharing platforms
 const sharePlatforms = [
