@@ -60,7 +60,7 @@ export default async function DashboardPage({
                                 initialDomains={data.customDomains}
                                 isPro={isPro}
                             />
-                            {/* ── Placement 2: Below custom domain input — highest conversion ── */}
+                            {/* ── Affiliate: below custom domain ── */}
                             {(!data.customDomains || data.customDomains.length === 0) && (
                                 <p className="text-xs text-muted-foreground px-1">
                                     Don&apos;t own a domain yet?{" "}
@@ -68,9 +68,9 @@ export default async function DashboardPage({
                                         rel="sponsored"
                                         href={DOMAIN_AFFILIATE_URL}
                                         target="_blank"
-                                        className="text-primary hover:underline font-medium inline-flex items-center gap-0.5"
+                                        className="text-foreground underline underline-offset-2 hover:no-underline inline-flex items-center gap-1"
                                     >
-                                        Register one instantly
+                                        Register one instantly from Namecheap →
                                         <ExternalLink className="h-3 w-3" />
                                     </a>
                                 </p>
@@ -101,7 +101,7 @@ export default async function DashboardPage({
                                             target="_blank"
                                             className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
                                         >
-                                            Find your domain name today →
+                                            Find your domain name today from Namecheap →
                                         </a>
                                         <span className="text-[10px] text-muted-foreground">Save big on your first domain</span>
                                     </div>

@@ -58,13 +58,13 @@ interface Message {
   verificationLink?: string | null;
 }
 
-// ── Domain promo — sidebar card (replaces ad) ─────────────────────────────────
+// ── Domain promo — sidebar card (affiliate, minimal) ─────────────────────────
 function DomainPromoCard() {
   return (
-    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mb-6 space-y-3">
+    <div className="rounded-lg border border-border bg-muted/20 p-4 mb-6 space-y-3">
       <div className="flex items-center gap-2">
-        <Globe className="h-4 w-4 text-primary shrink-0" />
-        <p className="text-sm font-semibold text-foreground">Own your email permanently</p>
+        <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+        <p className="text-sm font-medium text-foreground">Own your email permanently</p>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">
         Get a domain + private email in 2 minutes. No more expiring addresses.
@@ -73,9 +73,9 @@ function DomainPromoCard() {
         rel="sponsored"
         href={DOMAIN_AFFILIATE_URL}
         target="_blank"
-        className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground underline underline-offset-2 decoration-border hover:decoration-primary transition-colors"
       >
-        Find your domain name today →
+        Get your .COM domain (from $0.99) via Namecheap →
       </a>
     </div>
   );
@@ -819,7 +819,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     target="_blank"
                     className="text-primary hover:underline font-medium"
                   >
-                    Get it here
+                    Get it from Namecheap
                   </a>
                 </p>
               )}

@@ -10,6 +10,12 @@ import Script from 'next/script';
 import Link from 'next/link';
 import { Locale } from 'next-intl';
 import { ThemeProvider } from '@/components/theme-provider';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 import { fetchFromServiceAPI } from '@/lib/api';
 import { AwardsSection } from '@/components/AwardsSection';
@@ -26,6 +32,7 @@ export default async function Page({ params }: Props) {
 
     const t = await getTranslations({ locale, namespace: 'PageContent' });
     const tJsonLd = await getTranslations({ locale, namespace: 'JsonLd' });
+    const tFaq = await getTranslations({ locale, namespace: 'FAQ' });
 
     // --- FETCH ALL USER DATA ON SERVER ---
     const session = await auth();
@@ -121,65 +128,119 @@ export default async function Page({ params }: Props) {
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                 <div className="min-h-screen max-w-[100vw] bg-background">
                     <AppHeader initialSession={session} />
-                    <main className="mx-auto m-2 px-4 py-4">
-                        <section className="mb-4">
-                            {/* --- Pass all fetched data as props --- */}
-                            <EmailBox
-                                initialSession={session}
-                                initialCustomDomains={customDomains}
-                                initialInboxes={userInboxes}
-                                initialCurrentInbox={currentInbox}
-                            />
-                            <Status />
-                            <div className="bg-white dark:bg-black border mt-4 dark:border-gray-700 p-6 rounded-lg">
-                                <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold">
+                    <main className="w-full max-w-7xl mx-auto px-4 py-8 sm:py-12">
+                        <section className="mb-10">
+                            {/* Email box + status: full width of container for medium/large screens */}
+                            <div className="w-full">
+                                <EmailBox
+                                    initialSession={session}
+                                    initialCustomDomains={customDomains}
+                                    initialInboxes={userInboxes}
+                                    initialCurrentInbox={currentInbox}
+                                />
+                                <Status />
+                            </div>
+
+                            {/* Required for Google OAuth verification center — clear section near the top */}
+                            <section className="mt-6 max-w-4xl rounded-lg border border-border bg-card p-6 sm:p-8" aria-labelledby="what-we-do-heading">
+                                <h2 id="what-we-do-heading" className="text-lg font-semibold tracking-tight text-foreground">
+                                    What FreeCustom.Email Does
+                                </h2>
+                                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                                    FreeCustom.Email provides temporary and custom email addresses that allow users to receive emails instantly without using their personal inbox.
+                                </p>
+                                <p className="mt-2 text-sm font-medium text-foreground">Users can:</p>
+                                <ul className="mt-1.5 list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                                    <li>Generate disposable email addresses</li>
+                                    <li>Receive verification codes and login links</li>
+                                    <li>Save inboxes with an account</li>
+                                    <li>Upgrade to a permanent email with a custom domain</li>
+                                </ul>
+                                <p className="mt-4 text-sm font-medium text-foreground">We use Google Sign-In only to:</p>
+                                <ul className="mt-1.5 list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                                    <li>Create and secure your account</li>
+                                    <li>Save your inbox history</li>
+                                    <li>Manage your subscription</li>
+                                </ul>
+                                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                                    We do not access your Gmail, contacts, or any external Google data.
+                                </p>
+                            </section>
+
+                            <div className="mt-6 max-w-4xl rounded-lg border border-border bg-card p-6 sm:p-8">
+                                <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
                                     {t('h1')}
                                 </h1>
                                 <p
-                                    className="mb-4 text-muted-foreground leading-relaxed"
+                                    className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed"
                                     dangerouslySetInnerHTML={{ __html: t.raw('p1') }}
-                                ></p>
-                                <p className=" text-muted-foreground leading-relaxed">
+                                />
+                                <p className="mt-2 text-sm sm:text-base text-muted-foreground leading-relaxed">
                                     {t.rich('p2_part1', {
-                                        strong: (chunks) => <strong>{chunks}</strong>
+                                        strong: (chunks) => <strong className="text-foreground">{chunks}</strong>
                                     })}
-                                    <Link className="text-blue-700 hover:underline" href="/blog/forever-free-and-ad-free">
+                                    <Link className="text-foreground underline underline-offset-2 hover:no-underline" href="/blog/forever-free-and-ad-free">
                                         {t('p2_link1')}
                                     </Link>
                                     {t.rich('p2_part2')}
-                                    <Link className="text-blue-700 hover:underline" href="/blog/why-we-are-fastest">
+                                    <Link className="text-foreground underline underline-offset-2 hover:no-underline" href="/blog/why-we-are-fastest">
                                         {t('p2_link2')}
                                     </Link>
                                     {t.rich('p2_part3')}
                                 </p>
                             </div>
                         </section>
+                        <div className="max-w-4xl">
                         <WhySection />
-                        <section className="mt-12">
-                            <h3 className="text-2xl font-bold">Explore Temp Mail Guides</h3>
 
-                            {/* Core Pages */}
-                            <div className="mt-6">
-                                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Core</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {internalLinks
-                                        .filter(l => l.priority === 'high')
-                                        .map(link => (
-                                            <Link
-                                                key={link.href}
-                                                href={`/${locale}${link.href}`}
-                                                className="text-blue-600 hover:underline"
-                                            >
-                                                {link.label}
-                                            </Link>
-                                        ))}
-                                </div>
+                        {/* Landing page FAQs (subset); full list on /faq */}
+                        <section className="mt-14 border-t border-border pt-10" aria-labelledby="landing-faq-heading">
+                            <h2 id="landing-faq-heading" className="text-sm font-medium uppercase tracking-widest text-muted-foreground mb-4">
+                                {t('landing_faq_heading')}
+                            </h2>
+                            <Accordion type="single" collapsible className="space-y-2">
+                                {[
+                                    { id: '1', q: tFaq('faq1_q'), a: tFaq('faq1_a') },
+                                    { id: '2', q: tFaq('faq2_q'), a: tFaq('faq2_a') },
+                                    { id: '3', q: tFaq('faq3_q'), a: tFaq('faq3_a') },
+                                    { id: '6', q: tFaq('faq6_q'), a: tFaq('faq6_a') },
+                                    { id: '9', q: tFaq('faq9_q'), a: tFaq('faq9_a') },
+                                ].map(({ id, q, a }) => (
+                                    <AccordionItem key={id} value={id} className="rounded-lg border border-border bg-card px-4">
+                                        <AccordionTrigger className="text-left text-sm font-medium py-4 hover:no-underline">
+                                            {q}
+                                        </AccordionTrigger>
+                                        <AccordionContent className="text-sm text-muted-foreground pb-4 whitespace-pre-line">
+                                            {a}
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                            <p className="mt-4 text-sm text-muted-foreground">
+                                <Link href={`/${locale}/faq`} className="text-foreground underline underline-offset-2 hover:no-underline">
+                                {t('landing_faq_view_all')}
+                                </Link>
+                            </p>
+                        </section>
+
+                        <section className="mt-14 border-t border-border pt-10">
+                            <h2 className="text-sm font-medium uppercase tracking-widest text-muted-foreground">Explore guides</h2>
+                            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+                                {internalLinks
+                                    .filter(l => l.priority === 'high')
+                                    .map(link => (
+                                        <Link
+                                            key={link.href}
+                                            href={`/${locale}${link.href}`}
+                                            className="text-sm text-foreground underline-offset-2 hover:underline"
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    ))}
                             </div>
-
-                            {/* Medium */}
                             <div className="mt-6">
-                                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Popular Features</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Popular</h3>
+                                <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
                                     {internalLinks
                                         .filter(l => l.priority === 'medium')
                                         .slice(0, 6)
@@ -187,7 +248,7 @@ export default async function Page({ params }: Props) {
                                             <Link
                                                 key={link.href}
                                                 href={`/${locale}${link.href}`}
-                                                className="text-blue-600 hover:underline"
+                                                className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                             >
                                                 {link.label}
                                             </Link>
@@ -197,6 +258,7 @@ export default async function Page({ params }: Props) {
                         </section>
 
                         <PopularArticles />
+                        </div>
 
                     </main>
                     <AwardsSection />

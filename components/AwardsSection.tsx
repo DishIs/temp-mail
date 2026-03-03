@@ -57,20 +57,18 @@ export function AwardsSection() {
   ];
   return (
     <section className="border-t border-border bg-muted/20 py-10">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto max-w-4xl px-4">
 
-        {/* Heading */}
-        <div className="mb-7 text-center space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <div className="mb-6 text-center space-y-1">
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Trust &amp; Recognition
           </p>
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className="text-base font-medium text-foreground">
             Recognised by the community
           </h2>
         </div>
 
-        {/* Badge strip */}
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           {awards.map(({ href, title, src, alt }) => (
             <a
               key={href}
@@ -78,7 +76,7 @@ export function AwardsSection() {
               target="_blank"
               rel="noopener noreferrer"
               title={title}
-              className="group flex items-center justify-center rounded-lg border border-border/60 bg-background px-3 py-2 shadow-sm transition-all duration-150 hover:border-primary/40 hover:shadow-md"
+              className="group flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-primary/30"
             >
               <img
                 src={src}
@@ -86,7 +84,7 @@ export function AwardsSection() {
                 loading="lazy"
                 width={130}
                 height={44}
-                className="h-9 w-auto object-contain opacity-80 transition-opacity duration-150 group-hover:opacity-100"
+                className="h-8 w-auto object-contain opacity-70 transition-opacity group-hover:opacity-100"
               />
             </a>
           ))}

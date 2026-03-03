@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { blogClient } from '@/lib/blog-client';
 import { Calendar, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 // Helper function to match your blog page date formatting
@@ -22,45 +21,38 @@ export async function PopularArticles() {
   });
 
   return (
-    <section className="my-12">
-      <h2 className="mb-8 text-center text-3xl font-bold">Popular Articles</h2>
-      
-      <div className="grid gap-6 md:grid-cols-2">
+    <section className="my-14">
+      <h2 className="mb-6 text-sm font-medium uppercase tracking-widest text-muted-foreground">Popular Articles</h2>
+
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
         {posts.map((post) => (
-          <div key={post.slug} className="flex flex-col rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md">
-            
-            {/* Category Badge (Optional, added for consistency with your blog page) */}
-            <div className="mb-2">
-               {post.category && (
-                  <Badge variant="secondary" className="text-xs">
-                    {post.category.name}
-                  </Badge>
-               )}
-            </div>
+          <article key={post.slug} className="flex flex-col rounded-lg border border-border bg-card p-4 sm:p-5 transition-colors hover:border-primary/20">
+            {post.category && (
+              <Badge variant="secondary" className="mb-2 w-fit text-xs font-normal">
+                {post.category.name}
+              </Badge>
+            )}
 
             <Link href={`/blog/${post.slug}`}>
-              <h3 className="mb-2 text-xl font-semibold hover:text-primary transition-colors">
+              <h3 className="mb-1.5 text-base font-medium text-foreground hover:underline underline-offset-2">
                 {post.title}
               </h3>
             </Link>
-            
-            <p className="flex-1 text-sm text-muted-foreground line-clamp-2">
+
+            <p className="flex-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">
               {post.excerpt}
             </p>
-            
-            <div className="mt-4 flex items-center justify-between border-t pt-4">
-              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+
+            <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
-                <span>{formatDate(post.publishedAt)}</span>
-              </div>
-              
-              <Link href={`/blog/${post.slug}`}>
-                <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-                  Read <ArrowRight className="ml-1 h-3 w-3" />
-                </Button>
+                {formatDate(post.publishedAt)}
+              </span>
+              <Link href={`/blog/${post.slug}`} className="text-xs font-medium text-foreground underline-offset-2 hover:underline inline-flex items-center gap-0.5">
+                Read <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
-          </div>
+          </article>
         ))}
       </div>
     </section>

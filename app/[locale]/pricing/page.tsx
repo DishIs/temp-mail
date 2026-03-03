@@ -180,12 +180,11 @@ export default function PricingPage() {
 
         <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pb-20 pt-10 sm:pt-16">
 
-          {/* ── 1. Headline rewrite ── */}
           <div className="mb-6 sm:mb-8 text-center space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
               Simple Pricing
             </p>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
               Never lose an important email again
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -308,7 +307,7 @@ export default function PricingPage() {
           </div>
 
           {/* ── Comparison table ── */}
-          <div className="rounded-xl border border-border overflow-hidden shadow-sm">
+          <div className="rounded-lg border border-border overflow-hidden">
 
             {/* Plan headers */}
             <div className="grid grid-cols-[1fr_64px_72px] sm:grid-cols-[1fr_80px_80px_80px] md:grid-cols-[1fr_100px_100px_100px] bg-muted/30 border-b border-border">
@@ -617,7 +616,7 @@ export default function PricingPage() {
                   a: "Yes. Contact us with your account email and we'll calculate remaining credit and apply it to the yearly plan. No double charging.",
                 },
               ].map(({ id, q, a }) => (
-                <AccordionItem key={id} value={id} className="rounded-lg border border-border px-4">
+                <AccordionItem key={id} value={id} className="rounded-lg border border-border bg-card px-4">
                   <AccordionTrigger className="text-sm sm:text-base text-left">{q}</AccordionTrigger>
                   <AccordionContent className="text-sm text-muted-foreground">{a}</AccordionContent>
                 </AccordionItem>

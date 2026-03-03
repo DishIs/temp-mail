@@ -24,20 +24,20 @@ export async function WhySection() {
 
   const updates = [
     {
-      icon: <FaUser className="text-gray-500 mt-1" />,
+      icon: <FaUser className="text-muted-foreground mt-1" />,
       title: t('updates_item1_title'),
       description: t('updates_item1_desc'),
     },
     {
-      icon: <FaUserShield className="text-blue-500 mt-1" />,
+      icon: <FaUserShield className="text-primary mt-1" />,
       title: t('updates_item2_title'),
       description: t('updates_item2_desc'),
     },
     {
-      icon: <FaStar className="text-amber-500 mt-1" />,
+      icon: <FaStar className="text-primary mt-1" />,
       title: t('updates_item3_title'),
       description: t.rich('updates_item3_desc', {
-        strong: (chunks) => <strong>{chunks}</strong>
+        strong: (chunks) => <strong className="text-foreground">{chunks}</strong>
       }),
     },
   ];
@@ -49,30 +49,30 @@ export async function WhySection() {
   ];
 
   return (
-    <section className="space-y-12 pb-10">
+    <section className="space-y-14 pb-12">
       {/* Snippet / Intro */}
       <div>
-        <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
           {t('snippet_title')}
         </h2>
         <p
-          className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
+          className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed"
           dangerouslySetInnerHTML={{ __html: t.raw('snippet_p') }}
         ></p>
       </div>
 
       {/* Domain List */}
       <div>
-        <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
           {t('domain_list_title')}
         </h2>
-        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t('domain_list_p')}
         </p>
-        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 dark:text-gray-300">
+        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-muted-foreground">
           {domains.map(domain => (
-            <li key={domain} className="flex items-center">
-               <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+            <li key={domain} className="flex items-center gap-2">
+               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
                {domain}
             </li>
           ))}
@@ -81,10 +81,10 @@ export async function WhySection() {
 
       {/* Updates / Features */}
       <div>
-        <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
           {t('updates_title')}
         </h2>
-        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t('updates_p')}
         </p>
         <div className="mt-8 space-y-8">
@@ -92,10 +92,10 @@ export async function WhySection() {
             <div key={i} className="flex items-start gap-4">
               <div className="flex-shrink-0 text-xl">{update.icon}</div>
               <div>
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                <h3 className="text-base font-medium text-foreground">
                   {update.title}
                 </h3>
-                <p className="mt-2 text-gray-700 dark:text-gray-300 leading-relaxed">
+                <p className="mt-2 text-muted-foreground leading-relaxed">
                   {update.description}
                 </p>
               </div>
@@ -106,30 +106,30 @@ export async function WhySection() {
 
       {/* Definition */}
       <div>
-        <h2 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
           {t('definition_title')}
         </h2>
-        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t.rich('definition_p', {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: (chunks) => <strong className="text-foreground">{chunks}</strong>,
             em: (chunks) => <em>{chunks}</em>,
-            link: (chunks) => <Link href="/blog/how-to-create-temp-mail" className="text-blue-600 hover:underline dark:text-blue-400">{chunks}</Link>
+            link: (chunks) => <Link href="/blog/how-to-create-temp-mail" className="text-foreground underline underline-offset-2 hover:no-underline">{chunks}</Link>
           })}
         </p>
       </div>
       
       {/* Use Cases */}
       <div>
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+        <h3 className="text-sm sm:text-base font-medium text-foreground">
           {t('use_case_title')}
         </h3>
         <ul className="mt-6 space-y-4">
           {useCases.map((item, i) => (
-            <li key={i} className="flex items-start">
-              <FaCheckCircle className="text-green-500 mt-1.5 mr-3 flex-shrink-0" />
-              <span className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+            <li key={i} className="flex items-start gap-3">
+              <FaCheckCircle className="text-primary mt-0.5 h-4 w-4 shrink-0" />
+              <span className="text-sm sm:text-base text-muted-foreground leading-relaxed">
                 {item.rich ? t.rich(item.key as WhySectionKeys, {
-                  strong: (chunks) => <strong>{chunks}</strong>
+                  strong: (chunks) => <strong className="text-foreground">{chunks}</strong>
                 }) : t(item.key as WhySectionKeys)}
               </span>
             </li>
@@ -139,53 +139,53 @@ export async function WhySection() {
 
       {/* Checklist */}
       <div>
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+        <h3 className="text-sm sm:text-base font-medium text-foreground">
           {t('checklist_title')}
         </h3>
         <ul className="mt-6 space-y-4">
           {features.map((item, i) => (
-            <li key={i} className="flex items-start">
-              <FaCheckCircle className="text-green-500 mt-1.5 mr-3 flex-shrink-0" />
-              <span className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+            <li key={i} className="flex items-start gap-3">
+              <FaCheckCircle className="text-primary mt-0.5 h-4 w-4 shrink-0" />
+              <span className="text-sm sm:text-base text-muted-foreground leading-relaxed">
                 {item.rich ? t.rich(item.key as WhySectionKeys, {
-                  strong: (chunks) => <strong>{chunks}</strong>
+                  strong: (chunks) => <strong className="text-foreground">{chunks}</strong>
                 }) : t(item.key as WhySectionKeys)}
               </span>
             </li>
           ))}
         </ul>
-        <p className="mt-6 text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
+        <p className="mt-6 text-sm sm:text-base text-muted-foreground leading-relaxed"
            dangerouslySetInnerHTML={{ __html: t.raw('checklist_p') }}>
         </p>
       </div>
 
       {/* Usage */}
        <div>
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+        <h3 className="text-sm sm:text-base font-medium text-foreground">
           {t('usage_title')}
         </h3>
-        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t.rich('usage_p1', {
-            strong: (chunks) => <strong>{chunks}</strong>,
-            link: (chunks) => <Link href="/blog/how-to-create-temp-mail" className="text-blue-600 hover:underline dark:text-blue-400">{chunks}</Link>
+            strong: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+            link: (chunks) => <Link href="/blog/how-to-create-temp-mail" className="text-foreground underline underline-offset-2 hover:no-underline">{chunks}</Link>
           })}
         </p>
-        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t('usage_p2')}
         </p>
       </div>
 
       {/* Conclusion */}
       <div>
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+        <h3 className="text-sm sm:text-base font-medium text-foreground">
           {t('conclusion_title')}
         </h3>
-        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t('conclusion_p1')}
         </p>
-        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t.rich('conclusion_p2', {
-            link: (chunks) => <Link href="/blog/best-practices-for-using-temp-mail" className="text-blue-600 hover:underline dark:text-blue-400">{chunks}</Link>
+            link: (chunks) => <Link href="/blog/best-practices-for-using-temp-mail" className="text-foreground underline underline-offset-2 hover:no-underline">{chunks}</Link>
           })}
         </p>
       </div>

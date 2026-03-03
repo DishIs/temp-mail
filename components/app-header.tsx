@@ -143,7 +143,7 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
 
             {!isPro && (
               <div className="p-1 mb-1">
-                <Button asChild className="w-full h-8 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 text-xs" size="sm">
+                <Button asChild className="w-full h-8 bg-primary text-primary-foreground hover:bg-primary/90 border-0 text-xs" size="sm">
                   <Link href="/pricing">
                     <CreditCard className="mr-2 h-3 w-3" />
                     Upgrade to Pro

@@ -108,29 +108,33 @@ export default function Status() {
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative m-5" role="alert">
-        <strong className="font-bold">Error:</strong>
-        <span className="block sm:inline"> {error}</span>
+      <div className="rounded-lg border border-border bg-destructive/10 px-4 py-3 text-destructive text-sm" role="alert">
+        <strong className="font-medium">Error:</strong> {error}
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-black p-6 mt-5 rounded-xl border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2 tracking-wide">Emails Passing Through Our Service</h2>
-      <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
-        Track the real-time flow of temporary emails processed by our servers. 'Queued' shows successfully delivered emails, while 'Denied' reflects messages blocked by our filters.
+    <div className="mt-6 rounded-lg border border-border bg-card p-5 sm:p-6">
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">
+        Live stats
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="border border-gray-200 dark:border-gray-700 p-5 rounded-xl">
-          <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">Queued</p>
-          <div className="text-4xl font-extrabold text-gray-800 dark:text-gray-200">
+      <h2 className="text-base font-semibold tracking-tight text-foreground mb-2">
+        Emails passing through our service
+      </h2>
+      <p className="text-sm text-muted-foreground mb-5 max-w-xl">
+        Real-time flow of temporary emails. Queued: delivered. Denied: blocked by filters.
+      </p>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-4">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Queued</p>
+          <div className="text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-foreground">
             <CountUp start={status.queued > 100 ? status.queued - 100 : 0} end={status.queued} duration={2.75} separator="," />
           </div>
         </div>
-        <div className="border border-gray-200 dark:border-gray-700 p-5 rounded-xl">
-          <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">Denied</p>
-          <div className="text-4xl font-extrabold text-gray-800 dark:text-gray-200">
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-4">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Denied</p>
+          <div className="text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-foreground">
             <CountUp start={status.denied > 100 ? status.denied - 100 : 0} end={status.denied} duration={2.75} separator="," />
           </div>
         </div>

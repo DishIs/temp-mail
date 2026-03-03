@@ -17,6 +17,7 @@ const FOOTER_LINKS = [
     heading: "Product",
     links: [
       { label: "Pricing",          href: "/pricing",            external: false },
+      { label: "FAQ",              href: "/faq",                external: false },
       { label: "API",              href: "https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1", external: true },
       { label: "Updates",          href: null,                  external: false, action: "changelog" },
       { label: "Feedback",         href: "/feedback",           external: false },
@@ -79,12 +80,11 @@ export function AppFooter() {
 
   return (
     <>
-      <footer className="border-t border-border bg-muted/30">
+      <footer className="border-t border-border bg-muted/20">
 
-        {/* ── Trust / payment bar ── */}
-        <div className="border-b border-border/60 py-4">
-          <div className="container mx-auto flex flex-col items-center gap-3 px-4 sm:flex-row sm:justify-between">
-            <p className="text-[11px] font-medium text-muted-foreground">
+        <div className="border-b border-border py-4">
+          <div className="container mx-auto max-w-4xl flex flex-col items-center gap-3 px-4 sm:flex-row sm:justify-between">
+            <p className="text-xs text-muted-foreground">
               Secure checkout · 200+ countries · All major cards &amp; wallets
             </p>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -101,13 +101,11 @@ export function AppFooter() {
           </div>
         </div>
 
-        {/* ── Main footer grid ── */}
-        <div className="container mx-auto px-4 py-10">
+        <div className="container mx-auto max-w-4xl px-4 py-10">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
 
-            {/* Brand column */}
             <div className="col-span-2 sm:col-span-1 space-y-4">
-              <p className="text-sm font-bold tracking-tight">FreeCustom.Email</p>
+              <p className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</p>
               <p className="text-xs leading-relaxed text-muted-foreground max-w-[180px]">
                 Disposable email with smart features. Private, fast, and free.
               </p>
@@ -193,9 +191,8 @@ export function AppFooter() {
           </div>
         </div>
 
-        {/* ── Bottom bar ── */}
-        <div className="border-t border-border/60 py-4">
-          <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-4 sm:flex-row">
+        <div className="border-t border-border py-4">
+          <div className="container mx-auto max-w-4xl flex flex-col items-center justify-between gap-3 px-4 sm:flex-row">
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} DishIs Technologies. All rights reserved.
             </p>

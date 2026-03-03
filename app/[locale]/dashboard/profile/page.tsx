@@ -25,6 +25,8 @@ import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Session } from "next-auth";
 
+const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
+
 interface ScheduledChange {
     action: string;
     effective_at: string;
@@ -671,6 +673,21 @@ export default function ProfilePage() {
                             </Card>
                         </TabsContent>
                     </Tabs>
+
+                    {/* Affiliate: domain link for free users */}
+                    {!isPro && (
+                        <p className="mt-8 pt-6 border-t border-border text-center text-xs text-muted-foreground">
+                            <a
+                                rel="sponsored"
+                                href={DOMAIN_AFFILIATE_URL}
+                                target="_blank"
+                                className="text-foreground underline underline-offset-2 hover:no-underline inline-flex items-center gap-1"
+                            >
+                                Get your .COM domain (from $0.99) via Namecheap →
+                                <ExternalLink className="h-3 w-3" />
+                            </a>
+                        </p>
+                    )}
                 </div>
 
                 <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />

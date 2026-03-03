@@ -129,7 +129,7 @@
   background: var(--bg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 14px 16px;
   box-sizing: border-box;
   pointer-events: auto;
@@ -220,7 +220,7 @@
   max-height: min(90vh, 540px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow), 0 8px 40px rgba(0,0,0,0.1);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--bg);
   font-family: var(--font);
   flex-direction: column;
