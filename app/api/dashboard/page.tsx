@@ -203,7 +203,9 @@ export default function ApiDashboardPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create key.");
-      if (data.key) setNewKeyModal({ key: data.key, name: data.name ?? "Default", note: data.note });
+      const keyPayload = data.data ?? data;
+      const keyValue = keyPayload.key ?? data.key;
+      if (keyValue) setNewKeyModal({ key: keyValue, name: keyPayload.name ?? data.name ?? "Default", note: data.message ?? data.note });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create key.");
     } finally {

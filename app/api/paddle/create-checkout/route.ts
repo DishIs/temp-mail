@@ -31,10 +31,10 @@ const PADDLE_PRICES_CREDITS: Record<CreditsPackage, string | undefined> = {
 };
 
 const CREDITS_AMOUNTS: Record<CreditsPackage, number> = {
-  starter: 50_000,
-  builder: 150_000,
-  scale: 350_000,
-  pro: 800_000,
+  starter: 200_000,
+  builder: 600_000,
+  scale: 1_500_000,
+  pro: 4_000_000,
 };
 
 export async function POST(request: Request) {

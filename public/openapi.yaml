@@ -7,14 +7,11 @@ info:
 
     Disposable email infrastructure for developers.
 
-    - **Public v1 routes** (`/v1/*`): Require `Authorization: Bearer fce_<key>` (developer API key).
-    - **Internal routes** (`/user/*`, `/paddle/*`): Require `Authorization: Bearer INTERNAL_API_KEY` (server-to-server only).
+    All routes require `Authorization: Bearer fce_<key>` (developer API key), except `GET /v1/plans` which is public.
 
 servers:
-  - url: https://api.freecustom.email
-    description: Production (public + internal)
   - url: https://api2.freecustom.email
-    description: Legacy production
+    description: Production
 
 security:
   - BearerAuth: []
@@ -357,10 +354,6 @@ components:
       in: query
       name: api_key
       description: API key as query parameter (alternative to Bearer)
-    InternalApiKey:
-      type: http
-      scheme: bearer
-      description: INTERNAL_API_KEY for server-to-server internal routes only
 
   responses:
     Unauthorized:
@@ -601,233 +594,6 @@ components:
         credits_url: { type: string, format: uri, nullable: true }
         hint: { type: string, nullable: true }
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Internal — User (require Authorization: Bearer INTERNAL_API_KEY)
-  # ─────────────────────────────────────────────────────────────────────────
-  /user/api-status/{wyiUserId}:
-    get:
-      summary: "[Internal] Get user API status"
-      operationId: internalGetApiStatus
-      tags: [Internal - User]
-      description: Returns plan, usage, features, inboxes, upsell, and all_plans. Used by the dashboard.
-      security:
-        - InternalApiKey: []
-      parameters:
-        - name: wyiUserId
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success: { type: boolean }
-                  data:
-                    type: object
-                    properties:
-                      plan: { type: object }
-                      subscription: { type: object }
-                      usage: { type: object }
-                      rate_limits: { type: object }
-                      features: { type: object }
-                      inboxes: { type: object }
-                      upsell: { type: object }
-                      all_plans: { type: array }
-        "400":
-          description: wyiUserId required
-        "404":
-          description: User not found
-        "500":
-          description: Server error
-
-  /user/payment-logs/{wyiUserId}:
-    get:
-      summary: "[Internal] Get payment logs"
-      operationId: internalGetPaymentLogs
-      tags: [Internal - User]
-      parameters:
-        - name: wyiUserId
-          in: path
-          required: true
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, default: 50, maximum: 200 }
-        - name: offset
-          in: query
-          schema: { type: integer, default: 0 }
-        - name: type
-          in: query
-          schema: { type: string, enum: [app, api, credits] }
-      security:
-        - InternalApiKey: []
-      responses:
-        "200":
-          description: Success (data array, summary, pagination)
-        "400":
-          description: wyiUserId required
-        "404":
-          description: User not found
-
-  /user/api-keys:
-    post:
-      summary: "[Internal] Create API key"
-      operationId: internalCreateApiKey
-      tags: [Internal - User]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [userId, name]
-              properties:
-                userId: { type: string, format: uuid }
-                name: { type: string, maxLength: 64 }
-      security:
-        - InternalApiKey: []
-      responses:
-        "201":
-          description: Created (key returned once only)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success: { type: boolean }
-                  key: { type: string }
-                  prefix: { type: string }
-                  name: { type: string }
-                  createdAt: { type: string, format: date-time }
-                  note: { type: string }
-        "400":
-          description: Missing fields or name too long
-        "403":
-          description: Key limit reached (max 5)
-        "404":
-          description: User not found
-    delete:
-      summary: "[Internal] Revoke API key"
-      operationId: internalRevokeApiKey
-      tags: [Internal - User]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [userId, prefix]
-              properties:
-                userId: { type: string }
-                prefix: { type: string }
-      security:
-        - InternalApiKey: []
-      responses:
-        "200":
-          description: Revoked
-        "400":
-          description: userId and prefix required
-        "404":
-          description: Key not found or already revoked
-
-  /user/api-keys/{wyiUserId}:
-    get:
-      summary: "[Internal] List API keys"
-      operationId: internalListApiKeys
-      tags: [Internal - User]
-      parameters:
-        - name: wyiUserId
-          in: path
-          required: true
-          schema: { type: string }
-      security:
-        - InternalApiKey: []
-      responses:
-        "200":
-          description: Success (keys array with id, prefix, name, active, createdAt, lastUsedAt, revokedAt)
-        "404":
-          description: User not found
-
-  /user/api-plan:
-    post:
-      summary: "[Internal] Set API plan"
-      operationId: internalSetApiPlan
-      tags: [Internal - User]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [userId, plan]
-              properties:
-                userId: { type: string }
-                plan: { type: string, enum: [free, developer, startup, growth, enterprise] }
-      security:
-        - InternalApiKey: []
-      responses:
-        "200":
-          description: Updated
-        "400":
-          description: Invalid plan
-        "404":
-          description: User not found
-
-  /user/api-credits:
-    post:
-      summary: "[Internal] Add API credits"
-      operationId: internalAddApiCredits
-      tags: [Internal - User]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [userId, creditsToAdd, transactionId]
-              properties:
-                userId: { type: string }
-                creditsToAdd: { type: integer, minimum: 1 }
-                transactionId: { type: string }
-      security:
-        - InternalApiKey: []
-      responses:
-        "200":
-          description: Added or skipped (idempotent)
-        "400":
-          description: Missing or invalid fields
-        "404":
-          description: User not found
-
-  /paddle/subscription-event:
-    post:
-      summary: "[Internal] Paddle webhook relay"
-      operationId: internalPaddleWebhook
-      tags: [Internal - Paddle]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                eventType: { type: string }
-                productType: { type: string, enum: [app, api, credits] }
-                apiPlan: { type: string }
-                userId: { type: string }
-                subscriptionId: { type: string }
-                status: { type: string }
-      security:
-        - InternalApiKey: []
-      responses:
-        "200":
-          description: Success or orphan warning
-        "400":
-          description: Missing eventType or subscriptionId
-        "500":
-          description: Internal error
-
 tags:
   - name: Public v1 - Account
     description: Account info, usage, and plans
@@ -837,17 +603,13 @@ tags:
     description: List, get, and delete messages
   - name: Public v1 - OTP
     description: OTP and verification link extraction
-  - name: Internal - User
-    description: Internal user/API key/plan/credits (INTERNAL_API_KEY)
-  - name: Internal - Paddle
-    description: Internal Paddle webhook (INTERNAL_API_KEY)
 
 x-websocket:
-  url: "wss://api.freecustom.email/v1/ws"
+  url: "wss://api2.freecustom.email/v1/ws"
   description: |
     Real-time push for incoming emails. Requires Startup plan or higher.
 
-    **Connection:** `wss://api.freecustom.email/v1/ws?api_key=fce_...&mailbox=test@freecustom.email`
+    **Connection:** `wss://api2.freecustom.email/v1/ws?api_key=fce_...&mailbox=test@freecustom.email`
 
     | Query param | Required | Description |
     |-------------|----------|-------------|

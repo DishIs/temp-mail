@@ -99,10 +99,10 @@ const PLANS = [
 ];
 
 const CREDITS = [
-  { amount: "$10", requests: "50,000", perK: "$0.20", package: "starter" as const },
-  { amount: "$25", requests: "150,000", perK: "$0.17", package: "builder" as const },
-  { amount: "$50", requests: "350,000", perK: "$0.14", package: "scale" as const },
-  { amount: "$100", requests: "800,000", perK: "$0.125", package: "pro" as const },
+  { amount: "$10", requests: "200,000", perK: "$0.05", package: "starter" as const },
+  { amount: "$25", requests: "600,000", perK: "$0.042", package: "builder" as const },
+  { amount: "$50", requests: "1.5M", perK: "$0.033", package: "scale" as const },
+  { amount: "$100", requests: "4M", perK: "$0.025", package: "pro" as const },
 ];
 
 const Tick = () => <Check className="h-4 w-4 text-foreground shrink-0" />;
