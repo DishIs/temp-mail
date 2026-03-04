@@ -4,16 +4,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeBlock } from "@/components/CodeBlock";
 
 const CURL = `# Register an inbox
-curl -X POST https://api.freecustom.email/v1/inboxes \\
+curl -X POST https://api2.freecustom.email/v1/inboxes \\
   -H "Authorization: Bearer fce_your_api_key" \\
   -H "Content-Type: application/json" \\
   -d '{"inbox":"test@ditmail.info"}'
 
 # Get latest OTP
-curl "https://api.freecustom.email/v1/inboxes/test@ditmail.info/otp" \\
+curl "https://api2.freecustom.email/v1/inboxes/test@ditmail.info/otp" \\
   -H "Authorization: Bearer fce_your_api_key"`;
 
-const NODE = `const res = await fetch("https://api.freecustom.email/v1/inboxes", {
+const NODE = `const res = await fetch("https://api2.freecustom.email/v1/inboxes", {
   method: "POST",
   headers: {
     "Authorization": "Bearer " + process.env.FCE_API_KEY,
@@ -25,7 +25,7 @@ const { data } = await res.json();
 const inbox = data?.inbox;
 
 const otpRes = await fetch(
-  \`https://api.freecustom.email/v1/inboxes/\${inbox}/otp\`,
+  \`https://api2.freecustom.email/v1/inboxes/\${inbox}/otp\`,
   { headers: { "Authorization": "Bearer " + process.env.FCE_API_KEY } }
 );
 const { data: otpData } = await otpRes.json();
@@ -37,14 +37,14 @@ import requests
 headers = {"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
 
 r = requests.post(
-    "https://api.freecustom.email/v1/inboxes",
+    "https://api2.freecustom.email/v1/inboxes",
     headers=headers,
     json={"inbox": "test@ditmail.info"},
 )
 inbox = r.json()["data"]["inbox"]
 
 r2 = requests.get(
-    f"https://api.freecustom.email/v1/inboxes/{inbox}/otp",
+    f"https://api2.freecustom.email/v1/inboxes/{inbox}/otp",
     headers=headers,
 )
 otp = r2.json().get("data", {}).get("otp")`;
@@ -56,7 +56,7 @@ import ("net/http"; "bytes"; "encoding/json"; "os")
 func main() {
   key := os.Getenv("FCE_API_KEY")
   body, _ := json.Marshal(map[string]string{"inbox": "test@ditmail.info"})
-  req, _ := http.NewRequest("POST", "https://api.freecustom.email/v1/inboxes", bytes.NewReader(body))
+  req, _ := http.NewRequest("POST", "https://api2.freecustom.email/v1/inboxes", bytes.NewReader(body))
   req.Header.Set("Authorization", "Bearer "+key)
   req.Header.Set("Content-Type", "application/json")
   resp, _ := http.DefaultClient.Do(req)

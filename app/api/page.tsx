@@ -88,6 +88,16 @@ export default function ApiOverviewPage() {
         <div className="mt-10 w-full text-left">
           <ApiHeroCode />
         </div>
+        <div className="mt-8 rounded-lg border border-border bg-muted/30 p-4 sm:p-6 text-left">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-3">About this API</h3>
+          <ul className="text-sm text-muted-foreground space-y-2">
+            <li><strong className="text-foreground">Base URL:</strong> <code className="rounded bg-muted px-1.5 py-0.5 text-xs">https://api2.freecustom.email</code> — all endpoints live under <code className="rounded bg-muted px-1.5 py-0.5 text-xs">/v1</code>.</li>
+            <li><strong className="text-foreground">Auth:</strong> Send your API key as <code className="rounded bg-muted px-1.5 py-0.5 text-xs">Authorization: Bearer fce_...</code> or as <code className="rounded bg-muted px-1.5 py-0.5 text-xs">api_key</code> query parameter. Get a key from the <Link href="/api/dashboard" className="text-primary hover:underline">Dashboard</Link>.</li>
+            <li><strong className="text-foreground">OpenAPI spec:</strong> <a href="/openapi.yaml" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">/openapi.yaml</a> — use it with any OpenAPI client or our interactive <Link href="/api/playground" className="text-primary hover:underline">Playground</Link>.</li>
+            <li><strong className="text-foreground">Playground:</strong> Try requests in the browser with auto-filled auth when you’re signed in — <Link href="/api/playground" className="text-primary hover:underline">Open Playground</Link>.</li>
+            <li><strong className="text-foreground">WebSocket:</strong> Real-time inbox updates at <code className="rounded bg-muted px-1.5 py-0.5 text-xs">wss://api2.freecustom.email/v1/ws</code> (Startup plan and above).</li>
+          </ul>
+        </div>
       </section>
 
       {/* Feature grid */}

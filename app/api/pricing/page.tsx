@@ -115,7 +115,7 @@ const FAQ_ITEMS = [
   { q: "Is there a free trial?", a: "The Free plan is always available. Paid API plans do not include a separate trial period; you can upgrade or add credits at any time." },
   { q: "How does WebSocket billing work?", a: "Each push event (new_mail, etc.) counts as one request toward your monthly quota. Connection limits apply per plan (e.g. 5 concurrent on Startup, 20 on Growth)." },
   { q: "Can I switch plans mid-cycle?", a: "Yes. Upgrades take effect immediately; you're charged a prorated amount. Downgrades take effect at the end of the current billing period." },
-  { q: "What is the difference between API plan and Pro plan?", a: "The Pro plan is for the main FreeCustom.Email web app. The API plan is for programmatic access (api.freecustom.email). They are separate subscriptions; you can have one or both." },
+  { q: "What is the difference between API plan and Pro plan?", a: "The Pro plan is for the main FreeCustom.Email web app. The API plan is for programmatic access (api2.freecustom.email). They are separate subscriptions; you can have one or both." },
 ];
 
 export default function ApiPricingPage() {

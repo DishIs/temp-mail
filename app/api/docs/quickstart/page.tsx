@@ -34,7 +34,7 @@ export default function QuickstartPage() {
       <p className="text-sm text-muted-foreground mb-3">
         Send a <code className="rounded bg-muted px-1 py-0.5 text-xs">POST /v1/inboxes</code> request with the <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code> field (full email address). The address must use a domain we support (e.g. <code className="rounded bg-muted px-1 py-0.5 text-xs">@ditmail.info</code>).
       </p>
-      <CodeBlock code={`curl -X POST https://api.freecustom.email/v1/inboxes \\
+      <CodeBlock code={`curl -X POST https://api2.freecustom.email/v1/inboxes \\
   -H "Authorization: Bearer fce_your_api_key" \\
   -H "Content-Type: application/json" \\
   -d '{"inbox":"mytest@ditmail.info"}'`} language="curl" />
@@ -51,14 +51,14 @@ export default function QuickstartPage() {
       <p className="text-sm text-muted-foreground mb-3">
         Use <code className="rounded bg-muted px-1 py-0.5 text-xs">GET /v1/inboxes/{`{inbox}`}/messages</code> to list messages for that inbox.
       </p>
-      <CodeBlock code={`curl "https://api.freecustom.email/v1/inboxes/mytest@ditmail.info/messages" \\
+      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditmail.info/messages" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
 
       <h2 id="step-7" className="text-lg font-semibold mt-8 mb-2">7. Extract the OTP</h2>
       <p className="text-sm text-muted-foreground mb-3">
         On Developer plan and above, <code className="rounded bg-muted px-1 py-0.5 text-xs">GET /v1/inboxes/{`{inbox}`}/otp</code> returns the latest detected OTP. On the Free plan you receive <code className="rounded bg-muted px-1 py-0.5 text-xs">{"__DETECTED__"}</code> to indicate that an OTP was found (upsell).
       </p>
-      <CodeBlock code={`curl "https://api.freecustom.email/v1/inboxes/mytest@ditmail.info/otp" \\
+      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditmail.info/otp" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <p className="text-sm text-muted-foreground mt-2">
         Example response: <code className="rounded bg-muted px-1 py-0.5 text-xs">{"{ \"success\": true, \"data\": { \"otp\": \"847291\", \"verification_link\": \"https://...\", \"from\": \"noreply@example.com\", \"subject\": \"Your code is 847291\", \"message_id\": \"msg_abc\", \"received_at\": \"2026-03-04T09:55:00.000Z\" } }"}</code>

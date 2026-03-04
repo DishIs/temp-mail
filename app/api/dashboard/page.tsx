@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
   CreditCard,
   Key,
@@ -272,9 +271,8 @@ export default function ApiDashboardPage() {
           <div className="container max-w-6xl mx-auto px-4 sm:px-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-6">
               <div className="flex items-center gap-3">
-                <Link href="/api" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                  <Image src="/logo.webp" alt="" width={28} height={28} className="rounded" />
-                  <span className="text-sm font-medium">API</span>
+                <Link href="/api" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  API
                 </Link>
                 <span className="text-muted-foreground/50">/</span>
                 <h1 className="text-xl font-bold tracking-tight text-foreground">Dashboard</h1>

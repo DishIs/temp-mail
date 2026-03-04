@@ -17,7 +17,7 @@ export default function InboxesPage() {
 
       <h2 id="list" className="text-lg font-semibold mt-8 mb-2">GET /v1/inboxes</h2>
       <p className="text-sm text-muted-foreground mb-2">Returns all inboxes registered to your account.</p>
-      <CodeBlock code={`curl "https://api.freecustom.email/v1/inboxes" \\
+      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
       <ResponseBlock status={200} label="Success" body={`{
@@ -57,7 +57,7 @@ export default function InboxesPage() {
           </tr>
         </tbody>
       </table>
-      <CodeBlock code={`curl -X POST https://api.freecustom.email/v1/inboxes \\
+      <CodeBlock code={`curl -X POST https://api2.freecustom.email/v1/inboxes \\
   -H "Authorization: Bearer fce_your_api_key" \\
   -H "Content-Type: application/json" \\
   -d '{"inbox":"mytest@ditmail.info"}'`} language="curl" />
@@ -93,7 +93,7 @@ export default function InboxesPage() {
 
       <h2 id="delete" className="text-lg font-semibold mt-8 mb-2">DELETE /v1/inboxes/{`{inbox}`}</h2>
       <p className="text-sm text-muted-foreground mb-2">Unregisters the inbox. Path <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code> must be URL-encoded (e.g. test%40freecustom.email).</p>
-      <CodeBlock code={`curl -X DELETE "https://api.freecustom.email/v1/inboxes/mytest%40ditmail.info" \\
+      <CodeBlock code={`curl -X DELETE "https://api2.freecustom.email/v1/inboxes/mytest%40ditmail.info" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
       <ResponseBlock status={200} label="Unregistered" body={`{
