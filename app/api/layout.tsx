@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DevHeader } from "@/components/DevHeader";
 import { AppFooter } from "@/components/app-footer";
+import { ApiLayoutClient } from "@/components/ApiLayoutClient";
 
 export const metadata = {
   title: "API – FreeCustom.Email",
@@ -11,11 +12,7 @@ export const metadata = {
 export default function ApiLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="min-h-screen bg-background flex flex-col">
-        <DevHeader />
-        <main className="flex-1">{children}</main>
-        <AppFooter />
-      </div>
+      <ApiLayoutClient>{children}</ApiLayoutClient>
     </ThemeProvider>
   );
 }

@@ -82,3 +82,13 @@
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
 }
+
+/* Scalar playground: custom header is h-16 (64px). Scalar uses this for sticky sidebar offset. */
+.playground-scalar-wrap {
+  --scalar-custom-header-height: 64px;
+}
+
+/* Remove Scalar branding and links (footer with "Powered by Scalar", etc.) */
+.playground-scalar-wrap [class*="references-footer"] {
+  display: none !important;
+}

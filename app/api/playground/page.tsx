@@ -6,9 +6,5 @@ export const metadata = {
 };
 
 export default function PlaygroundPage() {
-  return (
-    <div className="min-h-[calc(100vh-4rem)]">
-      <PlaygroundClient />
-    </div>
-  );
+  return <PlaygroundClient />;
 }
