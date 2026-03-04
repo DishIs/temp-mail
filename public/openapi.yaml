@@ -1,154 +1,866 @@
 openapi: 3.1.0
 info:
   title: FreeCustom.Email API
-  version: 1.0.0
+  version: 2.0.0
   description: |
+    **Last updated:** March 2026
+
     Disposable email infrastructure for developers.
-    Base URL: https://api2.freecustom.email/v1
+
+    - **Public v1 routes** (`/v1/*`): Require `Authorization: Bearer fce_<key>` (developer API key).
+    - **Internal routes** (`/user/*`, `/paddle/*`): Require `Authorization: Bearer INTERNAL_API_KEY` (server-to-server only).
+
 servers:
-  - url: https://api2.freecustom.email/v1
-    description: Production
+  - url: https://api.freecustom.email
+    description: Production (public + internal)
+  - url: https://api2.freecustom.email
+    description: Legacy production
+
 security:
   - BearerAuth: []
-  - ApiKeyQuery: []
+
 paths:
-  /me:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — Account
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/me:
     get:
-      summary: Get current user
+      summary: Get current user (account info)
       operationId: getMe
-      tags: [Account]
+      tags: [Public v1 - Account]
+      description: Returns the authenticated developer's account info — plan, rate limits, feature flags, inbox count, and credit balance.
+      security:
+        - BearerAuth: []
       responses:
-        '200':
-          description: Current user and plan
-  /usage:
+        "200":
+          description: Success
+          headers:
+            X-API-Plan:
+              schema: { type: string, example: startup }
+            X-RateLimit-Limit-Second:
+              schema: { type: integer, example: 25 }
+            X-RateLimit-Remaining-Second:
+              schema: { type: integer, example: 24 }
+            X-RateLimit-Limit-Month:
+              schema: { type: integer, example: 500000 }
+            X-RateLimit-Remaining-Month:
+              schema: { type: integer, example: 458770 }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error401" }
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error429" }
+
+  /v1/usage:
     get:
-      summary: Get usage and quotas
+      summary: Get usage stats
       operationId: getUsage
-      tags: [Account]
+      tags: [Public v1 - Account]
+      description: Returns live usage stats for the current billing period.
+      security:
+        - BearerAuth: []
       responses:
-        '200':
-          description: Usage and rate limit info
-  /plans:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/plans:
     get:
-      summary: List available plans
+      summary: List plans and credit packages
       operationId: getPlans
-      tags: [Account]
+      tags: [Public v1 - Account]
+      description: Public endpoint — no auth required. Returns all available plans and credit packages.
+      security: []
       responses:
-        '200':
-          description: List of plans
-  /inboxes:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlansResponse"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — Inboxes
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/inboxes:
     get:
       summary: List inboxes
       operationId: listInboxes
-      tags: [Inboxes]
+      tags: [Public v1 - Inboxes]
+      security:
+        - BearerAuth: []
       responses:
-        '200':
-          description: List of registered inboxes
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxesListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     post:
       summary: Register an inbox
       operationId: createInbox
-      tags: [Inboxes]
+      tags: [Public v1 - Inboxes]
+      description: Registers an inbox for API use. Custom domain inboxes require Growth+ and prior domain verification.
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [inbox]
               properties:
-                address:
+                inbox:
                   type: string
-                  example: test@ditmail.info
+                  format: email
+                  example: "test@freecustom.email"
       responses:
-        '201':
+        "201":
           description: Inbox registered
-  /inboxes/{inbox}:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxCreatedResponse"
+        "400":
+          description: Missing or invalid inbox
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error400Inbox" }
+        "403":
+          description: Plan restriction or domain not verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "409":
+          description: Inbox already registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  error: { type: string, example: "already_registered" }
+                  message: { type: string }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/inboxes/{inbox}:
     delete:
-      summary: Remove an inbox
+      summary: Unregister an inbox
       operationId: deleteInbox
-      tags: [Inboxes]
+      tags: [Public v1 - Inboxes]
       parameters:
         - name: inbox
           in: path
           required: true
-          schema:
-            type: string
+          description: URL-encoded email address (e.g. test%40freecustom.email)
+          schema: { type: string }
+      security:
+        - BearerAuth: []
       responses:
-        '204':
-          description: Inbox removed
-  /inboxes/{inbox}/messages:
+        "200":
+          description: Unregistered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string }
+        "404":
+          description: Inbox not registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  error: { type: string, example: "not_found" }
+                  message: { type: string }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — Messages
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/inboxes/{inbox}/messages:
     get:
       summary: List messages
       operationId: listMessages
-      tags: [Messages]
+      tags: [Public v1 - Messages]
       parameters:
         - name: inbox
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: before
+          in: query
+          description: Message ID — returns messages older than this
+          schema: { type: string }
+      security:
+        - BearerAuth: []
       responses:
-        '200':
-          description: List of messages
-  /inboxes/{inbox}/messages/{id}:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesListResponse"
+        "403":
+          description: Inbox not registered to this account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Forbidden" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/inboxes/{inbox}/messages/{id}:
     get:
       summary: Get a message
       operationId: getMessage
-      tags: [Messages]
+      tags: [Public v1 - Messages]
       parameters:
         - name: inbox
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - name: id
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+      security:
+        - BearerAuth: []
       responses:
-        '200':
-          description: Message body
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageDetailResponse"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error404" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     delete:
       summary: Delete a message
       operationId: deleteMessage
-      tags: [Messages]
+      tags: [Public v1 - Messages]
       parameters:
         - name: inbox
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - name: id
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+      security:
+        - BearerAuth: []
       responses:
-        '204':
+        "200":
           description: Message deleted
-  /inboxes/{inbox}/otp:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string }
+        "404":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error404" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — OTP
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/inboxes/{inbox}/otp:
     get:
       summary: Get latest OTP
       operationId: getOtp
-      tags: [OTP]
+      tags: [Public v1 - OTP]
+      description: Returns the OTP and/or verification link from the most recent message that contains one. Requires Developer plan or higher.
       parameters:
         - name: inbox
           in: path
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+      security:
+        - BearerAuth: []
       responses:
-        '200':
-          description: OTP and metadata (or __DETECTED__ on free plan)
+        "200":
+          description: Success (OTP found or null)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpResponse"
+        "403":
+          description: Plan too low (free returns __DETECTED__ on other endpoints; this one requires Developer+)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: API key as Bearer token
+      description: Developer API key as Bearer token (e.g. Bearer fce_xxx)
     ApiKeyQuery:
       type: apiKey
       in: query
       name: api_key
-      description: API key as query parameter
+      description: API key as query parameter (alternative to Bearer)
+    InternalApiKey:
+      type: http
+      scheme: bearer
+      description: INTERNAL_API_KEY for server-to-server internal routes only
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error401" }
+    Forbidden:
+      description: Forbidden (e.g. inbox not owned)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error403Forbidden" }
+    RateLimited:
+      description: Rate limit exceeded (per-second or monthly quota)
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error429" }
+
+  schemas:
+    MeResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            plan: { type: string, example: startup }
+            credits: { type: integer, example: 25000 }
+            features:
+              type: object
+              properties:
+                otp_extraction: { type: boolean }
+                attachments: { type: boolean }
+                max_attachment_size_mb: { type: integer }
+                custom_domains: { type: boolean }
+                websocket: { type: boolean }
+                max_ws_connections: { type: integer }
+            rate_limits:
+              type: object
+              properties:
+                requests_per_second: { type: integer }
+                requests_per_month: { type: integer }
+            inboxes_registered: { type: integer }
+
+    UsageResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            plan: { type: string }
+            period:
+              type: object
+              properties:
+                month: { type: string }
+                resets_at: { type: string, format: date-time }
+            requests:
+              type: object
+              properties:
+                used: { type: integer }
+                limit: { type: integer }
+                remaining: { type: integer }
+                percent_used: { type: number }
+            credits:
+              type: object
+              properties:
+                balance: { type: integer }
+                note: { type: string }
+            rate_limit:
+              type: object
+              properties:
+                requests_per_second: { type: integer }
+
+    PlansResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            plans:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  label: { type: string }
+                  price_usd: { type: integer }
+                  requests_per_second: { type: integer }
+                  requests_per_month: { type: integer }
+                  features: { $ref: "#/components/schemas/PlanFeatures" }
+            credit_packages:
+              type: array
+              items:
+                type: object
+                properties:
+                  label: { type: string }
+                  price_usd: { type: integer }
+                  requests: { type: integer }
+
+    PlanFeatures:
+      type: object
+      properties:
+        otp_extraction: { type: boolean }
+        attachments: { type: boolean }
+        max_attachment_size_mb: { type: integer }
+        custom_domains: { type: boolean }
+        websocket: { type: boolean }
+        max_ws_connections: { type: integer }
+
+    InboxesListResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            inboxes: { type: array, items: { type: string } }
+            count: { type: integer }
+
+    InboxCreatedResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            inbox: { type: string }
+            registered_at: { type: string, format: date-time }
+
+    MessageSummary:
+      type: object
+      properties:
+        id: { type: string }
+        from: { type: string }
+        subject: { type: string }
+        date: { type: string, format: date-time }
+        has_attachment: { type: boolean }
+        otp: { type: string, nullable: true, description: "Or __DETECTED__ on free plan" }
+        verification_link: { type: string, nullable: true }
+
+    MessagesListResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            inbox: { type: string }
+            messages: { type: array, items: { $ref: "#/components/schemas/MessageSummary" } }
+            count: { type: integer }
+            has_more: { type: boolean }
+
+    MessageDetailResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            id: { type: string }
+            from: { type: string }
+            to: { type: string }
+            subject: { type: string }
+            date: { type: string, format: date-time }
+            html: { type: string, nullable: true }
+            text: { type: string, nullable: true }
+            otp: { type: string, nullable: true }
+            verification_link: { type: string, nullable: true }
+            has_attachment: { type: boolean }
+            attachments:
+              type: array
+              items:
+                type: object
+                properties:
+                  filename: { type: string }
+                  content_type: { type: string }
+                  size_bytes: { type: integer }
+
+    OtpResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            inbox: { type: string }
+            otp: { type: string, nullable: true }
+            verification_link: { type: string, nullable: true }
+            from: { type: string, nullable: true }
+            subject: { type: string, nullable: true }
+            message_id: { type: string, nullable: true }
+            received_at: { type: string, format: date-time, nullable: true }
+            message: { type: string, nullable: true }
+
+    Error401:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, enum: [unauthorized, key_revoked] }
+        message: { type: string }
+    Error403Forbidden:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, example: "forbidden" }
+        message: { type: string }
+    Error403Plan:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, enum: [plan_restriction, domain_not_verified] }
+        message: { type: string }
+        upgrade_url: { type: string, format: uri, nullable: true }
+    Error400Inbox:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, enum: [missing_field, invalid_inbox] }
+        message: { type: string }
+    Error404:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, example: "not_found" }
+        message: { type: string }
+    Error429:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, enum: [rate_limit_exceeded, monthly_quota_exceeded] }
+        message: { type: string }
+        upgrade_url: { type: string, format: uri, nullable: true }
+        credits_url: { type: string, format: uri, nullable: true }
+        hint: { type: string, nullable: true }
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Internal — User (require Authorization: Bearer INTERNAL_API_KEY)
+  # ─────────────────────────────────────────────────────────────────────────
+  /user/api-status/{wyiUserId}:
+    get:
+      summary: "[Internal] Get user API status"
+      operationId: internalGetApiStatus
+      tags: [Internal - User]
+      description: Returns plan, usage, features, inboxes, upsell, and all_plans. Used by the dashboard.
+      security:
+        - InternalApiKey: []
+      parameters:
+        - name: wyiUserId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      plan: { type: object }
+                      subscription: { type: object }
+                      usage: { type: object }
+                      rate_limits: { type: object }
+                      features: { type: object }
+                      inboxes: { type: object }
+                      upsell: { type: object }
+                      all_plans: { type: array }
+        "400":
+          description: wyiUserId required
+        "404":
+          description: User not found
+        "500":
+          description: Server error
+
+  /user/payment-logs/{wyiUserId}:
+    get:
+      summary: "[Internal] Get payment logs"
+      operationId: internalGetPaymentLogs
+      tags: [Internal - User]
+      parameters:
+        - name: wyiUserId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: type
+          in: query
+          schema: { type: string, enum: [app, api, credits] }
+      security:
+        - InternalApiKey: []
+      responses:
+        "200":
+          description: Success (data array, summary, pagination)
+        "400":
+          description: wyiUserId required
+        "404":
+          description: User not found
+
+  /user/api-keys:
+    post:
+      summary: "[Internal] Create API key"
+      operationId: internalCreateApiKey
+      tags: [Internal - User]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, name]
+              properties:
+                userId: { type: string, format: uuid }
+                name: { type: string, maxLength: 64 }
+      security:
+        - InternalApiKey: []
+      responses:
+        "201":
+          description: Created (key returned once only)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  key: { type: string }
+                  prefix: { type: string }
+                  name: { type: string }
+                  createdAt: { type: string, format: date-time }
+                  note: { type: string }
+        "400":
+          description: Missing fields or name too long
+        "403":
+          description: Key limit reached (max 5)
+        "404":
+          description: User not found
+    delete:
+      summary: "[Internal] Revoke API key"
+      operationId: internalRevokeApiKey
+      tags: [Internal - User]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, prefix]
+              properties:
+                userId: { type: string }
+                prefix: { type: string }
+      security:
+        - InternalApiKey: []
+      responses:
+        "200":
+          description: Revoked
+        "400":
+          description: userId and prefix required
+        "404":
+          description: Key not found or already revoked
+
+  /user/api-keys/{wyiUserId}:
+    get:
+      summary: "[Internal] List API keys"
+      operationId: internalListApiKeys
+      tags: [Internal - User]
+      parameters:
+        - name: wyiUserId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - InternalApiKey: []
+      responses:
+        "200":
+          description: Success (keys array with id, prefix, name, active, createdAt, lastUsedAt, revokedAt)
+        "404":
+          description: User not found
+
+  /user/api-plan:
+    post:
+      summary: "[Internal] Set API plan"
+      operationId: internalSetApiPlan
+      tags: [Internal - User]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, plan]
+              properties:
+                userId: { type: string }
+                plan: { type: string, enum: [free, developer, startup, growth, enterprise] }
+      security:
+        - InternalApiKey: []
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Invalid plan
+        "404":
+          description: User not found
+
+  /user/api-credits:
+    post:
+      summary: "[Internal] Add API credits"
+      operationId: internalAddApiCredits
+      tags: [Internal - User]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, creditsToAdd, transactionId]
+              properties:
+                userId: { type: string }
+                creditsToAdd: { type: integer, minimum: 1 }
+                transactionId: { type: string }
+      security:
+        - InternalApiKey: []
+      responses:
+        "200":
+          description: Added or skipped (idempotent)
+        "400":
+          description: Missing or invalid fields
+        "404":
+          description: User not found
+
+  /paddle/subscription-event:
+    post:
+      summary: "[Internal] Paddle webhook relay"
+      operationId: internalPaddleWebhook
+      tags: [Internal - Paddle]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                eventType: { type: string }
+                productType: { type: string, enum: [app, api, credits] }
+                apiPlan: { type: string }
+                userId: { type: string }
+                subscriptionId: { type: string }
+                status: { type: string }
+      security:
+        - InternalApiKey: []
+      responses:
+        "200":
+          description: Success or orphan warning
+        "400":
+          description: Missing eventType or subscriptionId
+        "500":
+          description: Internal error
+
+tags:
+  - name: Public v1 - Account
+    description: Account info, usage, and plans
+  - name: Public v1 - Inboxes
+    description: Register and manage inboxes
+  - name: Public v1 - Messages
+    description: List, get, and delete messages
+  - name: Public v1 - OTP
+    description: OTP and verification link extraction
+  - name: Internal - User
+    description: Internal user/API key/plan/credits (INTERNAL_API_KEY)
+  - name: Internal - Paddle
+    description: Internal Paddle webhook (INTERNAL_API_KEY)
+
+x-websocket:
+  url: "wss://api.freecustom.email/v1/ws"
+  description: |
+    Real-time push for incoming emails. Requires Startup plan or higher.
+
+    **Connection:** `wss://api.freecustom.email/v1/ws?api_key=fce_...&mailbox=test@freecustom.email`
+
+    | Query param | Required | Description |
+    |-------------|----------|-------------|
+    | api_key     | Yes      | Developer API key |
+    | mailbox     | No       | Subscribe to one inbox; omit for all registered inboxes |
+
+    **Events (server → client):**
+    - `connected` — On connect; includes plan, subscribed_to, max_connections, current_connections.
+    - `new_message` — New email; includes inbox and message (id, from, subject, date, has_attachment, otp, verification_link).
+    - `ping` — Heartbeat every 30s; client should respond with `pong`.
+
+    **Close codes:**
+    - 4001 — Invalid or missing API key
+    - 4003 — Plan too low (WebSocket requires Startup+)
+    - 4004 — Inbox not registered
+    - 4029 — Connection limit reached

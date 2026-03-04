@@ -85,7 +85,7 @@ export default function ApiOverviewPage() {
             <Link href="/api/docs/quickstart">Read the docs</Link>
           </Button>
         </div>
-        <div className="mt-10 max-w-2xl mx-auto">
+        <div className="mt-10 w-full text-left">
           <ApiHeroCode />
         </div>
       </section>
@@ -229,7 +229,7 @@ export default function ApiOverviewPage() {
           <div className="text-center">
             <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-lg mb-3">2</div>
             <h3 className="font-semibold text-foreground">Register an inbox</h3>
-            <p className="mt-1 text-sm text-muted-foreground">POST /v1/inboxes to create a disposable address.</p>
+            <p className="mt-1 text-sm text-muted-foreground">POST /v1/inboxes with <code className="text-xs">{"{ \"inbox\": \"...\" }"}</code> to register a disposable address.</p>
           </div>
           <div className="text-center">
             <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-lg mb-3">3</div>

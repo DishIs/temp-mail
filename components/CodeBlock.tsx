@@ -20,13 +20,13 @@ export function CodeBlock({ code, language, className = "" }: CodeBlockProps) {
   };
 
   return (
-    <div className={`relative rounded-lg border border-border bg-muted overflow-hidden ${className}`}>
+    <div className={`relative rounded-lg border border-border bg-muted overflow-hidden min-w-0 max-w-full ${className}`}>
       {language && (
         <span className="absolute top-2 left-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
           {language}
         </span>
       )}
-      <pre className={`overflow-x-auto text-xs sm:text-sm font-mono text-foreground leading-relaxed ${language ? "pt-8 pb-4 pl-4 pr-24" : "p-4 pr-24"}`}>
+      <pre className={`text-xs sm:text-sm font-mono text-foreground leading-relaxed whitespace-pre-wrap break-words overflow-x-hidden ${language ? "pt-8 pb-4 pl-4 pr-24" : "p-4 pr-24"}`}>
         <code>{code}</code>
       </pre>
       <Button

@@ -18,14 +18,34 @@ const NAV_LINKS = [
   { href: "/api/dashboard", label: "Dashboard" },
 ];
 
+interface ApiStatusData {
+  plan?: { name?: string; label?: string };
+  usage?: { credits_remaining?: number; requests_this_month?: number; requests_limit?: number };
+}
+
 export function DevHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [apiStatus, setApiStatus] = useState<ApiStatusData | null>(null);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.id) {
+      setApiStatus(null);
+      return;
+    }
+    fetch("/api/user/api-status")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        const data = d?.data ?? d;
+        if (data?.plan || data?.usage) setApiStatus(data);
+      })
+      .catch(() => {});
+  }, [status, session?.user?.id]);
 
   const toggleTheme = useCallback(() => {
     if (theme === "light") setTheme("dark");
@@ -34,6 +54,8 @@ export function DevHeader() {
   }, [theme, setTheme]);
 
   const isLoggedIn = status === "authenticated" && !!session?.user;
+  const planLabel = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
+  const credits = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
 
   const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
     const isActive = pathname === href || (href !== "/api" && pathname.startsWith(href));
@@ -100,9 +122,24 @@ export function DevHeader() {
           </Button>
           {isLoggedIn ? (
             <>
-              <Badge variant="secondary" className="text-xs font-mono">
-                API
-              </Badge>
+              {(planLabel || credits > 0) ? (
+                <div className="flex items-center gap-2 text-xs">
+                  {planLabel && (
+                    <Badge variant="secondary" className="font-normal capitalize">
+                      {planLabel}
+                    </Badge>
+                  )}
+                  {credits > 0 && (
+                    <span className="text-muted-foreground tabular-nums">
+                      {Number(credits).toLocaleString()} credits
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <Badge variant="secondary" className="text-xs font-mono">
+                  API
+                </Badge>
+              )}
               <Button asChild size="sm" variant="default">
                 <Link href="/api/dashboard">Dashboard</Link>
               </Button>
@@ -161,13 +198,22 @@ export function DevHeader() {
               )}
             </Button>
             {isLoggedIn ? (
-              <Link
-                href="/api/dashboard"
-                onClick={() => setMenuOpen(false)}
-                className="p-2 rounded-md bg-primary text-primary-foreground text-sm font-medium text-center"
-              >
-                Dashboard
-              </Link>
+              <>
+                {(planLabel || credits > 0) && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    {planLabel && <span className="capitalize">{planLabel}</span>}
+                    {planLabel && credits > 0 && " · "}
+                    {credits > 0 && <span className="tabular-nums">{Number(credits).toLocaleString()} credits</span>}
+                  </div>
+                )}
+                <Link
+                  href="/api/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                  className="p-2 rounded-md bg-primary text-primary-foreground text-sm font-medium text-center"
+                >
+                  Dashboard
+                </Link>
+              </>
             ) : (
               <>
                 <Link href="/auth?callbackUrl=/api" onClick={() => setMenuOpen(false)} className="p-2 rounded-md hover:bg-muted text-sm font-medium">

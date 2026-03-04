@@ -48,15 +48,15 @@ export async function DELETE(request: NextRequest) {
   }
   try {
     const body = await request.json();
-    const keyId = body?.keyId;
-    if (!keyId) {
-      return NextResponse.json({ message: "keyId required" }, { status: 400 });
+    const prefix = body?.prefix;
+    if (!prefix || typeof prefix !== "string") {
+      return NextResponse.json({ success: false, message: "userId and prefix are required." }, { status: 400 });
     }
-    await fetchFromServiceAPI("/user/api-keys", {
+    const data = await fetchFromServiceAPI("/user/api-keys", {
       method: "DELETE",
-      body: JSON.stringify({ keyId, wyiUserId: session.user.id }),
+      body: JSON.stringify({ userId: session.user.id, prefix }),
     });
-    return NextResponse.json({ success: true });
+    return NextResponse.json(data ?? { success: true });
   } catch (error: unknown) {
     console.error("API Error DELETE /user/api-keys:", error);
     return NextResponse.json(

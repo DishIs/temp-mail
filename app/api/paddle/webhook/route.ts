@@ -1,235 +1,261 @@
 // app/api/paddle/webhook/route.ts
-import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
-import { fetchFromServiceAPI } from '@/lib/api';
-import crypto from 'crypto';
+import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { fetchFromServiceAPI } from "@/lib/api";
+import crypto from "crypto";
+
+type ProductType = "app" | "api" | "credits";
+type PaddleEventType =
+  | "TRIALING"
+  | "ACTIVATED"
+  | "CANCELLED"
+  | "SUSPENDED"
+  | "UPDATED"
+  | "PAYMENT_COMPLETED"
+  | "PAYMENT_FAILED"
+  | "REFUNDED";
 
 // ---------------------------------------------------------------
 // Paddle Webhook Signature Verification
-// Paddle uses HMAC-SHA256 with a secret key from your dashboard.
-// Header format: ts=<timestamp>;h1=<hmac>
-// See: https://developer.paddle.com/webhooks/signature-verification
 // ---------------------------------------------------------------
 function verifyPaddleSignature(rawBody: string, signatureHeader: string | null): boolean {
   if (!signatureHeader) return false;
-
   const secret = process.env.PADDLE_WEBHOOK_SECRET;
   if (!secret) {
-    console.error('[Paddle Webhook] PADDLE_WEBHOOK_SECRET is not set');
+    console.error("[Paddle Webhook] PADDLE_WEBHOOK_SECRET is not set");
     return false;
   }
-
   try {
-    // Parse: ts=1234567890;h1=<hmac>
     const parts = Object.fromEntries(
-      signatureHeader.split(';').map((p) => p.split('=') as [string, string])
+      signatureHeader.split(";").map((p) => p.split("=") as [string, string])
     );
     const { ts, h1 } = parts;
     if (!ts || !h1) return false;
-
-    // Prevent replay attacks — reject events older than 5 minutes
     const eventTimestamp = parseInt(ts, 10);
     const now = Math.floor(Date.now() / 1000);
-    if (Math.abs(now - eventTimestamp) > 300) {
-      console.warn('[Paddle Webhook] Timestamp too old — possible replay attack');
-      return false;
-    }
-
-    // HMAC: signed payload = ts + ":" + rawBody
+    if (Math.abs(now - eventTimestamp) > 300) return false;
     const signedPayload = `${ts}:${rawBody}`;
-    const expectedSig = crypto
-      .createHmac('sha256', secret)
-      .update(signedPayload)
-      .digest('hex');
-
-    return crypto.timingSafeEqual(Buffer.from(h1, 'hex'), Buffer.from(expectedSig, 'hex'));
-  } catch (err) {
-    console.error('[Paddle Webhook] Signature parse error:', err);
+    const expectedSig = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
+    return crypto.timingSafeEqual(Buffer.from(h1, "hex"), Buffer.from(expectedSig, "hex"));
+  } catch {
     return false;
   }
 }
 
 // ---------------------------------------------------------------
-// Extract userId from Paddle custom_data
-// Set during checkout: customData: { userId }
+// Extract from Paddle event (custom_data set at checkout)
 // ---------------------------------------------------------------
+function getCustomData(event: any): {
+  userId?: string;
+  productType?: ProductType;
+  apiPlan?: string;
+  creditsToAdd?: number;
+} {
+  const data = event?.data;
+  const custom = data?.custom_data ?? data?.items?.[0]?.price?.custom_data ?? {};
+  return {
+    userId: custom.userId ?? null,
+    productType: custom.productType ?? "app",
+    apiPlan: custom.apiPlan ?? undefined,
+    creditsToAdd: custom.creditsToAdd != null ? Number(custom.creditsToAdd) : undefined,
+  };
+}
+
 function getUserIdFromEvent(event: any): string | null {
-  return (
-    event?.data?.custom_data?.userId ||
-    event?.data?.items?.[0]?.price?.custom_data?.userId ||
-    null
-  );
+  return getCustomData(event).userId ?? null;
 }
 
 function getSubscriptionId(event: any): string | null {
-  return event?.data?.id || event?.data?.subscription_id || null;
+  const data = event?.data;
+  return data?.id ?? data?.subscription_id ?? null;
 }
 
 // ---------------------------------------------------------------
-// Event Handlers
+// Build payload for backend POST /paddle/subscription-event
 // ---------------------------------------------------------------
+function buildPayload(
+  eventType: PaddleEventType,
+  event: any,
+  overrides: Partial<{
+    userId: string | null;
+    subscriptionId: string | null;
+    productType: ProductType;
+    apiPlan: string;
+    creditsToAdd: number;
+    status: string;
+    startTime: string;
+    nextBilledAt: string;
+    payerEmail: string;
+    canceledAt: string;
+    pausedAt: string;
+    amount: string;
+    currency: string;
+    scheduledChange: any;
+  }> = {}
+) {
+  const data = event?.data ?? {};
+  const custom = getCustomData(event);
+  return {
+    eventType,
+    productType: overrides.productType ?? custom.productType ?? "app",
+    apiPlan: overrides.apiPlan ?? custom.apiPlan,
+    creditsToAdd: overrides.creditsToAdd ?? custom.creditsToAdd,
+    userId: overrides.userId ?? custom.userId,
+    subscriptionId: overrides.subscriptionId ?? data.id ?? data.subscription_id,
+    customerId: data.customer_id,
+    priceId: data.items?.[0]?.price?.id,
+    status: overrides.status ?? data.status,
+    startTime: overrides.startTime ?? data.started_at ?? data.created_at,
+    nextBilledAt: overrides.nextBilledAt ?? data.next_billed_at,
+    payerEmail: overrides.payerEmail ?? data.customer?.email,
+    canceledAt: overrides.canceledAt ?? data.canceled_at,
+    pausedAt: overrides.pausedAt ?? data.paused_at,
+    amount: overrides.amount ?? data.details?.totals?.grand_total,
+    currency: overrides.currency ?? data.currency_code,
+    scheduledChange: overrides.scheduledChange ?? data.scheduled_change,
+    rawEvent: event,
+  };
+}
 
-async function handleSubscriptionActivated(event: any) {
-  const userId = getUserIdFromEvent(event);
-  const data = event.data;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType:       'ACTIVATED',
-      userId,
-      subscriptionId:  data.id,
-      customerId:      data.customer_id,          // <-- NEW
-      priceId:         data.items?.[0]?.price?.id,
-      status:          data.status,
-      startTime:       data.started_at ?? data.created_at,
-      nextBilledAt:    data.next_billed_at,
-      payerEmail:      data.customer?.email ?? null,
-      scheduledChange: data.scheduled_change ?? null,
-      rawEvent:        event,
-    }),
+async function sendToBackend(payload: ReturnType<typeof buildPayload>) {
+  await fetchFromServiceAPI("/paddle/subscription-event", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
+}
+
+// ---------------------------------------------------------------
+// Subscription lifecycle (app + api)
+// ---------------------------------------------------------------
+async function handleSubscriptionCreated(event: any) {
+  const payload = buildPayload("ACTIVATED", event);
+  payload.userId = getUserIdFromEvent(event);
+  payload.subscriptionId = event?.data?.id ?? null;
+  payload.status = event?.data?.status ?? "active";
+  payload.startTime = event?.data?.started_at ?? event?.data?.created_at;
+  payload.nextBilledAt = event?.data?.next_billed_at;
+  payload.payerEmail = event?.data?.customer?.email ?? null;
+  payload.scheduledChange = event?.data?.scheduled_change ?? null;
+  await sendToBackend(payload);
 }
 
 async function handleSubscriptionTrialing(event: any) {
-  const userId = getUserIdFromEvent(event);
-  const data = event.data;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType:       'ACTIVATED',
-      userId,
-      subscriptionId:  data.id,
-      customerId:      data.customer_id,          // <-- NEW
-      priceId:         data.items?.[0]?.price?.id,
-      status:          data.status,               // 'trialing'
-      startTime:       data.started_at ?? data.created_at,
-      nextBilledAt:    data.next_billed_at,
-      payerEmail:      data.customer?.email ?? null,
-      scheduledChange: data.scheduled_change ?? null,
-      rawEvent:        event,
-    }),
-  });
+  const payload = buildPayload("ACTIVATED", event);
+  payload.userId = getUserIdFromEvent(event);
+  payload.subscriptionId = event?.data?.id ?? null;
+  payload.status = "trialing";
+  payload.startTime = event?.data?.started_at ?? event?.data?.created_at;
+  payload.nextBilledAt = event?.data?.next_billed_at;
+  payload.payerEmail = event?.data?.customer?.email ?? null;
+  await sendToBackend(payload);
 }
 
-
 async function handleSubscriptionCanceled(event: any) {
-  const userId = getUserIdFromEvent(event);
-  const data = event.data;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType: 'CANCELLED',
-      userId,
-      subscriptionId: data.id,
-      status: data.status,           // 'canceled'
-      canceledAt: data.canceled_at,
-      rawEvent: event,
-    }),
-  });
+  const data = event?.data;
+  const periodEnd =
+    data?.scheduled_change?.effective_at ??
+    data?.current_billing_period?.ends_at ??
+    data?.canceled_at ??
+    new Date().toISOString();
+  const payload = buildPayload("CANCELLED", event);
+  payload.userId = getUserIdFromEvent(event);
+  payload.subscriptionId = data?.id ?? null;
+  payload.canceledAt = data?.canceled_at ?? new Date().toISOString();
+  payload.rawEvent = event;
+  await sendToBackend(payload);
 }
 
 async function handleSubscriptionPaused(event: any) {
-  const userId = getUserIdFromEvent(event);
-  const data = event.data;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType: 'SUSPENDED',
-      userId,
-      subscriptionId: data.id,
-      status: data.status,           // 'paused'
-      pausedAt: data.paused_at,
-      rawEvent: event,
-    }),
-  });
+  const payload = buildPayload("SUSPENDED", event);
+  payload.userId = getUserIdFromEvent(event);
+  payload.subscriptionId = event?.data?.id ?? null;
+  payload.pausedAt = event?.data?.paused_at;
+  await sendToBackend(payload);
 }
 
 async function handleSubscriptionResumed(event: any) {
-  const userId = getUserIdFromEvent(event);
-  const data = event.data;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType: 'ACTIVATED',           // Reuse ACTIVATED to restore pro plan
-      userId,
-      subscriptionId: data.id,
-      status: data.status,           // 'active'
-      rawEvent: event,
-    }),
-  });
+  const payload = buildPayload("ACTIVATED", event);
+  payload.userId = getUserIdFromEvent(event);
+  payload.subscriptionId = event?.data?.id ?? null;
+  payload.status = "active";
+  await sendToBackend(payload);
 }
 
 async function handleSubscriptionUpdated(event: any) {
-  const userId = getUserIdFromEvent(event);
-  const data = event.data;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType: 'UPDATED',
-      userId,
-      subscriptionId: data.id,
-      priceId: data.items?.[0]?.price?.id,
-      status: data.status,
-      rawEvent: event,
-    }),
-  });
+  const payload = buildPayload("UPDATED", event);
+  payload.userId = getUserIdFromEvent(event);
+  payload.subscriptionId = event?.data?.id ?? null;
+  payload.priceId = event?.data?.items?.[0]?.price?.id;
+  payload.status = event?.data?.status;
+  payload.nextBilledAt = event?.data?.next_billed_at;
+  payload.apiPlan =
+    payload.apiPlan ??
+    event?.data?.items?.[0]?.price?.custom_data?.api_plan;
+  await sendToBackend(payload);
 }
 
+// ---------------------------------------------------------------
+// transaction.completed — renewal (subscription) or one-time (credits)
+// ---------------------------------------------------------------
 async function handleTransactionCompleted(event: any) {
-  // Fires on every successful charge (new subscription or renewal)
-  const data = event.data;
-  const subscriptionId = data.subscription_id;
+  const data = event?.data;
+  const subscriptionId = data?.subscription_id ?? data?.subscription?.id ?? null;
+  const custom = getCustomData(event);
 
-  if (!subscriptionId) return; // One-time payment, not a subscription
+  // One-time payment (credits): no subscription_id
+  if (!subscriptionId) {
+    const creditsToAdd = custom.creditsToAdd ?? 0;
+    if (creditsToAdd <= 0) {
+      console.warn("[Paddle Webhook] transaction.completed one-time missing creditsToAdd in custom_data");
+      return;
+    }
+    await sendToBackend(
+      buildPayload("ACTIVATED", event, {
+        productType: "credits",
+        creditsToAdd,
+        userId: custom.userId ?? null,
+        subscriptionId: data?.id ?? data?.transaction_id ?? "",
+        amount: data?.details?.totals?.grand_total,
+        currency: data?.currency_code,
+      })
+    );
+    return;
+  }
 
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType: 'PAYMENT_COMPLETED',
+  // Recurring renewal
+  await sendToBackend(
+    buildPayload("PAYMENT_COMPLETED", event, {
       userId: getUserIdFromEvent(event),
       subscriptionId,
-      amount: data.details?.totals?.grand_total,
-      currency: data.currency_code,
-      rawEvent: event,
-    }),
-  });
+      amount: data?.details?.totals?.grand_total,
+      currency: data?.currency_code,
+    })
+  );
 }
 
 async function handleTransactionPaymentFailed(event: any) {
-  const data = event.data;
-  const subscriptionId = data.subscription_id;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType: 'PAYMENT_FAILED',
+  const data = event?.data;
+  const subscriptionId = data?.subscription_id ?? data?.subscription?.id ?? null;
+  if (!subscriptionId) return;
+  await sendToBackend(
+    buildPayload("PAYMENT_FAILED", event, {
       userId: getUserIdFromEvent(event),
       subscriptionId,
-      rawEvent: event,
-    }),
-  });
+    })
+  );
 }
 
 async function handleTransactionRefunded(event: any) {
-  const data = event.data;
-  const subscriptionId = data.subscription_id;
-
-  await fetchFromServiceAPI('/paddle/subscription-event', {
-    method: 'POST',
-    body: JSON.stringify({
-      eventType: 'REFUNDED',
-      subscriptionId,
-      amount: data.details?.totals?.grand_total,
-      currency: data.currency_code,
-      rawEvent: event,
-    }),
-  });
+  const data = event?.data;
+  const subscriptionId = data?.subscription_id ?? data?.subscription?.id ?? null;
+  await sendToBackend(
+    buildPayload("REFUNDED", event, {
+      userId: getUserIdFromEvent(event),
+      subscriptionId: subscriptionId ?? data?.id ?? "",
+      amount: data?.details?.totals?.grand_total,
+      currency: data?.currency_code,
+    })
+  );
 }
 
 // ---------------------------------------------------------------
@@ -238,14 +264,13 @@ async function handleTransactionRefunded(event: any) {
 export async function POST(request: Request) {
   const headersList = await headers();
   const rawBody = await request.text();
-  const signatureHeader = headersList.get('paddle-signature');
+  const signatureHeader = headersList.get("paddle-signature");
 
-  // 1. Verify signature — ALWAYS in production
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === "production") {
     const isValid = verifyPaddleSignature(rawBody, signatureHeader);
     if (!isValid) {
-      console.error('[Paddle Webhook] Signature verification FAILED. Rejecting request.');
-      return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 401 });
+      console.error("[Paddle Webhook] Signature verification FAILED.");
+      return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 401 });
     }
   }
 
@@ -253,59 +278,51 @@ export async function POST(request: Request) {
   try {
     event = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const eventType: string = event?.event_type ?? '';
+  const eventType: string = event?.event_type ?? "";
   console.log(`[Paddle Webhook] Received: ${eventType} | ID: ${event?.notification_id}`);
 
   try {
     switch (eventType) {
-      case 'subscription.created':
-        await handleSubscriptionActivated(event); // reuse existing handler
+      case "subscription.created":
+        await handleSubscriptionCreated(event);
         break;
-
-      case 'subscription.trialing':
+      case "subscription.trialing":
         await handleSubscriptionTrialing(event);
         break;
-
-      // Subscription lifecycle
-      case 'subscription.activated':
-        await handleSubscriptionActivated(event);
+      case "subscription.activated":
+        await handleSubscriptionCreated(event);
         break;
-      case 'subscription.canceled':
+      case "subscription.canceled":
         await handleSubscriptionCanceled(event);
         break;
-      case 'subscription.paused':
+      case "subscription.paused":
         await handleSubscriptionPaused(event);
         break;
-      case 'subscription.resumed':
+      case "subscription.resumed":
         await handleSubscriptionResumed(event);
         break;
-      case 'subscription.updated':
+      case "subscription.updated":
         await handleSubscriptionUpdated(event);
         break;
-
-      // Transaction / payment events
-      case 'transaction.completed':
+      case "transaction.completed":
         await handleTransactionCompleted(event);
         break;
-      case 'transaction.payment_failed':
+      case "transaction.payment_failed":
         await handleTransactionPaymentFailed(event);
         break;
-      case 'transaction.refunded':
+      case "transaction.refunded":
         await handleTransactionRefunded(event);
         break;
-
       default:
         console.log(`[Paddle Webhook] Unhandled event: ${eventType}`);
     }
   } catch (err) {
     console.error(`[Paddle Webhook] Error processing ${eventType}:`, err);
-    // Return 200 so Paddle doesn't retry indefinitely. Log to Sentry etc.
-    return NextResponse.json({ received: true, warning: 'Processing error occurred' }, { status: 200 });
+    return NextResponse.json({ received: true, warning: "Processing error occurred" }, { status: 200 });
   }
 
-  // Paddle requires a 200 response within 5 s or it will retry
   return NextResponse.json({ received: true }, { status: 200 });
 }

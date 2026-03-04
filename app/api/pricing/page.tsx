@@ -1,4 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -7,7 +12,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Check, X } from "lucide-react";
+import { Check, X, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const PLANS = [
   {
@@ -24,6 +30,7 @@ const PLANS = [
     customDomains: false,
     persistence: "Anonymous (10h)",
     recommended: false,
+    planId: null as string | null,
   },
   {
     name: "Developer",
@@ -39,6 +46,7 @@ const PLANS = [
     customDomains: false,
     persistence: "Free (24h)",
     recommended: true,
+    planId: "developer",
   },
   {
     name: "Startup",
@@ -54,6 +62,7 @@ const PLANS = [
     customDomains: false,
     persistence: "Free (24h)",
     recommended: false,
+    planId: "startup",
   },
   {
     name: "Growth",
@@ -69,6 +78,7 @@ const PLANS = [
     customDomains: true,
     persistence: "Pro (forever)",
     recommended: false,
+    planId: "growth",
   },
   {
     name: "Enterprise",
@@ -84,51 +94,116 @@ const PLANS = [
     customDomains: true,
     persistence: "Pro (forever)",
     recommended: false,
+    planId: "enterprise",
   },
 ];
 
 const CREDITS = [
-  { amount: "$10", requests: "200,000", perK: "$0.05" },
-  { amount: "$25", requests: "600,000", perK: "$0.042" },
-  { amount: "$50", requests: "1,500,000", perK: "$0.033" },
-  { amount: "$100", requests: "4,000,000", perK: "$0.025" },
+  { amount: "$10", requests: "50,000", perK: "$0.20", package: "starter" as const },
+  { amount: "$25", requests: "150,000", perK: "$0.17", package: "builder" as const },
+  { amount: "$50", requests: "350,000", perK: "$0.14", package: "scale" as const },
+  { amount: "$100", requests: "800,000", perK: "$0.125", package: "pro" as const },
 ];
 
 const Tick = () => <Check className="h-4 w-4 text-foreground shrink-0" />;
 const Cross = () => <X className="h-4 w-4 text-muted-foreground/50 shrink-0" />;
 
 const FAQ_ITEMS = [
-  {
-    q: "Do credits expire?",
-    a: "No. Credits never expire. Top up once and use them whenever you need. They apply automatically when you exceed your monthly request quota.",
-  },
-  {
-    q: "What happens when I hit my monthly limit?",
-    a: "If you have credits, they are consumed automatically for each request over your plan limit. If you have no credits, you'll receive HTTP 429 (monthly_quota_exceeded) until the next reset or until you add credits.",
-  },
-  {
-    q: "Can I use my own domain?",
-    a: "Yes, on Growth and Enterprise. Add and verify your domain in the dashboard; then you can register inboxes like user@yourdomain.com via the API.",
-  },
-  {
-    q: "Is there a free trial?",
-    a: "The Free plan is always available. Paid API plans do not include a separate trial period; you can upgrade or add credits at any time.",
-  },
-  {
-    q: "How does WebSocket billing work?",
-    a: "Each push event (new_mail, etc.) counts as one request toward your monthly quota. Connection limits apply per plan (e.g. 5 concurrent connections on Startup, 20 on Growth).",
-  },
-  {
-    q: "Can I switch plans mid-cycle?",
-    a: "Yes. Upgrades take effect immediately; you're charged a prorated amount. Downgrades take effect at the end of the current billing period.",
-  },
-  {
-    q: "What is the difference between API plan and Pro plan?",
-    a: "The Pro plan is for the main FreeCustom.Email web app (permanent inbox, custom domains, OTP in the UI). The API plan is for programmatic access (api2.freecustom.email). They are separate subscriptions; you can have one or both.",
-  },
+  { q: "Do credits expire?", a: "No. Credits never expire. Top up once and use them whenever you need. They apply automatically when you exceed your monthly request quota." },
+  { q: "What happens when I hit my monthly limit?", a: "If you have credits, they are consumed automatically for each request over your plan limit. If you have no credits, you'll receive HTTP 429 until the next reset or until you add credits." },
+  { q: "Can I use my own domain?", a: "Yes, on Growth and Enterprise. Add and verify your domain in the dashboard; then you can register inboxes like user@yourdomain.com via the API." },
+  { q: "Is there a free trial?", a: "The Free plan is always available. Paid API plans do not include a separate trial period; you can upgrade or add credits at any time." },
+  { q: "How does WebSocket billing work?", a: "Each push event (new_mail, etc.) counts as one request toward your monthly quota. Connection limits apply per plan (e.g. 5 concurrent on Startup, 20 on Growth)." },
+  { q: "Can I switch plans mid-cycle?", a: "Yes. Upgrades take effect immediately; you're charged a prorated amount. Downgrades take effect at the end of the current billing period." },
+  { q: "What is the difference between API plan and Pro plan?", a: "The Pro plan is for the main FreeCustom.Email web app. The API plan is for programmatic access (api.freecustom.email). They are separate subscriptions; you can have one or both." },
 ];
 
 export default function ApiPricingPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [busyCredits, setBusyCredits] = useState<string | null>(null);
+
+  const isLoggedIn = status === "authenticated" && !!session?.user;
+
+  const openCheckout = async (payload: {
+    productType: "api" | "credits";
+    apiPlan?: string;
+    creditsToAdd?: number;
+    package?: string;
+  }) => {
+    if (!session?.user?.id) {
+      toast.error("Please sign in first.");
+      router.push("/auth?callbackUrl=/api/pricing");
+      return;
+    }
+    const body: Record<string, unknown> =
+      payload.productType === "api"
+        ? { type: "api", plan: payload.apiPlan }
+        : { type: "credits", package: payload.package };
+    const tid = toast.loading("Opening checkout…");
+    try {
+      const res = await fetch("/api/paddle/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (d.error) {
+        toast.error(d.error, { id: tid });
+        return;
+      }
+      const Paddle = typeof window !== "undefined" ? (window as any).Paddle : null;
+      if (!Paddle) {
+        toast.error("Checkout not ready. Please refresh and try again.", { id: tid });
+        return;
+      }
+      toast.dismiss(tid);
+      const customData: Record<string, unknown> = {
+        userId: session.user.id,
+        productType: d.productType ?? payload.productType,
+      };
+      if (d.apiPlan) customData.apiPlan = d.apiPlan;
+      if (d.creditsToAdd != null) customData.creditsToAdd = d.creditsToAdd;
+      Paddle.Checkout.open({
+        settings: {
+          displayMode: "overlay",
+          theme: "light",
+          successUrl: `${window.location.origin}/api/dashboard?checkout=success`,
+        },
+        items: [{ priceId: d.priceId, quantity: 1 }],
+        customer: session.user?.email ? { email: session.user.email as string } : undefined,
+        customData,
+        onEvent: (event: any) => {
+          if (event.name === "checkout.completed") {
+            router.push("/api/dashboard?checkout=success");
+          }
+        },
+      });
+    } catch {
+      toast.error("Something went wrong. Please try again.", { id: tid });
+    } finally {
+      setBusyPlan(null);
+      setBusyCredits(null);
+    }
+  };
+
+  const handlePlanClick = (plan: (typeof PLANS)[number]) => {
+    if (plan.name === "Free") {
+      if (isLoggedIn) router.push("/api/dashboard");
+      else router.push("/auth?callbackUrl=/api/dashboard");
+      return;
+    }
+    if (!plan.planId) return;
+    setBusyPlan(plan.planId);
+    openCheckout({ productType: "api", apiPlan: plan.planId });
+  };
+
+  const handleCreditsClick = (pkg: (typeof CREDITS)[number]) => {
+    setBusyCredits(pkg.package);
+    openCheckout({ productType: "credits", package: pkg.package });
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
       <div className="text-center mb-12">
@@ -140,7 +215,6 @@ export default function ApiPricingPage() {
         </p>
       </div>
 
-      {/* Plan cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-16">
         {PLANS.map((plan) => (
           <Card
@@ -196,11 +270,22 @@ export default function ApiPricingPage() {
             <div className="p-4 pt-0">
               {plan.name === "Free" ? (
                 <Button asChild variant="outline" size="sm" className="w-full">
-                  <Link href="/auth?callbackUrl=/api/dashboard">Get started</Link>
+                  <Link href={isLoggedIn ? "/api/dashboard" : "/auth?callbackUrl=/api/dashboard"}>
+                    Get started
+                  </Link>
                 </Button>
               ) : (
-                <Button asChild size="sm" className="w-full">
-                  <Link href="/auth?callbackUrl=/api/dashboard">Get started</Link>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={!!busyPlan}
+                  onClick={() => handlePlanClick(plan)}
+                >
+                  {busyPlan === plan.planId ? (
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                  ) : (
+                    "Get started"
+                  )}
                 </Button>
               )}
             </div>
@@ -208,26 +293,39 @@ export default function ApiPricingPage() {
         ))}
       </div>
 
-      {/* Credits */}
       <section className="mb-16">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">
           Credits (never expire)
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {CREDITS.map(({ amount, requests, perK }) => (
-            <Card key={amount} className="border-border">
+          {CREDITS.map((c) => (
+            <Card key={c.package} className="border-border">
               <CardHeader className="py-3">
-                <CardTitle className="text-lg">{amount}</CardTitle>
+                <CardTitle className="text-lg">{c.amount}</CardTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {requests} requests · {perK}/1k
+                  {c.requests} requests · {c.perK}/1k
                 </p>
               </CardHeader>
+              <CardContent className="pt-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  disabled={!!busyCredits}
+                  onClick={() => handleCreditsClick(c)}
+                >
+                  {busyCredits === c.package ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Buy credits"
+                  )}
+                </Button>
+              </CardContent>
             </Card>
           ))}
         </div>
       </section>
 
-      {/* FAQ */}
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">
           FAQ

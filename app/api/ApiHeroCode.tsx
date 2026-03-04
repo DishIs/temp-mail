@@ -3,14 +3,19 @@
 import { motion } from "framer-motion";
 import { CodeBlock } from "@/components/CodeBlock";
 
-const CURL = `curl "https://api2.freecustom.email/v1/inboxes/you@ditmail.info/otp" \\
+const CURL = `curl "https://api.freecustom.email/v1/inboxes/you@ditmail.info/otp" \\
   -H "Authorization: Bearer fce_xxxx"`;
 
 const JSON_RESPONSE = `{
-  "otp": "847291",
-  "email_id": "msg_abc123",
-  "from": "noreply@example.com",
-  "subject": "Your code is 847291"
+  "success": true,
+  "data": {
+    "otp": "847291",
+    "verification_link": "https://...",
+    "from": "noreply@example.com",
+    "subject": "Your code is 847291",
+    "message_id": "msg_abc123",
+    "received_at": "2026-03-04T09:55:00.000Z"
+  }
 }`;
 
 export function ApiHeroCode() {

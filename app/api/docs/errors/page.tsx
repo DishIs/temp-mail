@@ -1,5 +1,5 @@
-import { CodeBlock } from "@/components/CodeBlock";
 import { DocPageNav } from "../DocPageNav";
+import { ResponseBlock } from "../ResponseBlock";
 
 export const metadata = {
   title: "Errors – API Docs",
@@ -7,15 +7,17 @@ export const metadata = {
 };
 
 const ERROR_TABLE = [
-  { code: "401", error: "unauthorized", when: "Missing API key" },
-  { code: "401", error: "invalid_api_key", when: "Wrong or revoked key" },
-  { code: "403", error: "plan_required", when: "Feature not in current plan" },
-  { code: "403", error: "inbox_not_owned", when: "Inbox not registered to you" },
-  { code: "403", error: "domain_not_verified", when: "Custom domain not verified" },
-  { code: "404", error: "not_found", when: "Message or resource doesn't exist" },
-  { code: "429", error: "rate_limit_exceeded", when: "Per-second limit hit" },
-  { code: "429", error: "monthly_quota_exceeded", when: "Monthly limit hit, no credits" },
-  { code: "500", error: "server_error", when: "Our fault" },
+  { code: "400", error: "missing_field / invalid_inbox", when: "Missing or invalid request body (e.g. inbox required)" },
+  { code: "401", error: "unauthorized", when: "Missing or malformed API key" },
+  { code: "401", error: "key_revoked", when: "API key has been revoked" },
+  { code: "403", error: "forbidden", when: "Inbox not registered to this account" },
+  { code: "403", error: "plan_restriction", when: "Feature not in current plan (OTP, WebSocket, custom domain)" },
+  { code: "403", error: "domain_not_verified", when: "Custom domain not verified in dashboard" },
+  { code: "404", error: "not_found", when: "Message or inbox not found" },
+  { code: "409", error: "already_registered", when: "Inbox already registered to this account" },
+  { code: "429", error: "rate_limit_exceeded", when: "Per-second limit hit (Retry-After header)" },
+  { code: "429", error: "monthly_quota_exceeded", when: "Monthly quota exhausted, no credits" },
+  { code: "500", error: "server_error", when: "Internal server error" },
 ];
 
 export default function ErrorsPage() {
@@ -45,8 +47,13 @@ export default function ErrorsPage() {
         </tbody>
       </table>
 
-      <p className="text-sm text-muted-foreground mt-4">Example body:</p>
-      <CodeBlock code={`{"error":"plan_required","message":"OTP extraction requires Developer plan or above"}`} language="json" />
+      <p className="text-sm text-muted-foreground mt-4">All errors include <code className="rounded bg-muted px-1 py-0.5 text-xs">success: false</code> and an <code className="rounded bg-muted px-1 py-0.5 text-xs">error</code> code. Example:</p>
+      <ResponseBlock status={403} label="Plan restriction (example)" body={`{
+  "success": false,
+  "error": "plan_restriction",
+  "message": "OTP extraction requires Developer plan or higher. Your current plan: free.",
+  "upgrade_url": "https://freecustom.email/api/pricing"
+}`} />
 
       <DocPageNav prev={{ href: "/api/docs/credits", label: "Credits" }} next={{ href: "/api/docs/changelog", label: "Changelog" }} />
     </article>

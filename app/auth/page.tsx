@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { useState, Suspense, useRef } from "react"; // Added useRef
+import { useState, Suspense, useRef, useEffect } from "react";
 import { Loader2, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { AppHeader } from "@/components/nLHeader";
@@ -33,10 +33,29 @@ function ErrorBanner({ error }: { error: string }) {
 
 function AuthForm() {
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const urlError = searchParams.get("error");
 
+  // Don't redirect logged-in users to auth — send them to callbackUrl or dashboard
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      window.location.href = callbackUrl;
+    }
+  }, [status, session?.user, callbackUrl]);
+
   const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  if (status === "authenticated" && session?.user) {
+    return (
+      <Card className="w-full max-w-md shadow-2xl border-t-4 border-t-primary bg-card">
+        <CardContent className="flex flex-col items-center gap-4 py-12 px-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Taking you back…</p>
+        </CardContent>
+      </Card>
+    );
+  }
   const [email, setEmail] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [emailError, setEmailError] = useState("");

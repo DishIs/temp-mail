@@ -25,7 +25,7 @@ const FAQ = [
   { q: "What if no OTP is found?", a: "GET /v1/inboxes/{inbox}/otp returns {\"otp\": null}. It is not an error." },
   { q: "Does the Free plan show OTP values?", a: "No. Free returns __DETECTED__ when an OTP is found, so you can test the flow before upgrading." },
   { q: "Can I get a custom Enterprise arrangement?", a: "Contact us for volume pricing, SLA, or dedicated support." },
-  { q: "Where is the OpenAPI spec?", a: "At /openapi.yaml on this site. Use it with the playground (/api/playground) or any OpenAPI client." },
+  { q: "Where is the OpenAPI spec?", a: "At /openapi.yaml on this site (v2.0, March 2026). It documents all public v1 endpoints and internal routes. Use the playground (/api/playground) or any OpenAPI client." },
   { q: "How do I store my API key securely?", a: "Use environment variables or a secrets manager. Never commit keys to version control." },
 ];
 

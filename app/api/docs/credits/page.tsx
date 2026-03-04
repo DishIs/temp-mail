@@ -15,7 +15,7 @@ export default function CreditsPage() {
       </p>
 
       <h2 id="packages" className="text-lg font-semibold mt-8 mb-2">Packages</h2>
-      <p className="text-sm text-muted-foreground">$10 → 200k · $25 → 600k · $50 → 1.5M · $100 → 4M requests. Larger packs have a lower cost per 1k requests.</p>
+      <p className="text-sm text-muted-foreground">Starter $10 → 50k · Builder $25 → 150k · Scale $50 → 350k · Pro $100 → 800k requests. Credits never expire; they are consumed automatically after your monthly quota is exhausted.</p>
 
       <DocPageNav prev={{ href: "/api/docs/rate-limits", label: "Rate limits" }} next={{ href: "/api/docs/errors", label: "Errors" }} />
     </article>
