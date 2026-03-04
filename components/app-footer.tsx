@@ -18,10 +18,20 @@ const FOOTER_LINKS = [
     links: [
       { label: "Pricing",          href: "/pricing",            external: false },
       { label: "FAQ",              href: "/faq",                external: false },
-      { label: "API",              href: "https://rapidapi.com/dishis-technologies-maildrop/api/temp-mail-maildrop1", external: true },
+      { label: "API",              href: "/api",                external: false },
       { label: "Updates",          href: null,                  external: false, action: "changelog" },
       { label: "Feedback",         href: "/feedback",           external: false },
       { label: "Blog",             href: "/blog",               external: false },
+    ],
+  },
+  {
+    heading: "Developers",
+    links: [
+      { label: "API Overview",     href: "/api",                external: false },
+      { label: "Documentation",   href: "/api/docs",            external: false },
+      { label: "Pricing",         href: "/api/pricing",         external: false },
+      { label: "Status",           href: "https://status.freecustom.email", external: true },
+      { label: "Changelog",       href: "/api/docs/changelog",  external: false },
     ],
   },
   {
@@ -102,7 +112,7 @@ export function AppFooter() {
         </div>
 
         <div className="container mx-auto max-w-4xl px-4 py-10">
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
 
             <div className="col-span-2 sm:col-span-1 space-y-4">
               <p className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</p>

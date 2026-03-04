@@ -49,6 +49,10 @@ export default async function DashboardPage({
                         <p className="text-muted-foreground text-lg">
                             {isPro ? t('subtitle_pro') : t('subtitle_free')}
                         </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            <Link href="/api/dashboard" className="text-primary hover:underline">API Dashboard</Link>
+                            {" "}· Manage keys, usage, and billing for the developer API.
+                        </p>
                     </div>
 
                     {/* Functional Managers */}

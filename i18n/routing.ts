@@ -5,7 +5,6 @@ export const routing = defineRouting({
     'en',
     'de',
     'ru',
-    'zh',
     'es',
     'fr',
     'pt', // Portuguese (high traffic)

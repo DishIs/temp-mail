@@ -128,8 +128,8 @@ export default async function Page({ params }: Props) {
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
                 <div className="min-h-screen max-w-[100vw] bg-background">
                     <AppHeader initialSession={session} />
-                    <main className="w-full max-w-7xl mx-auto px-4 py-8 sm:py-12">
-                        <section className="mb-10">
+                    <main className="w-full max-w-7xl mx-auto px-4 py-8 sm:py-12 justify-center">
+                        <section className="mb-10 justify-center ">
                             {/* Email box + status: full width of container for medium/large screens */}
                             <div className="w-full">
                                 <EmailBox
@@ -254,6 +254,20 @@ export default async function Page({ params }: Props) {
                                             </Link>
                                         ))}
                                 </div>
+                            </div>
+                        </section>
+
+                        <section className="mt-10 py-6 border-t border-border">
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Building something? Use our API for disposable inboxes, OTP extraction, and real-time delivery.
+                                </p>
+                                <Link
+                                    href="/api"
+                                    className="text-sm font-medium text-primary hover:underline underline-offset-2"
+                                >
+                                    API Overview →
+                                </Link>
                             </div>
                         </section>
 

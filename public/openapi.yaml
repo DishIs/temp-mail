@@ -1,0 +1,154 @@
+openapi: 3.1.0
+info:
+  title: FreeCustom.Email API
+  version: 1.0.0
+  description: |
+    Disposable email infrastructure for developers.
+    Base URL: https://api2.freecustom.email/v1
+servers:
+  - url: https://api2.freecustom.email/v1
+    description: Production
+security:
+  - BearerAuth: []
+  - ApiKeyQuery: []
+paths:
+  /me:
+    get:
+      summary: Get current user
+      operationId: getMe
+      tags: [Account]
+      responses:
+        '200':
+          description: Current user and plan
+  /usage:
+    get:
+      summary: Get usage and quotas
+      operationId: getUsage
+      tags: [Account]
+      responses:
+        '200':
+          description: Usage and rate limit info
+  /plans:
+    get:
+      summary: List available plans
+      operationId: getPlans
+      tags: [Account]
+      responses:
+        '200':
+          description: List of plans
+  /inboxes:
+    get:
+      summary: List inboxes
+      operationId: listInboxes
+      tags: [Inboxes]
+      responses:
+        '200':
+          description: List of registered inboxes
+    post:
+      summary: Register an inbox
+      operationId: createInbox
+      tags: [Inboxes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  type: string
+                  example: test@ditmail.info
+      responses:
+        '201':
+          description: Inbox registered
+  /inboxes/{inbox}:
+    delete:
+      summary: Remove an inbox
+      operationId: deleteInbox
+      tags: [Inboxes]
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Inbox removed
+  /inboxes/{inbox}/messages:
+    get:
+      summary: List messages
+      operationId: listMessages
+      tags: [Messages]
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of messages
+  /inboxes/{inbox}/messages/{id}:
+    get:
+      summary: Get a message
+      operationId: getMessage
+      tags: [Messages]
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message body
+    delete:
+      summary: Delete a message
+      operationId: deleteMessage
+      tags: [Messages]
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Message deleted
+  /inboxes/{inbox}/otp:
+    get:
+      summary: Get latest OTP
+      operationId: getOtp
+      tags: [OTP]
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OTP and metadata (or __DETECTED__ on free plan)
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: API key as Bearer token
+    ApiKeyQuery:
+      type: apiKey
+      in: query
+      name: api_key
+      description: API key as query parameter

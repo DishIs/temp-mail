@@ -504,6 +504,11 @@ export default function PricingPage() {
             {" "}and we&apos;ll apply your remaining credit to the new plan.
           </p>
 
+          <p className="mt-3 text-center text-xs text-muted-foreground px-2">
+            Building with our API?{" "}
+            <Link href="/api/pricing" className="underline underline-offset-2 hover:text-foreground">See API pricing →</Link>
+          </p>
+
           {/* ── Conversion trigger + urgency ── */}
           {!isPro && (
             <div className="mt-10 space-y-1.5 text-center">

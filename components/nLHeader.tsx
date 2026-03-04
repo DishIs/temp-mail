@@ -204,6 +204,14 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
         <div className="hidden md:flex items-center gap-6">
           <nav className="flex items-center gap-6">
             <NavLink href="/dashboard">Dashboard</NavLink>
+            <Link
+              href="/api"
+              className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary text-muted-foreground"
+            >
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
+                API
+              </span>
+            </Link>
             {!isLoggedIn && <NavLink href="/blog">Blog</NavLink>}
             {(!isLoggedIn || !isPro) && <NavLink href="/pricing">Pricing</NavLink>}
           </nav>
@@ -276,6 +284,14 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
             >
               <LayoutDashboard className="h-4 w-4" /> Dashboard
             </Link>
+            <Link
+              href="/api"
+              onClick={handleMobileLinkClick}
+              className="flex items-center gap-2 p-2 rounded-md hover:bg-muted text-sm font-medium"
+            >
+              <span>API</span>
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">API</span>
+            </Link>
             {!isLoggedIn && (
               <Link
                 href="/blog"
@@ -297,8 +313,14 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
           </div>
 
           <div className="border-t pt-3 flex flex-col gap-3">
-            <Link href="/docs" className="text-sm text-muted-foreground hover:text-primary transition-colors px-2" onClick={handleMobileLinkClick}>
+            <Link href="/api" className="text-sm text-muted-foreground hover:text-primary transition-colors px-2" onClick={handleMobileLinkClick}>
+              API Overview
+            </Link>
+            <Link href="/api/docs" className="text-sm text-muted-foreground hover:text-primary transition-colors px-2" onClick={handleMobileLinkClick}>
               API Documentation
+            </Link>
+            <Link href="/api/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors px-2" onClick={handleMobileLinkClick}>
+              API Dashboard
             </Link>
             <div className="flex gap-4 px-2">
               <a href="https://github.com/DishIs/temp-mail" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="GitHub">

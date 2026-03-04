@@ -13,6 +13,7 @@ import { FaGoogle, FaGithub } from "react-icons/fa";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import toast from "react-hot-toast";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -324,10 +325,19 @@ export default function ProfilePage() {
     const [paymentLogsType, setPaymentLogsType]       = useState<"app" | "api" | "credits" | "">("");
     const [paymentLogsOffset, setPaymentLogsOffset]   = useState(0);
     const PAYMENT_LOGS_LIMIT = 20;
+    const [apiPlan, setApiPlan] = useState<string | null>(null);
 
     useEffect(() => {
         if (status === "unauthenticated") router.push("/auth");
     }, [status, router]);
+
+    useEffect(() => {
+        if (!userData?.wyiUserId) return;
+        fetch("/api/user/api-status")
+            .then((r) => r.ok ? r.json() : null)
+            .then((d) => d?.plan != null && setApiPlan(d.plan))
+            .catch(() => {});
+    }, [userData?.wyiUserId]);
 
     useEffect(() => {
         if (status === "authenticated") { fetchUserData(); fetchStorageData(); }
@@ -471,6 +481,7 @@ export default function ProfilePage() {
                                     <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 inline-block" />
                                 )}
                             </TabsTrigger>
+                            <TabsTrigger value="api">API</TabsTrigger>
                             <TabsTrigger value="settings">{t('tabs.settings')}</TabsTrigger>
                         </TabsList>
 
@@ -778,6 +789,46 @@ export default function ProfilePage() {
                                     )}
                                 </CardContent>
                             </Card>
+                        </TabsContent>
+
+                        {/* API TAB */}
+                        <TabsContent value="api" className="space-y-6">
+                            {apiPlan && apiPlan !== "free" ? (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Zap className="h-5 w-5" /> API access
+                                        </CardTitle>
+                                        <CardDescription>Your API plan: {apiPlan}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Button asChild>
+                                            <Link href="/api/dashboard">
+                                                <ExternalLink className="mr-2 h-4 w-4" /> Go to API Dashboard
+                                            </Link>
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <Card className="border-primary/20 bg-primary/5">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Zap className="h-5 w-5" /> Build with our API
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Disposable inboxes, OTP extraction, and WebSocket delivery for CI and test automation.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex flex-wrap gap-3">
+                                        <Button asChild>
+                                            <Link href="/api">Get API key</Link>
+                                        </Button>
+                                        <Button asChild variant="outline">
+                                            <Link href="/api/pricing">API pricing</Link>
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            )}
                         </TabsContent>
 
                         {/* SETTINGS TAB */}
