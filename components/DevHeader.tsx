@@ -76,7 +76,7 @@ export function DevHeader() {
   return (
     <header className="border-b w-full bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/api" className="flex items-center gap-1.5" aria-label="API Home">
+        <Link href="/" className="flex items-center gap-1.5" aria-label="API Home">
           <Image
             src="/logo.webp"
             alt="FreeCustom.Email"
