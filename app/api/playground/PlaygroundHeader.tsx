@@ -18,14 +18,34 @@ const NAV_LINKS = [
   { href: "/api/dashboard", label: "Dashboard" },
 ];
 
+interface ApiStatusData {
+  plan?: { name?: string; label?: string };
+  usage?: { credits_remaining?: number };
+}
+
 export function PlaygroundHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [apiStatus, setApiStatus] = useState<ApiStatusData | null>(null);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.id) {
+      setApiStatus(null);
+      return;
+    }
+    fetch("/api/user/api-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const data = d?.data ?? d;
+        if (data?.plan || data?.usage) setApiStatus(data);
+      })
+      .catch(() => {});
+  }, [status, session?.user?.id]);
 
   const toggleTheme = useCallback(() => {
     if (theme === "light") setTheme("dark");
@@ -34,6 +54,9 @@ export function PlaygroundHeader() {
   }, [theme, setTheme]);
 
   const isLoggedIn = status === "authenticated" && !!session?.user;
+  const planLabel = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
+  const credits = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
+  const isFreeUser = (!planLabel || String(planLabel).toLowerCase() === "free") && credits <= 0;
 
   const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
     const isActive = pathname === href || (href !== "/api" && pathname.startsWith(href));
@@ -66,7 +89,7 @@ export function PlaygroundHeader() {
             <span className="text-base sm:text-lg font-bold tracking-tight text-foreground">
               FreeCustom.Email
             </span>
-            <span className="text-[11px] font-normal text-muted-foreground tracking-tight text-end mt-px">
+            <span className="text-[11px] font-normal text-muted-foreground tracking-tight text-end -mt-2">
               for developers
             </span>
           </div>
@@ -99,14 +122,11 @@ export function PlaygroundHeader() {
             )}
           </Button>
           {isLoggedIn ? (
-            <>
-              <Badge variant="secondary" className="text-xs font-mono">
-                API
-              </Badge>
-              <Button asChild size="sm" variant="default">
-                <Link href="/api/dashboard">Dashboard</Link>
-              </Button>
-            </>
+            <Button asChild size="sm" variant="default">
+              <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
+                {isFreeUser ? "Upgrade" : "Dashboard"}
+              </Link>
+            </Button>
           ) : (
             <>
               <Button asChild size="sm" variant="ghost">
@@ -162,11 +182,11 @@ export function PlaygroundHeader() {
             </Button>
             {isLoggedIn ? (
               <Link
-                href="/api/dashboard"
+                href={isFreeUser ? "/api/pricing" : "/api/dashboard"}
                 onClick={() => setMenuOpen(false)}
                 className="p-2 rounded-md bg-primary text-primary-foreground text-sm font-medium text-center"
               >
-                Dashboard
+                {isFreeUser ? "Upgrade" : "Dashboard"}
               </Link>
             ) : (
               <>

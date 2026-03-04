@@ -184,9 +184,9 @@ function ApiDashboardContent() {
         const d: ApiStatusResponse = await statusRes.json();
         setApiStatus(d);
         const data = d?.data;
+        // API dashboard: only show API-registered inboxes (api_inboxes / inboxes), not app_inboxes
         const sources: string[][] = [];
-        if (Array.isArray(data?.app_inboxes?.list)) sources.push(data.app_inboxes.list);
-        if (Array.isArray(data?.api_inboxes?.list)) sources.push(data.api_inboxes!.list);
+        if (Array.isArray(data?.api_inboxes?.list)) sources.push(data.api_inboxes.list);
         if (Array.isArray(data?.inboxes?.list)) sources.push(data.inboxes!.list);
         const legacy = (d as { apiInboxes?: string[] }).apiInboxes;
         if (Array.isArray(legacy)) sources.push(legacy);

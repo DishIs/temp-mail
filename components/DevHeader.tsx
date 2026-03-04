@@ -63,6 +63,7 @@ export function DevHeader() {
   const isLoggedIn = status === "authenticated" && !!session?.user;
   const planLabel = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
   const credits = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
+  const isFreeUser = (!planLabel || String(planLabel).toLowerCase() === "free") && credits <= 0;
 
   const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
     const isActive = pathname === href || (href !== "/api" && pathname.startsWith(href));
@@ -95,7 +96,7 @@ export function DevHeader() {
             <span className="text-base sm:text-lg font-bold tracking-tight text-foreground">
               FreeCustom.Email
             </span>
-            <span className="text-[11px] font-normal text-muted-foreground tracking-tight text-end mt-px">
+            <span className="text-[11px] font-normal text-muted-foreground tracking-tight text-end -mt-2">
               for developers
             </span>
           </div>
@@ -168,13 +169,11 @@ export function DevHeader() {
                     </span>
                   )}
                 </div>
-              ) : (
-                <Badge variant="secondary" className="text-xs font-mono">
-                  API
-                </Badge>
-              )}
+              ) : null}
               <Button asChild size="sm" variant="default">
-                <Link href="/api/dashboard">Dashboard</Link>
+                <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
+                  {isFreeUser ? "Upgrade" : "Dashboard"}
+                </Link>
               </Button>
             </>
           ) : (
@@ -240,11 +239,11 @@ export function DevHeader() {
                   </div>
                 )}
                 <Link
-                  href="/api/dashboard"
+                  href={isFreeUser ? "/api/pricing" : "/api/dashboard"}
                   onClick={() => setMenuOpen(false)}
                   className="p-2 rounded-md bg-primary text-primary-foreground text-sm font-medium text-center"
                 >
-                  Dashboard
+                  {isFreeUser ? "Upgrade" : "Dashboard"}
                 </Link>
               </>
             ) : (
