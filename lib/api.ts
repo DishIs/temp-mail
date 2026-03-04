@@ -49,6 +49,31 @@ export async function fetchFromServiceAPI(path: string, options: RequestInit = {
 }
 
 /**
+ * Same as fetchFromServiceAPI but returns { ok, status, data } instead of throwing on non-ok.
+ * Use this in API routes that should forward the backend's exact status code and error body to the frontend.
+ */
+export async function fetchFromServiceAPIWithStatus(path: string, options: RequestInit = {}): Promise<{ ok: boolean; status: number; data: unknown }> {
+    const url = `${SERVICE_API_URL}${path}`;
+    const headers = {
+        'Content-Type': 'application/json',
+        'x-internal-api-key': INTERNAL_API_KEY!,
+        ...options.headers,
+    };
+
+    const response = await fetch(url, { ...options, headers });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
+        return { ok: false, status: response.status, data };
+    }
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return { ok: true, status: response.status, data: { success: true } };
+    }
+    const data = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
+    return { ok: true, status: response.status, data };
+}
+
+/**
  * Verifies the JWT from the user's browser.
  * This is used to protect the Next.js API routes themselves.
  * @param request The incoming Next.js API request.

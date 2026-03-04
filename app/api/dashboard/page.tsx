@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -53,6 +53,8 @@ interface ApiStatusData {
   rate_limits?: { requests_per_second?: number; requests_per_month?: number };
   features?: Record<string, boolean | number | string>;
   inboxes?: { list?: string[]; count?: number };
+  app_inboxes?: { list?: string[]; count?: number };
+  api_inboxes?: { list?: string[]; count?: number };
   upsell?: {
     nudges?: string[];
     next_plan?: { name?: string; label?: string; price?: string; unlocks?: string[] };
@@ -133,7 +135,7 @@ const STATUS_BADGE_MAP: Record<string, { label: string; variant?: "default" | "s
   cancelled: { label: "Cancelled", variant: "secondary" },
 };
 
-export default function ApiDashboardPage() {
+function ApiDashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,6 +145,8 @@ export default function ApiDashboardPage() {
   const [inboxes, setInboxes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [newKeyModal, setNewKeyModal] = useState<{ key: string; name: string; note?: string } | null>(null);
+  const [showNameKeyDialog, setShowNameKeyDialog] = useState(false);
+  const [newKeyNameInput, setNewKeyNameInput] = useState("");
   const [generateLoading, setGenerateLoading] = useState(false);
   const [revokePrefix, setRevokePrefix] = useState<string | null>(null);
   const [registerInbox, setRegisterInbox] = useState("");
@@ -179,8 +183,15 @@ export default function ApiDashboardPage() {
       if (statusRes.ok) {
         const d: ApiStatusResponse = await statusRes.json();
         setApiStatus(d);
-        const inboxList = d?.data?.inboxes?.list ?? (d as { apiInboxes?: string[] }).apiInboxes ?? [];
-        setInboxes(Array.isArray(inboxList) ? inboxList : []);
+        const data = d?.data;
+        const sources: string[][] = [];
+        if (Array.isArray(data?.app_inboxes?.list)) sources.push(data.app_inboxes.list);
+        if (Array.isArray(data?.api_inboxes?.list)) sources.push(data.api_inboxes!.list);
+        if (Array.isArray(data?.inboxes?.list)) sources.push(data.inboxes!.list);
+        const legacy = (d as { apiInboxes?: string[] }).apiInboxes;
+        if (Array.isArray(legacy)) sources.push(legacy);
+        const inboxList = Array.from(new Set(sources.flat()));
+        setInboxes(inboxList);
       } else {
         const err = await statusRes.json().catch(() => ({}));
         setError(err.message || "Failed to load API status.");
@@ -217,20 +228,29 @@ export default function ApiDashboardPage() {
     return () => clearTimeout(t);
   }, [searchParams, session?.user?.id, fetchAll]);
 
-  const handleGenerateKey = async () => {
+  const handleGenerateKey = async (name: string) => {
+    const keyName = (name || "Default").trim() || "Default";
     setGenerateLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/user/api-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Default" }),
+        body: JSON.stringify({ name: keyName }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create key.");
-      const keyPayload = data.data ?? data;
-      const keyValue = keyPayload.key ?? data.key;
-      if (keyValue) setNewKeyModal({ key: keyValue, name: keyPayload.name ?? data.name ?? "Default", note: data.message ?? data.note });
+      if (!res.ok) throw new Error(data.message || data.error || "Failed to create key.");
+      const keyPayload = Array.isArray(data.data) ? data.data[0] : data.data ?? data;
+      const keyValue = keyPayload?.key ?? data.key;
+      if (keyValue) {
+        setNewKeyModal({
+          key: keyValue,
+          name: keyPayload?.name ?? data.name ?? keyName,
+          note: data.message ?? data.note,
+        });
+        setShowNameKeyDialog(false);
+        setNewKeyNameInput("");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create key.");
     } finally {
@@ -238,14 +258,14 @@ export default function ApiDashboardPage() {
     }
   };
 
-  const handleRevoke = async (prefix: string) => {
-    setRevokePrefix(prefix);
+  const handleRevoke = async (keyId: string) => {
+    setRevokePrefix(keyId);
     setError(null);
     try {
       const res = await fetch("/api/user/api-keys", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prefix }),
+        body: JSON.stringify({ keyId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to revoke key.");
@@ -501,17 +521,17 @@ export default function ApiDashboardPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="text-destructive hover:text-destructive"
-                                  disabled={revokePrefix === k.prefix}
-                                  onClick={() => handleRevoke(k.prefix)}
+                                  disabled={revokePrefix === k.id}
+                                  onClick={() => handleRevoke(k.id)}
                                 >
-                                  {revokePrefix === k.prefix ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                  {revokePrefix === k.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 </Button>
                               )}
                             </div>
                           </div>
                         ))}
                         {apiKeys.length < 5 && (
-                          <Button size="sm" onClick={handleGenerateKey} disabled={generateLoading}>
+                          <Button size="sm" onClick={() => setShowNameKeyDialog(true)} disabled={generateLoading}>
                             {generateLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate new key"}
                           </Button>
                         )}
@@ -595,6 +615,33 @@ export default function ApiDashboardPage() {
         </div>
       </div>
 
+      <Dialog open={showNameKeyDialog} onOpenChange={(open) => { setShowNameKeyDialog(open); if (!open) setNewKeyNameInput(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Name your API key</DialogTitle>
+            <DialogDescription>Choose a name to identify this key (e.g. &quot;Production&quot;, &quot;Dev&quot;).</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="api-key-name" className="text-sm font-medium">Key name</label>
+            <Input
+              id="api-key-name"
+              placeholder="e.g. Production"
+              value={newKeyNameInput}
+              onChange={(e) => setNewKeyNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerateKey(newKeyNameInput)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowNameKeyDialog(false); setNewKeyNameInput(""); }}>
+              Cancel
+            </Button>
+            <Button onClick={() => handleGenerateKey(newKeyNameInput)} disabled={generateLoading}>
+              {generateLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create key"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!newKeyModal} onOpenChange={() => setNewKeyModal(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -620,5 +667,19 @@ export default function ApiDashboardPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export default function ApiDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <ApiDashboardContent />
+    </Suspense>
   );
 }

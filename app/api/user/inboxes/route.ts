@@ -1,6 +1,6 @@
 // app/api/user/inboxes/route.ts
 import { NextResponse } from 'next/server';
-import { fetchFromServiceAPI } from '@/lib/api';
+import { fetchFromServiceAPIWithStatus } from '@/lib/api';
 import { auth } from '@/auth';
 
 export async function POST(request: Request) {
@@ -13,30 +13,30 @@ export async function POST(request: Request) {
     );
   }
 
+  let body: { inboxName?: string } = {};
   try {
-    const { inboxName } = await request.json();
-
-    if (!inboxName) {
-      return NextResponse.json(
-        { success: false, message: 'Inbox name is required.' },
-        { status: 400 }
-      );
-    }
-
-    const serviceResponse = await fetchFromServiceAPI('/user/inboxes', {
-      method: 'POST',
-      body: JSON.stringify({
-        wyiUserId: session.user.id,
-        inboxName,
-      }),
-    });
-
-    return NextResponse.json(serviceResponse);
-  } catch (error) {
-    console.error('Error in /api/user/inboxes:', error);
+    body = await request.json();
+  } catch {
     return NextResponse.json(
-      { success: false, message: 'Failed to update inbox.' },
-      { status: 500 }
+      { success: false, message: 'Invalid JSON body.' },
+      { status: 400 }
     );
   }
+  const inboxName = body?.inboxName;
+  if (!inboxName || typeof inboxName !== 'string' || !inboxName.trim()) {
+    return NextResponse.json(
+      { success: false, message: 'Inbox name is required.' },
+      { status: 400 }
+    );
+  }
+
+  const { status, data } = await fetchFromServiceAPIWithStatus('/user/inboxes', {
+    method: 'POST',
+    body: JSON.stringify({
+      wyiUserId: session.user.id,
+      inboxName: inboxName.trim(),
+    }),
+  });
+
+  return NextResponse.json(data, { status });
 }
