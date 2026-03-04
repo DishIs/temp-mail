@@ -299,7 +299,19 @@ declare const messages: {
       "active_desc": "Your last payment was successful. For detailed invoices, please check your {provider} dashboard.",
       "view_invoice": "View Invoices on {provider}",
       "no_trans_title": "No Recent Transactions",
-      "no_trans_desc": "You are currently on the Free plan. Upgrade to Pro to unlock features."
+      "no_trans_desc": "You are currently on the Free plan. Upgrade to Pro to unlock features.",
+      "payment_logs_filter": "Filter by type:",
+      "filter_all": "All",
+      "filter_app": "App",
+      "filter_api": "API",
+      "filter_credits": "Credits",
+      "payment_logs_loading": "Loading payment logs...",
+      "payment_logs_error": "Failed to load payment logs",
+      "log_date": "Date",
+      "log_label": "Event",
+      "log_product": "Product",
+      "log_amount": "Amount",
+      "log_status": "Status"
     },
     "settings": {
       "sec_title": "Security & Privacy",

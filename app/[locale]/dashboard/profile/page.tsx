@@ -1,7 +1,7 @@
 // app/dashboard/profile/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
@@ -71,6 +71,27 @@ interface StorageStats {
     storageRemaining: number;
     storageRemainingFormatted: string;
     message: string;
+}
+
+/** Enriched payment log from GET /user/payment-logs (frontend never touches details blob). */
+interface PaymentLog {
+    id: string;
+    subscriptionId: string | null;
+    paddleEventId: string | null;
+    type: string;
+    product_type: "app" | "api" | "credits";
+    label: string;
+    product_name: string | null;
+    billing_cycle: string | null;
+    amount: string | null;
+    currency: string | null;
+    status: string | null;
+    status_color: string | null;
+    is_trial: boolean;
+    trial_ends_at: string | null;
+    credits_added: number | null;
+    occurred_at: string;
+    paddle_event_type: string | null;
 }
 
 function safeFormat(dateStr?: string | null, fmt = "MMM d, yyyy"): string {
@@ -298,6 +319,11 @@ export default function ProfilePage() {
     const [portalLoading, setPortalLoading] = useState(false);
     const [isUpsellOpen, setIsUpsellOpen]   = useState(false);
     const [upsellFeature]                   = useState("Pro Plan");
+    const [paymentLogs, setPaymentLogs]     = useState<PaymentLog[]>([]);
+    const [paymentLogsLoading, setPaymentLogsLoading] = useState(false);
+    const [paymentLogsType, setPaymentLogsType]       = useState<"app" | "api" | "credits" | "">("");
+    const [paymentLogsOffset, setPaymentLogsOffset]   = useState(0);
+    const PAYMENT_LOGS_LIMIT = 20;
 
     useEffect(() => {
         if (status === "unauthenticated") router.push("/auth");
@@ -331,6 +357,32 @@ export default function ProfilePage() {
             setLoading(false);
         }
     };
+
+    const fetchPaymentLogs = useCallback(async () => {
+        if (!userData?.wyiUserId) return;
+        setPaymentLogsLoading(true);
+        try {
+            const params = new URLSearchParams();
+            params.set("limit", String(PAYMENT_LOGS_LIMIT));
+            params.set("offset", String(paymentLogsOffset));
+            if (paymentLogsType) params.set("type", paymentLogsType);
+            const res = await fetch(`/api/user/payment-logs?${params.toString()}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Failed to load payment logs");
+            const logs = Array.isArray(data) ? data : (data.logs ?? data.paymentLogs ?? []);
+            setPaymentLogs(Array.isArray(logs) ? logs : []);
+        } catch (e) {
+            console.error("Failed to load payment logs", e);
+            toast.error(t("billing.payment_logs_error"));
+            setPaymentLogs([]);
+        } finally {
+            setPaymentLogsLoading(false);
+        }
+    }, [userData?.wyiUserId, paymentLogsType, paymentLogsOffset, t]);
+
+    useEffect(() => {
+        if (userData?.wyiUserId) fetchPaymentLogs();
+    }, [userData?.wyiUserId, fetchPaymentLogs]);
 
     const handleManageSubscription = async () => {
         const sub = userData?.subscription;
@@ -382,7 +434,7 @@ export default function ProfilePage() {
     const isDowngradedFromPaddle  = !isPro && sub?.provider === 'paddle' && sub?.status === 'CANCELLED';
     const isActiveOrTrialing      = (subStatus === "ACTIVE" || subStatus === "TRIALING") && !isCancellingButStillPro;
     const paymentProviderName     = sub?.provider === 'paypal' ? 'PayPal' : sub?.provider === 'paddle' ? 'Paddle' : 'N/A';
-    const providerDetails         = getProviderDetails(session);
+    const providerDetails         = session ? getProviderDetails(session) : { label: "Unknown", icon: null };
     const percentUsed             = storageData ? parseFloat(storageData.percentUsed) : 0;
     const usageText               = storageData
         ? `${storageData.storageUsedFormatted || storageData.message} / ${storageData.storageLimitFormatted || storageData.message}`
@@ -520,7 +572,7 @@ export default function ProfilePage() {
 
                                 <CardContent className="space-y-6">
                                     <div className="flex items-center gap-3 flex-wrap">
-                                        <h3 className="text-2xl font-bold capitalize">{t('billing.plan_display', { plan: userData?.plan })}</h3>
+                                        <h3 className="text-2xl font-bold capitalize">{t('billing.plan_display', { plan: userData?.plan ?? 'free' })}</h3>
                                         {sub && (
                                             <Badge className={statusBadgeProps(sub.status, sub.cancelAtPeriodEnd).className}>
                                                 {statusBadgeProps(sub.status, sub.cancelAtPeriodEnd).label}
@@ -596,7 +648,7 @@ export default function ProfilePage() {
                                 </CardFooter>
                             </Card>
 
-                            {/* Transaction History */}
+                            {/* Transaction History / Payment logs */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
@@ -605,44 +657,125 @@ export default function ProfilePage() {
                                     <CardDescription>
                                         {t('billing.trans_desc', { provider: paymentProviderName })}
                                     </CardDescription>
+                                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                                        <span className="text-sm text-muted-foreground">{t('billing.payment_logs_filter')}</span>
+                                        <select
+                                            value={paymentLogsType}
+                                            onChange={(e) => { setPaymentLogsType((e.target.value || "") as "" | "app" | "api" | "credits"); setPaymentLogsOffset(0); }}
+                                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                                        >
+                                            <option value="">{t('billing.filter_all')}</option>
+                                            <option value="app">{t('billing.filter_app')}</option>
+                                            <option value="api">{t('billing.filter_api')}</option>
+                                            <option value="credits">{t('billing.filter_credits')}</option>
+                                        </select>
+                                    </div>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
-                                        {isPro || isDowngradedFromPaddle ? (
-                                            <>
-                                                <div className={`p-3 rounded-full ${isDowngradedFromPaddle ? 'bg-muted' : 'bg-green-100 dark:bg-green-900/20'}`}>
-                                                    {isDowngradedFromPaddle
-                                                        ? <History className="h-8 w-8 text-muted-foreground" />
-                                                        : <CheckCircle2 className="h-8 w-8 text-green-600" />
-                                                    }
+                                    {paymentLogsLoading ? (
+                                        <div className="flex flex-col items-center justify-center py-8 gap-2">
+                                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground">{t('billing.payment_logs_loading')}</p>
+                                        </div>
+                                    ) : paymentLogs.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
+                                            {isPro || isDowngradedFromPaddle ? (
+                                                <>
+                                                    <div className={`p-3 rounded-full ${isDowngradedFromPaddle ? 'bg-muted' : 'bg-green-100 dark:bg-green-900/20'}`}>
+                                                        {isDowngradedFromPaddle
+                                                            ? <History className="h-8 w-8 text-muted-foreground" />
+                                                            : <CheckCircle2 className="h-8 w-8 text-green-600" />
+                                                        }
+                                                    </div>
+                                                    <h3 className="text-lg font-medium">
+                                                        {isDowngradedFromPaddle ? 'Past subscription' : t('billing.active_title')}
+                                                    </h3>
+                                                    <p className="text-muted-foreground max-w-md">
+                                                        {isDowngradedFromPaddle
+                                                            ? 'Your invoices and payment history are available on the Paddle customer portal.'
+                                                            : t('billing.active_desc', { provider: paymentProviderName })}
+                                                    </p>
+                                                    <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={portalLoading}>
+                                                        {portalLoading
+                                                            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening...</>
+                                                            : isDowngradedFromPaddle
+                                                                ? <><History className="mr-2 h-4 w-4" /> View billing history</>
+                                                                : <><ExternalLink className="mr-2 h-4 w-4" />{sub?.provider === 'paddle' ? 'Manage on Paddle →' : t('billing.view_invoice', { provider: 'PayPal' })}</>
+                                                        }
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="bg-muted p-3 rounded-full">
+                                                        <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                                                    </div>
+                                                    <h3 className="text-lg font-medium">{t('billing.no_trans_title')}</h3>
+                                                    <p className="text-muted-foreground">{t('billing.no_trans_desc')}</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="rounded-lg border overflow-hidden">
+                                                <table className="w-full text-sm">
+                                                    <thead className="bg-muted/50">
+                                                        <tr>
+                                                            <th className="text-left font-medium p-3">{t('billing.log_date')}</th>
+                                                            <th className="text-left font-medium p-3">{t('billing.log_label')}</th>
+                                                            <th className="text-left font-medium p-3">{t('billing.log_product')}</th>
+                                                            <th className="text-right font-medium p-3">{t('billing.log_amount')}</th>
+                                                            <th className="text-left font-medium p-3">{t('billing.log_status')}</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {paymentLogs.map((log) => (
+                                                            <tr key={log.id} className="border-t border-border">
+                                                                <td className="p-3 text-muted-foreground whitespace-nowrap">{safeFormat(log.occurred_at, "MMM d, yyyy · HH:mm")}</td>
+                                                                <td className="p-3 font-medium">{log.label}</td>
+                                                                <td className="p-3 text-muted-foreground">{log.product_name ?? "—"}</td>
+                                                                <td className="p-3 text-right">{log.amount ?? "—"}</td>
+                                                                <td className="p-3">
+                                                                    {log.status ? (
+                                                                        <Badge
+                                                                            variant="secondary"
+                                                                            className={log.status_color === "green" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" : log.status_color === "yellow" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" : ""}
+                                                                        >
+                                                                            {log.status}
+                                                                        </Badge>
+                                                                    ) : "—"}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            {paymentLogs.length >= PAYMENT_LOGS_LIMIT && (
+                                                <div className="flex justify-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={paymentLogsOffset === 0}
+                                                        onClick={() => setPaymentLogsOffset((o) => Math.max(0, o - PAYMENT_LOGS_LIMIT))}
+                                                    >
+                                                        Previous
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setPaymentLogsOffset((o) => o + PAYMENT_LOGS_LIMIT)}
+                                                    >
+                                                        Next
+                                                    </Button>
                                                 </div>
-                                                <h3 className="text-lg font-medium">
-                                                    {isDowngradedFromPaddle ? 'Past subscription' : t('billing.active_title')}
-                                                </h3>
-                                                <p className="text-muted-foreground max-w-md">
-                                                    {isDowngradedFromPaddle
-                                                        ? 'Your invoices and payment history are available on the Paddle customer portal.'
-                                                        : t('billing.active_desc', { provider: paymentProviderName })}
-                                                </p>
-                                                <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={portalLoading}>
-                                                    {portalLoading
-                                                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening...</>
-                                                        : isDowngradedFromPaddle
-                                                            ? <><History className="mr-2 h-4 w-4" /> View billing history</>
-                                                            : <><ExternalLink className="mr-2 h-4 w-4" />{sub?.provider === 'paddle' ? 'Manage on Paddle →' : t('billing.view_invoice', { provider: 'PayPal' })}</>
-                                                    }
+                                            )}
+                                            <div className="flex justify-end">
+                                                <Button variant="ghost" size="sm" onClick={handleManageSubscription} disabled={portalLoading}>
+                                                    {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                                                    <span className="ml-1.5">{sub?.provider === 'paddle' ? 'Manage on Paddle' : t('billing.view_invoice', { provider: 'PayPal' })}</span>
                                                 </Button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="bg-muted p-3 rounded-full">
-                                                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                                                </div>
-                                                <h3 className="text-lg font-medium">{t('billing.no_trans_title')}</h3>
-                                                <p className="text-muted-foreground">{t('billing.no_trans_desc')}</p>
-                                            </>
-                                        )}
-                                    </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </TabsContent>
