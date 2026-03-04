@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   CreditCard,
@@ -77,8 +77,26 @@ interface ApiKeyItem {
   lastUsedAt?: string;
   revokedAt?: string | null;
 }
+/** Backend returns { success, data: [ { _id, keyPrefix, name, active, createdAt, lastUsedAt } ] } */
+function normalizeApiKeysList(raw: unknown): ApiKeyItem[] {
+  const r = raw as { data?: unknown[]; keys?: unknown[] };
+  const arr = Array.isArray(r?.data) ? r.data : Array.isArray(r?.keys) ? r.keys : [];
+  return arr.map((item: unknown) => {
+    const o = item as Record<string, unknown>;
+    return {
+      id: String(o._id ?? o.id ?? ""),
+      prefix: String(o.keyPrefix ?? o.prefix ?? ""),
+      name: o.name as string | undefined,
+      active: o.active as boolean | undefined,
+      createdAt: o.createdAt as string | undefined,
+      lastUsedAt: o.lastUsedAt as string | undefined,
+      revokedAt: o.revokedAt as string | null | undefined,
+    };
+  });
+}
 interface ApiKeysResponse {
   success?: boolean;
+  data?: Record<string, unknown>[];
   keys?: ApiKeyItem[];
   count?: number;
   limit?: number;
@@ -118,6 +136,7 @@ const STATUS_BADGE_MAP: Record<string, { label: string; variant?: "default" | "s
 export default function ApiDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [apiStatus, setApiStatus] = useState<ApiStatusResponse | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
   const [paymentLogs, setPaymentLogs] = useState<PaymentLogItem[]>([]);
@@ -168,7 +187,7 @@ export default function ApiDashboardPage() {
       }
       if (keysRes.ok) {
         const d: ApiKeysResponse = await keysRes.json();
-        setApiKeys(Array.isArray(d?.keys) ? d.keys : []);
+        setApiKeys(normalizeApiKeysList(d));
       }
       if (logsRes.ok) {
         const d: PaymentLogsResponse = await logsRes.json();
@@ -190,6 +209,13 @@ export default function ApiDashboardPage() {
   useEffect(() => {
     if (session?.user?.id) fetchAll();
   }, [session?.user?.id, fetchAll]);
+
+  // After checkout success: refetch once so plan/credits come from backend even if webhook just landed (no session reliance).
+  useEffect(() => {
+    if (!searchParams.get("checkout") || !session?.user?.id) return;
+    const t = setTimeout(() => fetchAll(), 800);
+    return () => clearTimeout(t);
+  }, [searchParams, session?.user?.id, fetchAll]);
 
   const handleGenerateKey = async () => {
     setGenerateLoading(true);
@@ -252,7 +278,8 @@ export default function ApiDashboardPage() {
     }
   };
 
-  if (status === "loading" || loading) {
+  // Only block on session; once authenticated, show dashboard and load plan from api-status (no session reliance).
+  if (status === "loading") {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -262,6 +289,7 @@ export default function ApiDashboardPage() {
 
   const badgeInfo = STATUS_BADGE_MAP[statusBadge] ?? { label: String(statusBadge), variant: "secondary" as const };
   const showUpsell = planName === "free" || planName === "developer";
+  const dataReady = !loading && apiStatus != null;
 
   return (
     <>
@@ -313,6 +341,12 @@ export default function ApiDashboardPage() {
                   </div>
                 )}
 
+                {!dataReady ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                <>
                 <TabsContent value="overview" className="mt-0 space-y-6">
                   <div className="grid gap-6 md:grid-cols-2">
                     <Card>
@@ -454,10 +488,11 @@ export default function ApiDashboardPage() {
                           <div key={k.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-sm">
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium">{k.name ?? "Unnamed"}</span>
-                              <span className="font-mono text-muted-foreground text-xs">{k.prefix}...</span>
-                              {k.lastUsedAt && (
-                                <span className="text-xs text-muted-foreground">Last used: {new Date(k.lastUsedAt).toLocaleDateString()}</span>
-                              )}
+                              <span className="font-mono text-muted-foreground text-xs">{k.prefix}…</span>
+                              <div className="flex flex-wrap gap-x-3 gap-y-0 text-xs text-muted-foreground">
+                                {k.createdAt && <span>Created: {new Date(k.createdAt).toLocaleDateString()}</span>}
+                                {k.lastUsedAt && <span>Last used: {new Date(k.lastUsedAt).toLocaleDateString()}</span>}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
                               {k.active === false && <Badge variant="secondary">Revoked</Badge>}
@@ -552,6 +587,8 @@ export default function ApiDashboardPage() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+                </>
+                )}
               </div>
             </Tabs>
           </div>

@@ -4,9 +4,15 @@ import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, Sun, Moon, Laptop } from "lucide-react";
+import { Menu as MenuIcon, Sun, Moon, Laptop, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 
@@ -95,15 +101,41 @@ export function DevHeader() {
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
+        {/* From lg: full inline nav; md to lg: collapse into dropdown */}
+        <nav className="hidden lg:flex items-center gap-6">
           {NAV_LINKS.map(({ href, label }) => (
             <NavLink key={href} href={href}>
               {label}
             </NavLink>
           ))}
         </nav>
+        <div className="hidden md:flex lg:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                Nav
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[10rem]">
+              {NAV_LINKS.map(({ href, label }) => {
+                const isActive = pathname === href || (href !== "/api" && pathname.startsWith(href));
+                return (
+                  <DropdownMenuItem key={href} asChild>
+                    <Link
+                      href={href}
+                      className={isActive ? "text-primary font-medium" : ""}
+                    >
+                      {label}
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
