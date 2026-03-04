@@ -134,12 +134,6 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
                   <span>Profile & Billing</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/settings">
-                  <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
@@ -289,7 +283,6 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
               onClick={handleMobileLinkClick}
               className="flex items-center gap-2 p-2 rounded-md hover:bg-muted text-sm font-medium"
             >
-              <span>API</span>
               <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">API</span>
             </Link>
             {!isLoggedIn && (
