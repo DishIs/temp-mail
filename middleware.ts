@@ -7,8 +7,8 @@ const i18nMiddleware = createMiddleware(routing);
 export default async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  if (path === '/blog' || path.startsWith('/blog/') || path === '/docs' || path === '/auth' || path.startsWith('/auth/') || path === '/contact' || path === '/feedback' || path.startsWith('/payment/') || path.startsWith('/policies/')) {
-    return NextResponse.next(); // skip next-intl redirect for blog
+  if (path === '/blog' || path.startsWith('/blog/') || path === '/docs' || path === '/auth' || path.startsWith('/auth/') || path === '/contact' || path === '/feedback' || path.startsWith('/payment/') || path.startsWith('/policies/') || path === '/account-deletion-scheduled' || path === '/account-deleted') {
+    return NextResponse.next(); // skip next-intl for these paths
   }
 
   return i18nMiddleware(request);

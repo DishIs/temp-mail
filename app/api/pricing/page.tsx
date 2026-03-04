@@ -109,6 +109,8 @@ const Tick = () => <Check className="h-4 w-4 text-foreground shrink-0" />;
 const Cross = () => <X className="h-4 w-4 text-muted-foreground/50 shrink-0" />;
 
 const FAQ_ITEMS = [
+  { q: "Can we use pro features by just buying credits with no plans (free)?", a: "No. Features (OTP extraction, attachments, WebSocket, custom domains) are determined by your API plan only. Credits only add request capacity; they don't change your plan or unlock paid features. To use OTP, WebSocket, or custom domains you need to be on a paid API plan (Developer, Startup, Growth, or Enterprise)." },
+  { q: "What's the difference between credits and API plans?", a: "Your API plan sets which features you get (OTP, attachments, WebSocket, custom domains) and your base rate limits. Credits only add extra request capacity on top of your monthly quota; they never expire and are consumed when you exceed your plan limit. Credits do not change your plan or unlock paid features." },
   { q: "Do credits expire?", a: "No. Credits never expire. Top up once and use them whenever you need. They apply automatically when you exceed your monthly request quota." },
   { q: "What happens when I hit my monthly limit?", a: "If you have credits, they are consumed automatically for each request over your plan limit. If you have no credits, you'll receive HTTP 429 until the next reset or until you add credits." },
   { q: "Can I use my own domain?", a: "Yes, on Growth and Enterprise. Add and verify your domain in the dashboard; then you can register inboxes like user@yourdomain.com via the API." },

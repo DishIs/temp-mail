@@ -7,12 +7,24 @@ import { fetchFromServiceAPI } from '@/lib/api';
 
 declare module 'next-auth' {
   interface Session {
-    user: { id: string; plan: 'free' | 'pro' } & DefaultSession['user'];
+    user: {
+      id: string;
+      plan: 'free' | 'pro';
+      deletion_status?: 'none' | 'scheduled' | 'permanent';
+      deletion_scheduled_at?: string | null;
+      can_restore_until?: string | null;
+    } & DefaultSession['user'];
   }
   interface User { plan?: 'free' | 'pro' }
 }
 declare module 'next-auth/jwt' {
-  interface JWT { id: string; plan: 'free' | 'pro' }
+  interface JWT {
+    id: string;
+    plan: 'free' | 'pro';
+    deletion_status?: 'none' | 'scheduled' | 'permanent';
+    deletion_scheduled_at?: string | null;
+    can_restore_until?: string | null;
+  }
 }
 
 async function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
@@ -96,6 +108,9 @@ const config: NextAuthConfig = {
             body: JSON.stringify({ userId: token.id }),
           });
           if (updatedUser?.plan) token.plan = updatedUser.plan;
+          token.deletion_status = updatedUser?.deletion_status ?? 'none';
+          token.deletion_scheduled_at = updatedUser?.deletion_scheduled_at ?? null;
+          token.can_restore_until = updatedUser?.can_restore_until ?? null;
         } catch (e) {
           console.error('JWT sync failed:', e);
         }
@@ -106,6 +121,9 @@ const config: NextAuthConfig = {
     async session({ session, token }) {
       session.user.id = token.id;
       session.user.plan = token.plan ?? 'free';
+      session.user.deletion_status = token.deletion_status ?? 'none';
+      session.user.deletion_scheduled_at = token.deletion_scheduled_at ?? null;
+      session.user.can_restore_until = token.can_restore_until ?? null;
       return session;
     },
   },

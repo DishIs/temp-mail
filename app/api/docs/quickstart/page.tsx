@@ -77,6 +77,13 @@ export default function QuickstartPage() {
         <li><strong>PHP</strong>: <code className="rounded bg-muted px-1 py-0.5 text-xs">curl</code> extension or Guzzle.</li>
       </ul>
 
+      <div className="mt-8 p-4 rounded-lg border border-border bg-muted/20 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground mb-1">Full API reference</p>
+        <p className="mb-2">
+          These docs cover every endpoint and feature in the API: authentication, inboxes, messages, OTP extraction, WebSocket, rate limits, credits, and errors. For a machine-readable spec (OpenAPI 3.1), use <a href="/openapi.yaml" target="_blank" rel="noopener noreferrer" className="text-primary underline">/openapi.yaml</a>. Try requests in the browser in the <Link href="/api/playground" className="text-primary underline">Playground</Link>.
+        </p>
+      </div>
+
       <DocPageNav prev={null} next={{ href: "/api/docs/authentication", label: "Authentication" }} />
     </article>
   );

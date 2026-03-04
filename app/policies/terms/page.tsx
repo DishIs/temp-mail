@@ -144,6 +144,29 @@ export default function TermsOfServicePage() {
                 </Card>
             </section>
 
+            {/* API TERMS */}
+            <section className="space-y-4">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <ServerOff className="w-4 h-4" /> API Terms
+                </h2>
+                <Card>
+                    <CardContent className="pt-6 space-y-4 text-sm text-muted-foreground">
+                        <p>
+                            Use of the FreeCustom.Email <strong className="text-foreground">API</strong> (api2.freecustom.email) and related developer products is subject to these Terms of Service and our <Link href="/policies/privacy" className="text-primary underline">Privacy Policy</Link>.
+                        </p>
+                        <p>
+                            <strong className="text-foreground">Acceptable use:</strong> You may use the API only for lawful purposes—e.g. testing, development, automation, and temporary inbox needs. You must not use the API to send spam, phish, harass, or circumvent other services’ security. Rate limits and plan-specific feature restrictions (OTP, WebSocket, attachments, custom domains) apply as described in the API documentation and pricing.
+                        </p>
+                        <p>
+                            <strong className="text-foreground">Credentials:</strong> You are responsible for keeping your API keys secure. Do not expose keys in client-side code or public repositories. We may revoke keys or suspend access for abuse or violation of these terms.
+                        </p>
+                        <p>
+                            <strong className="text-foreground">Data:</strong> Data processed via the API (inbox addresses, messages, OTPs) is subject to the same data retention and deletion policies as the web app. Account deletion applies to both app and API usage.
+                        </p>
+                    </CardContent>
+                </Card>
+            </section>
+
             {/* LEGAL ACCORDION */}
             <section className="space-y-4">
                 <h2 className="text-2xl font-bold flex items-center gap-2">

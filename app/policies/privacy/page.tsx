@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/nLHeader"; // Adjust path if needed
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 export default function PrivacyPolicyPage() {
   const { data: session } = useSession();
@@ -133,6 +134,43 @@ export default function PrivacyPolicyPage() {
                         </CardContent>
                     </Card>
                 </div>
+            </section>
+
+            {/* ACCOUNT DELETION */}
+            <section className="space-y-4">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-primary" /> Account Deletion & Data Retention
+                </h2>
+                <Card>
+                    <CardContent className="pt-6 space-y-4 text-sm text-muted-foreground">
+                        <p>
+                            You may request account deletion from your profile (Settings → Delete Account). Deletion is <strong className="text-foreground">scheduled</strong> with a 7-day waiting period. During that time you can cancel by logging in and choosing &quot;Do not delete my account&quot; or using the link in the confirmation email.
+                        </p>
+                        <p>
+                            <strong className="text-foreground">Deleted immediately upon request:</strong> stored emails, attachments, inbox addresses, Redis mailbox data, and user preferences. API keys are revoked. Subscriptions are set to cancelled.
+                        </p>
+                        <p>
+                            <strong className="text-foreground">After the 7-day period:</strong> your account is permanently converted to a tombstone. We keep only identifiers needed for billing/legal (e.g. payment logs). Your email may be blocked from re-registering for a short cooldown to prevent abuse.
+                        </p>
+                        <p>
+                            For the API, the same account and deletion policy applies; deleting your account removes app and API data.
+                        </p>
+                    </CardContent>
+                </Card>
+            </section>
+
+            {/* DO NOT SELL */}
+            <section className="space-y-4">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-6 h-6 text-primary" /> Sale of Personal Information
+                </h2>
+                <Card>
+                    <CardContent className="pt-6 text-sm text-muted-foreground">
+                        <p className="mb-4">
+                            We do <strong className="text-foreground">not sell</strong> your personal information. We do not share your data with third parties for their marketing or for &quot;sale&quot; as defined under the CCPA/CPRA. For more options and to submit a &quot;Do Not Sell or Share My Personal Information&quot; request, see our <Link href="/policies/do-not-sell" className="text-primary underline">Do Not Sell My Personal Information</Link> page.
+                        </p>
+                    </CardContent>
+                </Card>
             </section>
 
             {/* LOGGING & TRACKING */}

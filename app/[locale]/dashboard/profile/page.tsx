@@ -21,6 +21,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { UpsellModal } from "@/components/upsell-modal";
 import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -326,6 +334,8 @@ export default function ProfilePage() {
     const [paymentLogsOffset, setPaymentLogsOffset]   = useState(0);
     const PAYMENT_LOGS_LIMIT = 20;
     const [apiPlan, setApiPlan] = useState<string | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     useEffect(() => {
         if (status === "unauthenticated") router.push("/auth");
@@ -342,6 +352,29 @@ export default function ProfilePage() {
     useEffect(() => {
         if (status === "authenticated") { fetchUserData(); fetchStorageData(); }
     }, [status]);
+
+    const handleDeleteAccount = async () => {
+        setDeleteLoading(true);
+        try {
+            const res = await fetch("/api/user/delete-account", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                toast.error(data.message || t("toasts.fetch_error"));
+                return;
+            }
+            setDeleteDialogOpen(false);
+            toast.success("Account deletion scheduled. Check your email to cancel.");
+            router.replace("/account-deletion-scheduled");
+        } catch {
+            toast.error(t("toasts.fetch_error"));
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
 
     const fetchUserData = async () => {
         try {
@@ -851,7 +884,7 @@ export default function ProfilePage() {
                                             <h4 className="font-medium text-sm text-destructive">{t('settings.del_title')}</h4>
                                             <p className="text-xs text-destructive/80">{t('settings.del_desc')}</p>
                                         </div>
-                                        <Button variant="destructive" size="sm">{t('settings.del_btn')}</Button>
+                                        <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>{t('settings.del_btn')}</Button>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -875,6 +908,25 @@ export default function ProfilePage() {
                 </div>
 
                 <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />
+
+                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>{t('settings.del_title')}</DialogTitle>
+                            <DialogDescription>
+                                Your account will be scheduled for deletion. You have 7 days to cancel from your email or by logging in and clicking &quot;Do not delete my account.&quot; After 7 days, all data will be permanently removed.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleteLoading}>
+                                {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('settings.del_btn')}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </ThemeProvider>
     );

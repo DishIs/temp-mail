@@ -38,7 +38,8 @@ const FOOTER_LINKS = [
     heading: "Legal",
     links: [
       { label: "Privacy Policy",   href: "/policies/privacy",  external: false },
-      { label: "Cookie Policy",    href: "/policies/cookie",   external: false }, // ← added
+      { label: "Do Not Sell My Personal Information", href: "/policies/do-not-sell", external: false },
+      { label: "Cookie Policy",    href: "/policies/cookie",   external: false },
       { label: "Terms of Service", href: "/policies/terms",    external: false },
       { label: "Refund Policy",    href: "/policies/refund",   external: false },
     ],

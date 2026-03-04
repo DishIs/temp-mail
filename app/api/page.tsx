@@ -15,6 +15,40 @@ import {
 import { ApiHeroCode } from "@/app/api/ApiHeroCode";
 import { ApiCodeExamples } from "@/app/api/ApiCodeExamples";
 
+export const metadata = {
+  title: "Temp Mail API – Disposable Email for Developers | FreeCustom.Email",
+  description:
+    "FreeCustom.Email temp mail API: programmatic disposable email, instant inboxes, OTP extraction, WebSocket push. Use our temp mail API for testing, CI, and automation. Free tier and paid plans.",
+  openGraph: {
+    title: "Temp Mail API – Disposable Email for Developers | FreeCustom.Email",
+    description:
+      "Programmatic temp mail API: disposable inboxes, OTP extraction, WebSocket. Free tier available. Built for developers and test automation.",
+  },
+};
+
+const OVERVIEW_FAQ = [
+  {
+    q: "What is a temp mail API?",
+    a: "A temp mail API lets you create and use disposable email addresses programmatically. Instead of opening a website, you call endpoints to register an inbox, then read or stream messages. FreeCustom.Email provides a full temp mail API with instant inboxes, OTP extraction, and optional WebSocket delivery.",
+  },
+  {
+    q: "How does the FreeCustom.Email temp mail API work?",
+    a: "You get an API key from the dashboard, then call our base URL (api2.freecustom.email) to register inboxes, list messages, and extract OTPs. The Free plan gives 5,000 requests/month; paid plans add OTP extraction, WebSocket push, attachments, and custom domains. Credits can top up request capacity without changing your plan.",
+  },
+  {
+    q: "Who is the temp mail API for?",
+    a: "Developers running integration tests, QA automation, CI/CD pipelines, and apps that need disposable inboxes. The API is also used for signup flows, verification testing, and any scenario where you need temporary email programmatically.",
+  },
+  {
+    q: "Is there a free temp mail API?",
+    a: "Yes. FreeCustom.Email offers a Free API plan with 5,000 requests per month, 1 req/sec, and instant inbox registration. No credit card required. Upgrade to Developer or higher for OTP extraction, WebSocket, and more capacity.",
+  },
+  {
+    q: "Can I use the temp mail API with my own domain?",
+    a: "Yes, on Growth and Enterprise plans. Add and verify your domain in the dashboard; then you can register inboxes like user@yourdomain.com via the API for white-label or branded testing.",
+  },
+];
+
 const FEATURES = [
   {
     icon: Inbox,
@@ -271,6 +305,40 @@ export default function ApiOverviewPage() {
             </Button>
           </CardContent>
         </Card>
+      </section>
+
+      {/* FAQ – temp mail API (SEO) */}
+      <section className="mt-20" aria-labelledby="api-faq-heading">
+        <h2 id="api-faq-heading" className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-6 text-center">
+          Frequently asked questions
+        </h2>
+        <div className="mx-auto max-w-2xl space-y-2">
+          {OVERVIEW_FAQ.map(({ q, a }, i) => (
+            <details
+              key={i}
+              className="group rounded-lg border border-border bg-card px-4 py-3 text-left"
+            >
+              <summary className="cursor-pointer list-none text-sm font-medium text-foreground py-1 pr-6 [&::-webkit-details-marker]:hidden before:float-right before:content-['+'] before:text-muted-foreground group-open:before:content-['−']">
+                {q}
+              </summary>
+              <p className="text-sm text-muted-foreground mt-2 pb-2 pl-0">{a}</p>
+            </details>
+          ))}
+        </div>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: OVERVIEW_FAQ.map(({ q, a }) => ({
+                "@type": "Question",
+                name: q,
+                acceptedAnswer: { "@type": "Answer", text: a },
+              })),
+            }),
+          }}
+        />
       </section>
     </div>
   );
