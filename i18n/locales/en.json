@@ -1,12 +1,12 @@
 {
   "Metadata": {
-    "title": "Free Temporary Email – Custom Temp Mail & Disposable Email Generator",
-    "description": "Create a free temporary email instantly. Generate disposable or dummy email addresses with custom domains. No signup, no spam, developer API available.",
-    "keywords": "temp mail, disposable email, custom mail, fake email, temporary inbox, no ads email, 10minmail, email privacy, free temp mail, temp mail pro, temp mail business",
+    "title": "Free Temporary Email — No Signup, No Ads | FreeCustom.Email",
+    "description": "Get a disposable email address instantly. No signup, forever free, zero ads. Protect your inbox with custom domains and real-time delivery. Try it now.",
+    "keywords": "temp mail, disposable email, temporary email, custom email domain, fake email address, email privacy, OTP email, no signup email, free temp mail API",
     "openGraph": {
-      "title": "Free Temporary Email – Custom Temp Mail & Disposable Email Generator",
-      "description": "Create a free temporary email instantly. Generate disposable or dummy email addresses with custom domains. No signup, no spam, developer API available.",
-      "alt": "FreeCustom.Email Logo"
+      "title": "Free Temporary Email — No Signup, No Ads | FreeCustom.Email",
+      "description": "Get a disposable email address instantly. No signup, forever free, zero ads. Protect your inbox with custom domains and real-time delivery.",
+      "alt": "FreeCustom.Email — Free Temporary Email Service"
     }
   },
   "JsonLd": {
@@ -14,12 +14,12 @@
     "description": "FreeCustom.Email is a privacy-first disposable email platform for testing, devs, and fast signups. Offers free and pro plans."
   },
   "PageContent": {
-    "h1": "Free Temporary Email Generator – Create a Disposable Email Instantly",
-    "p1": "In today's world, online services—from free trials to community chats—demand email addresses, exposing you to spam, bots, and unsolicited tracking. <strong>With FreeCustom.Email, you get an instant, ad‑free custom temp mail address</strong> across multiple domains—no sign‑up required and always secure.",
-    "p2_part1": "<strong>This service is forever free, fully ad‑free, and optimized for speed using lightweight code, edge caching, and global domains.</strong> Learn more about our ",
-    "p2_link1": "free & ad‑free promise",
-    "p2_part2": " and our ",
-    "p2_link2": "PageSpeed‑driven architecture",
+    "h1": "Your Real Inbox Stays Clean. Free Disposable Email — No Signup, No Ads.",
+    "p1": "Every app, trial, and forum wants your email address — and hands it straight to marketers. <strong>FreeCustom.Email gives you a real, working inbox on a custom domain in seconds</strong>, so your personal address stays private. No registration. Works instantly.",
+    "p2_part1": "<strong>Forever free, completely ad-free, and built for speed.</strong> Read about our ",
+    "p2_link1": "free & ad-free promise",
+    "p2_part2": " and the ",
+    "p2_link2": "architecture behind our speed",
     "p2_part3": ".",
     "landing_faq_heading": "Frequently asked questions",
     "landing_faq_view_all": "View all FAQs →"
@@ -68,45 +68,43 @@
     "view": "View",
     "history_title": "Email History",
     "history_use": "Use",
-    "card_header_title": "Generate Your Best Custom Temp Mail Address Instantly",
-    "card_header_p": "Avoid spam, phishing, and automated bots with a secure, ad‑free custom temp mail. Keep your real inbox clean and privacy intact—with instant generation, no sign‑up, forever free.",
+    "card_header_title": "Create Your Temporary Email Address",
+    "card_header_p": "Choose a username and domain above. Your inbox is live the moment you do — no signup, no ads, no waiting.",
     "unset_primary": "Unset primary",
     "set_primary": "Set as primary"
   },
   "WhySection": {
-    "snippet_title": "What Is Custom Temp Mail? Temporary & Disposable Email Explained",
-    "snippet_p": "<strong>Custom temp mail</strong> (temporary email or disposable email) is your first line of defense in digital privacy. Generate a disposable, ad-free email address instantly from multiple domains—no sign-up required. With <strong>FreeCustom.Email</strong>, you get a secure temporary email for privacy, spam protection, verification codes, and fast anonymous sign-ups. Use it for free trials, app testing, and one-off sign-ups. Free and Pro plans available.",
-    "domain_list_title": "Free Temp Mail Domains – FreeCustom.Email Domain List",
-    "domain_list_p": "Choose from our curated list of temp mail domains so your temporary email is deliverable and less likely to be blocked by websites. All domains support instant inbox and real-time delivery.",
-    "updates_title": "From Anonymous Use to Pro Power: New Features",
-    "updates_p": "FreeCustom.Email has evolved. While anonymous use remains fast and free, you can now log in to your account to unlock powerful new features tailored for regular users, developers, and businesses.",
+    "definition_title": "What Is a Temporary Email Address?",
+    "definition_p": "A <strong>temporary email address</strong> (also called disposable email or <em>temp mail</em>) is a short-lived inbox you use in place of your real address for sign-ups, trials, and one-off verifications. Once you're done, discard it — no spam, no tracking, no risk. Learn how to <link>create a temp mail address</link> in seconds.",
+
+    "updates_title": "Free, Pro, and Everything Between",
+    "updates_p": "FreeCustom.Email works instantly without an account. Sign in to unlock saved inboxes, attachments, and custom domains.",
     "updates_item1_title": "Anonymous Guest",
-    "updates_item1_desc": "For quick, one-off tasks. Get an instant temp email with 5-message history and 12-hour storage. No attachments, no login needed.",
+    "updates_item1_desc": "No account needed. Get an instant temp email with 5-message history and 12-hour storage.",
     "updates_item2_title": "Free Account",
-    "updates_item2_desc": "Log in for more control. Get a 10-message history, 24-hour storage, support for 1MB attachments, and the ability to save important emails to your browser.",
-    "updates_item3_title": "Pro for Business & Devs",
-    "updates_item3_desc": "The ultimate <strong>temp mail pro</strong> experience. Use your own business domains (e.g., @your-company.com), get 5GB of permanent cloud storage, 25MB attachments, and full API access for seamless integration.",
-    "definition_title": "What Is Disposable Temporary Email (Temp Mail)?",
-    "definition_p": "A disposable or <strong>temporary email</strong> (also known as <em>temp mail</em>) is a short-lived address for online sign-ups, protecting your real inbox from spam. It's the perfect tool for maintaining privacy. Learn how to <link>create a temp mail address</link> for personal or business use.",
-    "use_case_title": "Why Use Custom Temp Mail? From Personal to Business",
-    "use_case_item1": "Protect your personal inbox from marketing spam during online shopping.",
-    "use_case_item2": "Developers can test user registration flows without cluttering a real inbox.",
-    "use_case_item3": "Businesses can use <strong>temp mail with custom domains</strong> for internal testing and quality assurance.",
-    "use_case_item4": "Safely access content, download resources, and join communities without revealing your primary email.",
-    "checklist_title": "How to Choose the Best Temp Mail Service",
-    "checklist_item1": "Instant, custom temporary email addresses with zero registration.",
-    "checklist_item2": "A clear, ad-free experience focused on speed and privacy.",
-    "checklist_item3": "Support for custom domains for professional <strong>temp mail business</strong> use.",
-    "checklist_item4": "Flexible storage options, from temporary Redis to permanent cloud storage.",
-    "checklist_item5": "A reliable platform with a public commitment to being forever-free.",
-    "checklist_item6": "Advanced features for Pro users, including large attachments and API access.",
-    "checklist_p": "<strong>FreeCustom.Email</strong> delivers on all fronts, providing a versatile solution that scales from simple, anonymous use to a powerful tool for professionals.",
-    "usage_title": "How to Use FreeCustom.Email Temp Mail",
-    "usage_p1": "Just visit the site, enter a custom name, pick a domain, and your temp mailbox is live. No ads, no sign-up. To unlock more power, simply log in with your account. For details, see our post on <link>creating a temp mail address</link>.",
-    "usage_p2": "If an address gets too much spam, delete it and create another in seconds. Your real inbox is always safe.",
-    "conclusion_title": "The Best Choice for Custom & Professional Temp Mail",
-    "conclusion_p1": "Whether you need a quick burner address or a robust <strong>temp mail pro</strong> solution for your business, FreeCustom.Email is designed to meet your needs. We offer unmatched speed, privacy, and flexibility, all without ads.",
-    "conclusion_p2": "Explore our <link>best practices guide</link> to get the most out of your temporary email addresses."
+    "updates_item2_desc": "Sign in for more control: 10-message history, 24-hour storage, 1MB attachments, and the ability to save inboxes.",
+    "updates_item3_title": "Pro — For Business & Developers",
+    "updates_item3_desc": "Use your own domain (e.g. <strong>@your-company.com</strong>), get 5GB permanent cloud storage, 25MB attachments, auto OTP extraction, and full API access.",
+
+    "domain_list_title": "Available Temp Mail Domains",
+    "domain_list_p": "All domains below support instant inbox creation and real-time email delivery. Using a less-known domain reduces the chance of it being blocked by sign-up forms.",
+
+    "combined_section_title": "Why Use a Disposable Email Address?",
+    "combined_section_p": "Whether you're a developer testing registration flows, a shopper avoiding marketing lists, or a business running QA — a temp mail address is the cleanest solution.",
+
+    "use_case_title": "Common use cases",
+    "use_case_item1": "Online shopping — avoid marketing emails without blocking purchase confirmations.",
+    "use_case_item2": "Developer testing — verify registration flows and OTP delivery without polluting a real inbox.",
+    "use_case_item3": "Business QA — use <strong>temp mail with your own domain</strong> for internal testing and staging environments.",
+    "use_case_item4": "Access gated content, downloads, or communities without exposing your primary address.",
+
+    "checklist_title": "What makes a good temp mail service",
+    "checklist_item1": "Instant addresses with no registration required.",
+    "checklist_item2": "Ad-free interface — no pop-ups, no trackers, no distractions.",
+    "checklist_item3": "Custom domain support for <strong>professional and business use</strong>.",
+    "checklist_item4": "Flexible storage: temporary by default, permanent when you need it.",
+    "checklist_item5": "A public commitment to staying free — not a freemium bait-and-switch.",
+    "checklist_item6": "Developer features: large attachments, OTP extraction, and API access."
   },
   "FAQ": {
     "title": "Frequently Asked Questions – Temp Mail & Disposable Email",
