@@ -14,7 +14,7 @@ export async function POST() {
 
   const { status, data } = await fetchFromServiceAPIWithStatus("/user/restore-account", {
     method: "POST",
-    body: JSON.stringify({ userId: session.user.id }),
+    body: JSON.stringify({ wyiUserId: session.user.id }),
   });
   return NextResponse.json(data ?? { success: true }, { status });
 }

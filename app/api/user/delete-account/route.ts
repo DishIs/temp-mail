@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
     undefined;
-  const payload: { userId: string; ip?: string } = { userId: session.user.id };
+  const payload: { wyiUserId: string; ip?: string } = { wyiUserId: session.user.id };
   if (ip) payload.ip = ip;
 
   const { status, data } = await fetchFromServiceAPIWithStatus("/user/delete-account", {

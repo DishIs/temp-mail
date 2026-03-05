@@ -54,6 +54,12 @@ export function AwardsSection() {
       src: "https://img.turbo0.com/badge-listed-light.svg",
       alt: "Listed on Turbo0",
     },
+    {
+      href: "https://viesearch.com/",
+      title: "Listed on Viesearch - The Human-curated Search Engine",
+      src: "https://viesearch.com/blue.png",
+      alt: "Listed on Viesearch - The Human-curated Search Engine",
+    },
   ];
   return (
     <section className="border-t border-border bg-muted/20 py-10">
