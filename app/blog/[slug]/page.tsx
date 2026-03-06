@@ -437,7 +437,7 @@ export default async function SinglePostPage({ params }: { params: { slug: strin
                                     )}
                                 </div>
 
-                                <CommentForm postSlug={params.slug} />
+                                {/* <CommentForm postSlug={params.slug} /> */}
                             </section>
                         </article>
 
