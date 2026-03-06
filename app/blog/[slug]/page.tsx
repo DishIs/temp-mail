@@ -109,34 +109,46 @@ function extractHeadings(html: string): Heading[] {
  * Looks only inside an FAQ section (after the last <h2>FAQ</h2>).
  */
 function extractFAQs(html: string): FAQ[] {
-    // Isolate the FAQ section – everything after the last FAQ heading
-    const sectionMatch = html.match(/(<h[23][^>]*>\s*FAQ[^<]*<\/h[23]>)([\s\S]*)$/i);
-    const scope = sectionMatch ? sectionMatch[2] : html;
+    // Isolate only the FAQ section — everything after the last FAQ heading
+    const sectionMatch = html.match(
+        /(<h[23][^>]*>\s*(?:FAQ|Frequently Asked Questions)[^<]*<\/h[23]>)([\s\S]*)$/i
+    );
+    const scope = sectionMatch ? sectionMatch[2] : '';
+
+    // If no FAQ section found, return empty — don't scan the whole document
+    if (!scope) return [];
 
     const faqs: FAQ[] = [];
 
-    // Pattern A: <p><strong>Question</strong><br...>Answer</p>
-    const patternA = /<p>\s*<strong>([\s\S]*?)<\/strong>\s*<br[^>]*>([\s\S]*?)<\/p>/gi;
+    // Pattern A: <p><strong>Question</strong><br?>Answer</p>
+    // Handles both with and without <br> between question and answer
+    const patternA =
+        /<p>\s*<strong>([\s\S]*?)<\/strong>\s*(?:<br[^>]*>)?\s*([\s\S]*?)<\/p>/gi;
     let m: RegExpExecArray | null;
     while ((m = patternA.exec(scope)) !== null) {
         const question = m[1].replace(/<[^>]+>/g, '').trim();
-        const answer = m[2].replace(/<[^>]+>/g, '').trim();
-        if (question && answer) faqs.push({ question, answer });
+        const answer   = m[2].replace(/<[^>]+>/g, '').trim();
+        // Only accept if it looks like a real question (ends with ?) and has a non-trivial answer
+        if (question && answer && question.endsWith('?') && answer.length > 10) {
+            faqs.push({ question, answer });
+        }
     }
 
-    // Pattern B: <h3>Q</h3><p>A</p> (only if pattern A found nothing)
+    // Pattern B: <h3>Q?</h3><p>A</p>
+    // Only if Pattern A found nothing AND question ends with ? (guards against section headings)
     if (faqs.length === 0) {
         const patternB = /<h3[^>]*>([\s\S]*?)<\/h3>\s*<p>([\s\S]*?)<\/p>/gi;
         while ((m = patternB.exec(scope)) !== null) {
             const question = m[1].replace(/<[^>]+>/g, '').trim();
-            const answer = m[2].replace(/<[^>]+>/g, '').trim();
-            if (question && answer) faqs.push({ question, answer });
+            const answer   = m[2].replace(/<[^>]+>/g, '').trim();
+            if (question && answer && question.endsWith('?') && answer.length > 10) {
+                faqs.push({ question, answer });
+            }
         }
     }
 
     return faqs;
 }
-
 // ─────────────────────────────────────────────
 // Metadata
 // ─────────────────────────────────────────────
