@@ -1,5 +1,3 @@
-// app/[locale]/page.tsx
-
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { AppFooter } from '@/components/app-footer';
 import { AppHeader } from '@/components/app-header';
@@ -21,6 +19,7 @@ import { fetchFromServiceAPI } from '@/lib/api';
 import { AwardsSection } from '@/components/AwardsSection';
 import { LANDING_PAGES } from '@/lib/landing-pages-config';
 import { auth } from '@/auth';
+import { Suspense } from 'react';
 
 type Props = {
   params: { locale: Locale };
@@ -48,22 +47,26 @@ const ASCII_FRAGS = [
   { x: '4%',  y: '93%', t: 'Subject: Your verification code is 847291' },
 ];
 
-export default async function Page({ params }: Props) {
-  const { locale } = params;
-  setRequestLocale(locale);
-
-  const t = await getTranslations({ locale, namespace: 'PageContent' });
-  const tFaq = await getTranslations({ locale, namespace: 'FAQ' });
-
-  const session = await auth();
+/**
+ * Wraps the heavy API request in a Suspense boundary so TTFB is not blocked
+ * Adds a strict timeout to ensure the server doesn't hang if backend is slow.
+ */
+async function EmailBoxDataFetcher({ session }: { session: any }) {
   let customDomains: string[] = [];
-  let userInboxes = [];
-  let currentInbox = null;
+  let userInboxes: string[] = [];
+  let currentInbox: string | null = null;
 
   if (session?.user?.id) {
     try {
-      const profileData = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
-      if (profileData.success && profileData.user) {
+      // 2.5s strict timeout so Next.js doesn't freeze the render thread
+      const fetchPromise = fetchFromServiceAPI(`/user/profile/${session.user.id}`);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("API Timeout")), 2500)
+      );
+
+      const profileData = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
+      if (profileData?.success && profileData?.user) {
         const { user } = profileData;
         if (user.plan === 'pro' && Array.isArray(user.customDomains)) {
           customDomains = user.customDomains;
@@ -74,9 +77,29 @@ export default async function Page({ params }: Props) {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch user profile data on server:', error);
+      console.error('Failed or timed out fetching user profile data on server:', error);
     }
   }
+
+  return (
+    <EmailBox
+      initialSession={session}
+      initialCustomDomains={customDomains}
+      initialInboxes={userInboxes}
+      initialCurrentInbox={currentInbox}
+    />
+  );
+}
+
+export default async function Page({ params }: Props) {
+  const { locale } = params;
+  setRequestLocale(locale);
+
+  const t = await getTranslations({ locale, namespace: 'PageContent' });
+  const tFaq = await getTranslations({ locale, namespace: 'FAQ' });
+
+  // auth() decrypts cookie fast, safe for top-level
+  const session = await auth();
 
   const organizationJsonLd = {
     '@context': 'https://schema.org',
@@ -145,7 +168,6 @@ export default async function Page({ params }: Props) {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <div className="min-h-screen max-w-[100vw] bg-background text-foreground overflow-x-hidden">
 
-          {/* Fixed ASCII background layer */}
           <div className="fixed inset-0 overflow-hidden pointer-events-none select-none z-0" aria-hidden>
             {ASCII_FRAGS.map((f, i) => (
               <span
@@ -160,7 +182,6 @@ export default async function Page({ params }: Props) {
 
           <AppHeader initialSession={session} />
 
-          {/* ── HERO: EmailBox — tight under header, no wrapper card ───── */}
           <section
             className="relative border-b border-border px-4 sm:px-6 pt-6 pb-8"
             style={DOT_BG}
@@ -170,20 +191,20 @@ export default async function Page({ params }: Props) {
             <div className="absolute inset-y-0 right-[max(0px,calc(50%-40rem))] w-px bg-border/60" aria-hidden />
 
             <div className="relative z-10 w-full max-w-7xl mx-auto">
-              {/* EmailBox — directly on the page, no extra card wrapping it */}
-              <EmailBox
-                initialSession={session}
-                initialCustomDomains={customDomains}
-                initialInboxes={userInboxes}
-                initialCurrentInbox={currentInbox}
-              />
+              
+              {/* Suspense streams the app instantly while fetching database stuff */}
+              <Suspense fallback={
+                <div className="h-[400px] w-full flex items-center justify-center border border-border rounded-lg bg-background">
+                  <span className="animate-pulse font-mono text-sm text-muted-foreground">Loading secure inbox...</span>
+                </div>
+              }>
+                <EmailBoxDataFetcher session={session} />
+              </Suspense>
 
-              {/* Status — right below the tool */}
               <div className="mt-3">
                 <Status />
               </div>
 
-              {/* Social proof strip */}
               <div
                 className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground"
                 aria-label="User trust indicators"
