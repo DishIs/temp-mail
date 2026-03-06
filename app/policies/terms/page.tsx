@@ -1,12 +1,7 @@
 // app/terms-of-service/page.tsx
 "use client";
 
-import { Scale, ShieldAlert, AlertTriangle, Gavel, FileWarning, Check, XCircle, Ban, ServerOff, Info } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AppHeader } from "@/components/nLHeader"; 
+import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -19,219 +14,216 @@ export default function TermsOfServicePage() {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-background">
         <AppHeader initialSession={session} />
-        
-        <div className="container max-w-5xl mx-auto py-12 px-4 sm:px-6">
-          
-          {/* Header Section */}
-          <div className="text-center mb-12 space-y-4">
-            <Badge variant="outline" className="mb-4">
-              Community Guidelines
-            </Badge>
-            <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
+
+        <div className="max-w-2xl mx-auto py-20 px-6">
+
+          {/* Header */}
+          <div className="mb-16">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-4">
+              Legal · Community Guidelines
+            </p>
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground mb-5">
               Terms of Service
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base text-muted-foreground leading-relaxed max-w-xl">
               To ensure FreeCustom.Email remains a safe and reliable resource, all users must adhere to these guidelines.
             </p>
           </div>
 
-          <div className="space-y-8">
-            
-            {/* CORE PRINCIPLES */}
-            <Card className="border-primary/20 bg-primary/5">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <Scale className="w-6 h-6 text-primary" /> Core Principles
-                    </CardTitle>
-                    <CardDescription>
-                        Use FreeCustom.Email wisely and legally.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                        <h3 className="font-semibold flex items-center gap-2">
-                            <Check className="w-4 h-4 text-green-500" /> Lawful
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            You agree not to use our service for any illegal activities, including fraud, harassment, or distributing malicious software.
-                        </p>
-                    </div>
-                    <div className="space-y-2">
-                        <h3 className="font-semibold flex items-center gap-2">
-                            <Check className="w-4 h-4 text-green-500" /> Respectful
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            Do not use our service to send spam, unsolicited bulk messages, or engage in abusive behavior towards others.
-                        </p>
-                    </div>
-                    <div className="space-y-2">
-                        <h3 className="font-semibold flex items-center gap-2">
-                            <Check className="w-4 h-4 text-green-500" /> Ethical
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            Use it for intended purposes (testing, verifying, privacy). Do not circumvent legitimate security measures of other services.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
+          <div className="space-y-16">
 
-            {/* NATURE OF SERVICE */}
-            <div className="grid md:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Info className="w-5 h-5" /> Nature of Service
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm text-muted-foreground">
-                        <p>
-                            <strong className="text-foreground">Temporary & Disposable:</strong> Emails are not intended for long-term storage. We are not responsible for data loss due to the ephemeral nature of the service.
-                        </p>
-                        <p>
-                            <strong className="text-foreground">No Account Creation:</strong> You use the service without a formal account/password (unless upgrading to Pro). This underscores its temporary nature.
-                        </p>
-                        <p>
-                            <strong className="text-foreground">No Permanent Access:</strong> Saving emails in your history does not guarantee permanent access to that address or its contents.
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-amber-500/20 bg-amber-500/5">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
-                            <AlertTriangle className="w-5 h-5" /> Public Nature Warning
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                        <p>
-                            While our system strives to provide unique inboxes, the fundamental design of temp mail means there is <strong className="text-foreground">no inherent security</strong> for the content of emails received.
-                        </p>
-                        <p className="font-medium text-foreground">
-                            Do not send or receive sensitive personal information (passwords, financial details, etc.) through our service.
-                        </p>
-                        <p>
-                            Treat messages as potentially viewable if an address were to be re-used or guessed by others.
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* PROHIBITED ACTIVITIES */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Ban className="w-6 h-6 text-destructive" /> Prohibited Activities
-                </h2>
-                <Card>
-                    <CardContent className="pt-6">
-                        <ul className="grid sm:grid-cols-2 gap-4">
-                            {[
-                                "Illegal Use (Violating local/international laws)",
-                                "Spamming & Unsolicited bulk messages",
-                                "Phishing & Malware distribution",
-                                "Harassment, Stalking, or Defamation",
-                                "Impersonation for malicious purposes",
-                                "Automated Abuse (Bots/Scripts)",
-                                "Circumventing Security Measures",
-                                "Unauthorized Commercial Resale"
-                            ].map((item, i) => (
-                                <li key={i} className="flex items-center gap-3 text-sm">
-                                    <XCircle className="w-4 h-4 text-destructive shrink-0" />
-                                    <span>{item}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </CardContent>
-                </Card>
+            {/* Core Principles */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                01 — Core Principles
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">Use FreeCustom.Email wisely and legally.</p>
+              <div className="space-y-0">
+                {[
+                  {
+                    title: "Lawful",
+                    body: "You agree not to use our service for any illegal activities, including fraud, harassment, or distributing malicious software."
+                  },
+                  {
+                    title: "Respectful",
+                    body: "Do not use our service to send spam, unsolicited bulk messages, or engage in abusive behavior towards others."
+                  },
+                  {
+                    title: "Ethical",
+                    body: "Use it for intended purposes (testing, verifying, privacy). Do not circumvent legitimate security measures of other services."
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="border-t border-border py-5 last:pb-0">
+                    <p className="text-sm font-medium text-foreground mb-1.5">{item.title}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
+                  </div>
+                ))}
+              </div>
             </section>
 
-            {/* API TERMS */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <ServerOff className="w-4 h-4" /> API Terms
-                </h2>
-                <Card>
-                    <CardContent className="pt-6 space-y-4 text-sm text-muted-foreground">
-                        <p>
-                            Use of the FreeCustom.Email <strong className="text-foreground">API</strong> (api2.freecustom.email) and related developer products is subject to these Terms of Service and our <Link href="/policies/privacy" className="text-primary underline">Privacy Policy</Link>.
-                        </p>
-                        <p>
-                            <strong className="text-foreground">Acceptable use:</strong> You may use the API only for lawful purposes—e.g. testing, development, automation, and temporary inbox needs. You must not use the API to send spam, phish, harass, or circumvent other services’ security. Rate limits and plan-specific feature restrictions (OTP, WebSocket, attachments, custom domains) apply as described in the API documentation and pricing.
-                        </p>
-                        <p>
-                            <strong className="text-foreground">Credentials:</strong> You are responsible for keeping your API keys secure. Do not expose keys in client-side code or public repositories. We may revoke keys or suspend access for abuse or violation of these terms.
-                        </p>
-                        <p>
-                            <strong className="text-foreground">Data:</strong> Data processed via the API (inbox addresses, messages, OTPs) is subject to the same data retention and deletion policies as the web app. Account deletion applies to both app and API usage.
-                        </p>
-                    </CardContent>
-                </Card>
+            <div className="border-t border-border" />
+
+            {/* Nature of Service */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                02 — Nature of Service
+              </h2>
+              <div className="space-y-0 text-sm text-muted-foreground">
+                {[
+                  {
+                    title: "Temporary & Disposable",
+                    body: "Emails are not intended for long-term storage. We are not responsible for data loss due to the ephemeral nature of the service."
+                  },
+                  {
+                    title: "No Account Creation",
+                    body: "You use the service without a formal account/password (unless upgrading to Pro). This underscores its temporary nature."
+                  },
+                  {
+                    title: "No Permanent Access",
+                    body: "Saving emails in your history does not guarantee permanent access to that address or its contents."
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="border-t border-border py-5 last:pb-0">
+                    <span className="font-medium text-foreground">{item.title}: </span>
+                    {item.body}
+                  </div>
+                ))}
+              </div>
             </section>
 
-            {/* LEGAL ACCORDION */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Gavel className="w-6 h-6" /> Legal Disclosures
-                </h2>
-                <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="item-1">
-                        <AccordionTrigger>
-                            <div className="flex items-center gap-2">
-                                <ShieldAlert className="w-4 h-4" />
-                                Right to Moderate & Terminate
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="text-muted-foreground">
-                            <p className="mb-2">FreeCustom.Email reserves the right, at our sole discretion, to:</p>
-                            <ul className="list-disc pl-5 space-y-1">
-                                <li>Monitor usage to ensure compliance with our terms.</li>
-                                <li>Block access from certain IP addresses or ranges if abuse is detected.</li>
-                                <li>Remove or block access to email addresses found to be involved in prohibited activities.</li>
-                                <li>Terminate or suspend access to our service for users who violate these terms, without prior notice.</li>
-                            </ul>
-                        </AccordionContent>
-                    </AccordionItem>
+            <div className="border-t border-border" />
 
-                    <AccordionItem value="item-2">
-                        <AccordionTrigger>
-                            <div className="flex items-center gap-2">
-                                <FileWarning className="w-4 h-4" />
-                                Disclaimer of Warranties
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="text-muted-foreground">
-                            FreeCustom.Email is provided "as is" and "as available" without any warranties, express or implied. We do not guarantee that the service will be uninterrupted, error-free, or completely secure.
-                        </AccordionContent>
-                    </AccordionItem>
-
-                    <AccordionItem value="item-3">
-                        <AccordionTrigger>
-                             <div className="flex items-center gap-2">
-                                <ServerOff className="w-4 h-4" />
-                                Limitation of Liability
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="text-muted-foreground">
-                            By using our service, you agree that FreeCustom.Email and its operators are not liable for any damages, data loss, or consequences arising from your use of, or inability to use, the service.
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            </section>
-
-            {/* AGREEMENT FOOTER */}
-            <div className="mt-12 text-center p-8 border rounded-xl bg-muted/30">
-                <h3 className="text-lg font-semibold mb-2">Your Agreement</h3>
-                <p className="text-sm text-muted-foreground mb-6 max-w-xl mx-auto">
-                    By accessing or using FreeCustom.Email, you signify your agreement to abide by the spirit of these guidelines.
+            {/* Public Nature Warning */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                03 — Public Nature Warning
+              </h2>
+              <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+                <p>
+                  While our system strives to provide unique inboxes, the fundamental design of temp mail means there is <span className="font-medium text-foreground">no inherent security</span> for the content of emails received.
                 </p>
-                <div className="flex justify-center gap-4">
-                    <Link href="/">
-                        <Button>Accept & Continue to Inbox</Button>
-                    </Link>
-                    <Link href="/policies/privacy">
-                        <Button variant="outline">View Privacy Policy</Button>
-                    </Link>
-                </div>
-            </div>
+                <p className="font-medium text-foreground">
+                  Do not send or receive sensitive personal information (passwords, financial details, etc.) through our service.
+                </p>
+                <p>
+                  Treat messages as potentially viewable if an address were to be re-used or guessed by others.
+                </p>
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* Prohibited Activities */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                04 — Prohibited Activities
+              </h2>
+              <div className="space-y-0">
+                {[
+                  "Illegal Use (Violating local/international laws)",
+                  "Spamming & Unsolicited bulk messages",
+                  "Phishing & Malware distribution",
+                  "Harassment, Stalking, or Defamation",
+                  "Impersonation for malicious purposes",
+                  "Automated Abuse (Bots/Scripts)",
+                  "Circumventing Security Measures",
+                  "Unauthorized Commercial Resale",
+                ].map((item, i) => (
+                  <div key={i} className="border-t border-border py-3 text-sm text-muted-foreground">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* API Terms */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                05 — API Terms
+              </h2>
+              <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+                <p>
+                  Use of the FreeCustom.Email <span className="font-medium text-foreground">API</span> (api2.freecustom.email) and related developer products is subject to these Terms of Service and our{" "}
+                  <Link
+                    href="/policies/privacy"
+                    className="text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>.
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Acceptable use:</span> You may use the API only for lawful purposes—e.g. testing, development, automation, and temporary inbox needs. You must not use the API to send spam, phish, harass, or circumvent other services' security. Rate limits and plan-specific feature restrictions (OTP, WebSocket, attachments, custom domains) apply as described in the API documentation and pricing.
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Credentials:</span> You are responsible for keeping your API keys secure. Do not expose keys in client-side code or public repositories. We may revoke keys or suspend access for abuse or violation of these terms.
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Data:</span> Data processed via the API (inbox addresses, messages, OTPs) is subject to the same data retention and deletion policies as the web app. Account deletion applies to both app and API usage.
+                </p>
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* Legal Disclosures */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-8">
+                06 — Legal Disclosures
+              </h2>
+              <div className="space-y-0">
+                {[
+                  {
+                    title: "Right to Moderate & Terminate",
+                    body: (
+                      <>
+                        <p className="mb-3">FreeCustom.Email reserves the right, at our sole discretion, to:</p>
+                        <div className="space-y-1.5 pl-4 border-l border-border text-muted-foreground">
+                          <p>Monitor usage to ensure compliance with our terms.</p>
+                          <p>Block access from certain IP addresses or ranges if abuse is detected.</p>
+                          <p>Remove or block access to email addresses found to be involved in prohibited activities.</p>
+                          <p>Terminate or suspend access to our service for users who violate these terms, without prior notice.</p>
+                        </div>
+                      </>
+                    )
+                  },
+                  {
+                    title: "Disclaimer of Warranties",
+                    body: "FreeCustom.Email is provided \"as is\" and \"as available\" without any warranties, express or implied. We do not guarantee that the service will be uninterrupted, error-free, or completely secure."
+                  },
+                  {
+                    title: "Limitation of Liability",
+                    body: "By using our service, you agree that FreeCustom.Email and its operators are not liable for any damages, data loss, or consequences arising from your use of, or inability to use, the service."
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="border-t border-border py-6 last:pb-0">
+                    <p className="text-sm font-medium text-foreground mb-3">{item.title}</p>
+                    <div className="text-sm text-muted-foreground leading-relaxed">{item.body}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* Agreement Footer */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                Your Agreement
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xl">
+                By accessing or using FreeCustom.Email, you signify your agreement to abide by the spirit of these guidelines.
+              </p>
+              <div className="flex gap-3">
+                <Link href="/">
+                  <Button size="sm">Accept & Continue to Inbox</Button>
+                </Link>
+                <Link href="/policies/privacy">
+                  <Button variant="outline" size="sm">View Privacy Policy</Button>
+                </Link>
+              </div>
+            </section>
 
           </div>
         </div>

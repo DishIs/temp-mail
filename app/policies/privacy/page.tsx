@@ -1,11 +1,7 @@
 // app/privacy-policy/page.tsx
 "use client";
 
-import { Shield, Lock, Eye, FileText, Server, AlertTriangle, CheckCircle2, Globe, Mail } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { AppHeader } from "@/components/nLHeader"; // Adjust path if needed
+import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -17,207 +13,208 @@ export default function PrivacyPolicyPage() {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-background">
         <AppHeader initialSession={session} />
-        
-        <div className="container max-w-4xl mx-auto py-12 px-4 sm:px-6">
-          
-          {/* Header Section */}
-          <div className="text-center mb-12 space-y-4">
-            <div className="flex justify-center mb-4">
-                <div className="p-3 bg-primary/10 rounded-full">
-                    <Shield className="w-10 h-10 text-primary" />
-                </div>
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
+
+        <div className="max-w-2xl mx-auto py-20 px-6">
+
+          {/* Header */}
+          <div className="mb-16">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-4">
+              Legal · Privacy Policy
+            </p>
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground mb-5">
               Privacy Policy
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base text-muted-foreground leading-relaxed max-w-xl">
               Transparency is our core value. Please read this document carefully to understand how your data is handled.
             </p>
-            <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20">
-               <AlertTriangle className="w-4 h-4 mr-2" />
-               Important: You should have no expectation of privacy when using public inboxes.
-            </div>
+            <p className="mt-5 text-xs font-medium text-foreground bg-muted/20 border border-border rounded-lg px-4 py-3">
+              Important: You should have no expectation of privacy when using public inboxes.
+            </p>
           </div>
 
-          <div className="space-y-8">
-            
-            {/* GOOGLE USER DATA SECTION (New Requirement) */}
-            <Card className="border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/10">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                        <Globe className="w-5 h-5" /> Google User Data Policy
-                    </CardTitle>
-                    <CardDescription>
-                        Specific details regarding our integration with Google Services (Login/Auth).
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <h3 className="font-semibold text-foreground">Data Accessed</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            When you choose to sign in using Google, our application accesses the following specific types of Google user data:
-                        </p>
-                        <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                            <li><strong>Basic Profile Information:</strong> Your name and profile picture URL.</li>
-                            <li><strong>Email Address:</strong> The primary email address associated with your Google account.</li>
-                        </ul>
+          <div className="space-y-16">
+
+            {/* Google User Data */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                01 — Google User Data Policy
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                Specific details regarding our integration with Google Services (Login/Auth).
+              </p>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-medium text-foreground mb-3">Data Accessed</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                    When you choose to sign in using Google, our application accesses the following specific types of Google user data:
+                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="border-t border-border pt-3">
+                      <span className="font-medium text-foreground">Basic Profile Information</span>
+                      <p className="mt-0.5">Your name and profile picture URL.</p>
                     </div>
-                    
-                    <Separator className="bg-blue-200 dark:bg-blue-800" />
-
-                    <div className="space-y-2">
-                        <h3 className="font-semibold text-foreground">Data Usage</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            We use the Google user data we access solely for the following purposes:
-                        </p>
-                        <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                            <li><strong>Authentication:</strong> To verify your identity and allow you to log in to your dashboard securely without creating a separate password.</li>
-                            <li><strong>Account Management:</strong> To display your name and avatar in the application header and user profile section.</li>
-                            <li><strong>Communication:</strong> To send critical transactional emails (e.g., subscription receipts) to your verified email address. We do not sell your data or use it for advertising.</li>
-                        </ul>
+                    <div className="border-t border-border pt-3">
+                      <span className="font-medium text-foreground">Email Address</span>
+                      <p className="mt-0.5">The primary email address associated with your Google account.</p>
                     </div>
-                </CardContent>
-            </Card>
-
-            {/* PUBLIC INBOXES */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Eye className="w-6 h-6 text-primary" /> Public Inboxes
-                </h2>
-                <Card>
-                    <CardContent className="pt-6 space-y-4">
-                        <div className="flex gap-3">
-                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                            <div>
-                                <h3 className="font-medium">All inboxes are public</h3>
-                                <p className="text-sm text-muted-foreground">Any message sent to FreeCustom.Email addresses (on public domains) can be read by any user who guesses the inbox name.</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <Lock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                            <div>
-                                <h3 className="font-medium">No sign-in required for public access</h3>
-                                <p className="text-sm text-muted-foreground">There are no security measures to access public inboxes or view messages contained within them.</p>
-                            </div>
-                        </div>
-                        <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm font-medium text-center">
-                            Do not send sensitive information (home address, passwords, phone numbers) to these addresses.
-                        </div>
-                    </CardContent>
-                </Card>
-            </section>
-
-            {/* SECURITY NOTICE */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Lock className="w-6 h-6 text-primary" /> Security Notice
-                </h2>
-                <div className="grid md:grid-cols-2 gap-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Inbox Aliases</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                Inbox aliases provide basic obfuscation but are <strong>not secure</strong>. The generation algorithm is public and reversible. Do not rely on aliases for confidentiality.
-                            </p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Anonymity</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                FreeCustom.Email is <strong>not designed for anonymity</strong> and is not a replacement for anonymous re-mailers or VPN services.
-                            </p>
-                        </CardContent>
-                    </Card>
+                  </div>
                 </div>
+
+                <div className="border-t border-border pt-6">
+                  <h3 className="text-sm font-medium text-foreground mb-3">Data Usage</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                    We use the Google user data we access solely for the following purposes:
+                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="border-t border-border pt-3">
+                      <span className="font-medium text-foreground">Authentication</span>
+                      <p className="mt-0.5">To verify your identity and allow you to log in to your dashboard securely without creating a separate password.</p>
+                    </div>
+                    <div className="border-t border-border pt-3">
+                      <span className="font-medium text-foreground">Account Management</span>
+                      <p className="mt-0.5">To display your name and avatar in the application header and user profile section.</p>
+                    </div>
+                    <div className="border-t border-border pt-3">
+                      <span className="font-medium text-foreground">Communication</span>
+                      <p className="mt-0.5">To send critical transactional emails (e.g., subscription receipts) to your verified email address. We do not sell your data or use it for advertising.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </section>
 
-            {/* ACCOUNT DELETION */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Shield className="w-6 h-6 text-primary" /> Account Deletion & Data Retention
-                </h2>
-                <Card>
-                    <CardContent className="pt-6 space-y-4 text-sm text-muted-foreground">
-                        <p>
-                            You may request account deletion from your profile (Settings → Delete Account). Deletion is <strong className="text-foreground">scheduled</strong> with a 7-day waiting period. During that time you can cancel by logging in and choosing &quot;Do not delete my account&quot; or using the link in the confirmation email.
-                        </p>
-                        <p>
-                            <strong className="text-foreground">Deleted immediately upon request:</strong> stored emails, attachments, inbox addresses, Redis mailbox data, and user preferences. API keys are revoked. Subscriptions are set to cancelled.
-                        </p>
-                        <p>
-                            <strong className="text-foreground">After the 7-day period:</strong> your account is permanently converted to a tombstone. We keep only identifiers needed for billing/legal (e.g. payment logs). Your email may be blocked from re-registering for a short cooldown to prevent abuse.
-                        </p>
-                        <p>
-                            For the API, the same account and deletion policy applies; deleting your account removes app and API data.
-                        </p>
-                    </CardContent>
-                </Card>
+            <div className="border-t border-border" />
+
+            {/* Public Inboxes */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                02 — Public Inboxes
+              </h2>
+              <div className="space-y-5 text-sm text-muted-foreground">
+                <div className="border-t border-border pt-5 first:border-t-0 first:pt-0">
+                  <p className="font-medium text-foreground mb-1">All inboxes are public</p>
+                  <p className="leading-relaxed">Any message sent to FreeCustom.Email addresses (on public domains) can be read by any user who guesses the inbox name.</p>
+                </div>
+                <div className="border-t border-border pt-5">
+                  <p className="font-medium text-foreground mb-1">No sign-in required for public access</p>
+                  <p className="leading-relaxed">There are no security measures to access public inboxes or view messages contained within them.</p>
+                </div>
+              </div>
+              <p className="mt-6 text-sm font-medium text-foreground bg-muted/20 border border-border rounded-lg px-4 py-3">
+                Do not send sensitive information (home address, passwords, phone numbers) to these addresses.
+              </p>
             </section>
 
-            {/* DO NOT SELL */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-6 h-6 text-primary" /> Sale of Personal Information
-                </h2>
-                <Card>
-                    <CardContent className="pt-6 text-sm text-muted-foreground">
-                        <p className="mb-4">
-                            We do <strong className="text-foreground">not sell</strong> your personal information. We do not share your data with third parties for their marketing or for &quot;sale&quot; as defined under the CCPA/CPRA. For more options and to submit a &quot;Do Not Sell or Share My Personal Information&quot; request, see our <Link href="/policies/do-not-sell" className="text-primary underline">Do Not Sell My Personal Information</Link> page.
-                        </p>
-                    </CardContent>
-                </Card>
+            <div className="border-t border-border" />
+
+            {/* Security Notice */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                03 — Security Notice
+              </h2>
+              <div className="space-y-5 text-sm text-muted-foreground">
+                <div className="border-t border-border pt-5 first:border-t-0 first:pt-0">
+                  <p className="font-medium text-foreground mb-1">Inbox Aliases</p>
+                  <p className="leading-relaxed">
+                    Inbox aliases provide basic obfuscation but are <span className="font-medium text-foreground">not secure</span>. The generation algorithm is public and reversible. Do not rely on aliases for confidentiality.
+                  </p>
+                </div>
+                <div className="border-t border-border pt-5">
+                  <p className="font-medium text-foreground mb-1">Anonymity</p>
+                  <p className="leading-relaxed">
+                    FreeCustom.Email is <span className="font-medium text-foreground">not designed for anonymity</span> and is not a replacement for anonymous re-mailers or VPN services.
+                  </p>
+                </div>
+              </div>
             </section>
 
-            {/* LOGGING & TRACKING */}
-            <section className="space-y-4">
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Server className="w-6 h-6 text-primary" /> Logging & Data Collection
-                </h2>
-                <Card>
-                    <CardContent className="pt-6 grid gap-6">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 font-medium">
-                                <FileText className="w-4 h-4 text-muted-foreground" />
-                                <span>Connection Logging</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground pl-6">
-                                All email and web connections to our servers are recorded to help prevent abuse and improve service reliability. We cannot provide users with information about specific emails or their delivery status.
-                            </p>
-                        </div>
-                        <Separator />
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 font-medium">
-                                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                <span>No User Tracking</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground pl-6">
-                                We do <strong>not track users</strong> across the web or use cookies to store personal profiling information.
-                            </p>
-                            <ul className="list-disc pl-10 text-sm text-muted-foreground space-y-1">
-                                <li>The only local storage used is for the most recent inbox you visited (for convenience).</li>
-                                <li>We use an analytics pixel to collect <strong>aggregate, non-identifiable data only</strong>.</li>
-                            </ul>
-                        </div>
-                    </CardContent>
-                </Card>
-            </section>
+            <div className="border-t border-border" />
 
-            {/* CONTACT */}
-            <div className="mt-12 text-center p-8 border rounded-xl bg-muted/20">
-                <h3 className="text-lg font-semibold mb-2">Questions regarding this policy?</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                    If you have concerns about how your data is handled, please contact us.
+            {/* Account Deletion */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                04 — Account Deletion & Data Retention
+              </h2>
+              <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+                <p>
+                  You may request account deletion from your profile (Settings → Delete Account). Deletion is <span className="font-medium text-foreground">scheduled</span> with a 7-day waiting period. During that time you can cancel by logging in and choosing &quot;Do not delete my account&quot; or using the link in the confirmation email.
                 </p>
-                <div className="inline-flex items-center gap-2 text-primary hover:underline cursor-pointer">
-                    <Mail className="w-4 h-4" />
-                    <a href="mailto:privacy@freecustom.email">privacy@freecustom.email</a>
+                <p>
+                  <span className="font-medium text-foreground">Deleted immediately upon request:</span> stored emails, attachments, inbox addresses, Redis mailbox data, and user preferences. API keys are revoked. Subscriptions are set to cancelled.
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">After the 7-day period:</span> your account is permanently converted to a tombstone. We keep only identifiers needed for billing/legal (e.g. payment logs). Your email may be blocked from re-registering for a short cooldown to prevent abuse.
+                </p>
+                <p>
+                  For the API, the same account and deletion policy applies; deleting your account removes app and API data.
+                </p>
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* Do Not Sell */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                05 — Sale of Personal Information
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                We do <span className="font-medium text-foreground">not sell</span> your personal information. We do not share your data with third parties for their marketing or for &quot;sale&quot; as defined under the CCPA/CPRA. For more options and to submit a &quot;Do Not Sell or Share My Personal Information&quot; request, see our{" "}
+                <Link
+                  href="/policies/do-not-sell"
+                  className="text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
+                >
+                  Do Not Sell My Personal Information
+                </Link>{" "}
+                page.
+              </p>
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* Logging & Tracking */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                06 — Logging & Data Collection
+              </h2>
+              <div className="space-y-5 text-sm text-muted-foreground">
+                <div>
+                  <p className="font-medium text-foreground mb-2">Connection Logging</p>
+                  <p className="leading-relaxed">
+                    All email and web connections to our servers are recorded to help prevent abuse and improve service reliability. We cannot provide users with information about specific emails or their delivery status.
+                  </p>
                 </div>
-            </div>
+                <div className="border-t border-border pt-5">
+                  <p className="font-medium text-foreground mb-2">No User Tracking</p>
+                  <p className="leading-relaxed mb-3">
+                    We do <span className="font-medium text-foreground">not track users</span> across the web or use cookies to store personal profiling information.
+                  </p>
+                  <div className="space-y-1.5 text-sm text-muted-foreground pl-4 border-l border-border">
+                    <p>The only local storage used is for the most recent inbox you visited (for convenience).</p>
+                    <p>We use an analytics pixel to collect <span className="font-medium text-foreground">aggregate, non-identifiable data only</span>.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* Contact */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                Questions regarding this policy?
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                If you have concerns about how your data is handled, please contact us.
+              </p>
+              <a
+                href="mailto:privacy@freecustom.email"
+                className="text-sm text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
+              >
+                privacy@freecustom.email
+              </a>
+            </section>
 
           </div>
         </div>
