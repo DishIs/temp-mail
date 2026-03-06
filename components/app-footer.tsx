@@ -12,46 +12,47 @@ import {
 import { LATEST_CHANGELOG_VERSION } from "@/lib/changelog";
 import { WhatsNewModal } from "./WhatsNewModal";
 
-const FOOTER_LINKS = [
+// ── link data ─────────────────────────────────────────────────────────────
+const FOOTER_COLS = [
   {
-    heading: "Product",
+    heading: "Products",
     links: [
-      { label: "Pricing",          href: "/pricing",            external: false },
-      { label: "FAQ",              href: "/faq",                external: false },
-      { label: "API",              href: "/api",                external: false },
-      { label: "Updates",          href: null,                  external: false, action: "changelog" },
-      { label: "Feedback",         href: "/feedback",           external: false },
-      { label: "Blog",             href: "/blog",               external: false },
+      { label: "Pricing",    href: "/pricing",    external: false },
+      { label: "FAQ",        href: "/faq",         external: false },
+      { label: "API",        href: "/api",         external: false },
+      { label: "Updates",    href: null,           external: false, action: "changelog" },
+      { label: "Feedback",   href: "/feedback",   external: false },
+      { label: "Blog",       href: "/blog",        external: false },
     ],
   },
   {
     heading: "Developers",
     links: [
-      { label: "API Overview",     href: "/api",                external: false },
-      { label: "Documentation",   href: "/api/docs",            external: false },
-      { label: "Pricing",         href: "/api/pricing",         external: false },
-      { label: "Status",           href: "https://status.freecustom.email", external: true },
-      { label: "Changelog",       href: "/api/docs/changelog",  external: false },
-      { label: "Open Source",       href: "/open-source",  external: false },
+      { label: "API Overview",   href: "/api",                 external: false },
+      { label: "Documentation",  href: "/api/docs",            external: false },
+      { label: "API Pricing",    href: "/api/pricing",         external: false },
+      { label: "Status",         href: "https://status.freecustom.email", external: true },
+      { label: "Changelog",      href: "/api/docs/changelog",  external: false },
+      { label: "Open Source",    href: "/open-source",         external: false },
     ],
   },
   {
     heading: "Legal",
     links: [
-      { label: "Privacy Policy",   href: "/policies/privacy",  external: false },
-      { label: "Do Not Sell My Personal Information", href: "/policies/do-not-sell", external: false },
-      { label: "Cookie Policy",    href: "/policies/cookie",   external: false },
-      { label: "Terms of Service", href: "/policies/terms",    external: false },
-      { label: "Refund Policy",    href: "/policies/refund",   external: false },
+      { label: "Privacy Policy",      href: "/policies/privacy",    external: false },
+      { label: "Do Not Sell My Info", href: "/policies/do-not-sell", external: false },
+      { label: "Cookie Policy",       href: "/policies/cookie",     external: false },
+      { label: "Terms of Service",    href: "/policies/terms",      external: false },
+      { label: "Refund Policy",       href: "/policies/refund",     external: false },
     ],
   },
   {
-    heading: "Support",
+    heading: "Company",
     links: [
-      { label: "Contact",          href: "/contact",            external: false },
-      { label: "Discord",          href: "https://discord.com/invite/Ztp7kT2QBz",                    external: true },
-      { label: "Reddit",           href: "https://www.reddit.com/r/FreeCustomEmail/",                external: true },
-      { label: "GitHub",           href: "https://github.com/DishIs",                      external: true },
+      { label: "Contact",  href: "/contact",                                          external: false },
+      { label: "Discord",  href: "https://discord.com/invite/Ztp7kT2QBz",             external: true  },
+      { label: "Reddit",   href: "https://www.reddit.com/r/FreeCustomEmail/",         external: true  },
+      { label: "GitHub",   href: "https://github.com/DishIs",                         external: true  },
     ],
   },
 ];
@@ -65,19 +66,31 @@ const PAYMENT_METHODS = [
   { icon: SiGooglepay,       label: "Google Pay" },
 ];
 
+const SOCIAL_LINKS = [
+  { icon: SiGithub,  href: "https://github.com/DishIs/temp-mail",             label: "GitHub"  },
+  { icon: SiReddit,  href: "https://www.reddit.com/r/FreeCustomEmail/",        label: "Reddit"  },
+  { icon: SiDiscord, href: "https://discord.com/invite/Ztp7kT2QBz",            label: "Discord" },
+];
+
+const BOTTOM_LINKS = [
+  { label: "Terms of Service", href: "/policies/terms"    },
+  { label: "Privacy Policy",   href: "/policies/privacy"  },
+  { label: "Report Abuse",     href: "/contact"           },
+];
+
 export function AppFooter() {
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
-  const [hasSeenLatest, setHasSeenLatest]   = useState(true);
-  const [theme, setTheme]                   = useState("light");
+  const [hasSeenLatest,  setHasSeenLatest]  = useState(true);
+  const [theme, setThemeState]              = useState("light");
 
   useEffect(() => {
-    const seenVersion = localStorage.getItem("seenChangelogVersion");
-    if (seenVersion !== LATEST_CHANGELOG_VERSION) setHasSeenLatest(false);
+    const seen = localStorage.getItem("seenChangelogVersion");
+    if (seen !== LATEST_CHANGELOG_VERSION) setHasSeenLatest(false);
   }, []);
 
   useEffect(() => {
     const update = () =>
-      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+      setThemeState(document.documentElement.classList.contains("dark") ? "dark" : "light");
     update();
     const obs = new MutationObserver(update);
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
@@ -92,88 +105,37 @@ export function AppFooter() {
 
   return (
     <>
-      <footer className="border-t border-border bg-muted/20">
+      {/* ── main footer grid ─────────────────────────────────────────── */}
+      <footer className="border-t border-border bg-background text-foreground">
 
-        <div className="border-b border-border py-4">
-          <div className="container mx-auto max-w-4xl flex flex-col items-center gap-3 px-4 sm:flex-row sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              Secure checkout · 200+ countries · All major cards &amp; wallets
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              {PAYMENT_METHODS.map(({ icon: Icon, label }) => (
-                <span
-                  key={label}
-                  title={label}
-                  className="flex items-center justify-center rounded border border-border/70 bg-background px-2 py-1 text-muted-foreground/70 transition-colors hover:text-muted-foreground"
-                >
-                  <Icon className="h-4 w-auto" />
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Firecrawl-style grid: full-width columns separated by borders */}
+        <div className="border-b border-border">
+          <div className="max-w-[90rem] mx-auto grid grid-cols-2 sm:grid-cols-4 divide-x divide-border">
+            {FOOTER_COLS.map(({ heading, links }) => (
+              <div key={heading} className="px-8 py-10">
+                {/* Column heading row */}
+                <div className="border-b border-border pb-4 mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-foreground">
+                    {heading}
+                  </p>
+                </div>
 
-        <div className="container mx-auto max-w-4xl px-4 py-10">
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
-
-            <div className="col-span-2 sm:col-span-1 space-y-4">
-              <p className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</p>
-              <p className="text-xs leading-relaxed text-muted-foreground max-w-[180px]">
-                Disposable email with smart features. Private, fast, and free.
-              </p>
-
-              {/* Social icons */}
-              <div className="flex items-center gap-3">
-                {[
-                  { icon: SiGithub,  href: "https://github.com/DishIs/temp-mail",              label: "GitHub"  },
-                  { icon: SiReddit,  href: "https://www.reddit.com/r/FreeCustomEmail/",         label: "Reddit"  },
-                  { icon: SiDiscord, href: "https://discord.com/invite/Ztp7kT2QBz",             label: "Discord" },
-                ].map(({ icon: Icon, href, label }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
-                    className="text-muted-foreground/60 transition-colors hover:text-foreground"
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                ))}
-              </div>
-
-              {/* Status badge */}
-              <iframe
-                src={`https://status.freecustom.email/badge?theme=${theme}`}
-                width="190"
-                height="30"
-                frameBorder="0"
-                scrolling="no"
-                style={{ colorScheme: "normal" }}
-                title="Service status"
-              />
-            </div>
-
-            {/* Link columns */}
-            {FOOTER_LINKS.map(({ heading, links }) => (
-              <div key={heading} className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  {heading}
-                </p>
-                <ul className="space-y-2">
-                  {links.map(({ label, href, external, action }) => {
-                    const cls =
-                      "text-sm text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1";
+                {/* Link rows — each separated by a border */}
+                <ul className="divide-y divide-border">
+                  {links.map(({ label, href, external, action }: any) => {
+                    const cls = "flex items-center justify-between py-3 text-sm text-muted-foreground hover:text-foreground transition-colors group";
 
                     if (action === "changelog") {
                       return (
                         <li key={label}>
-                          <button onClick={openChangelog} className={`${cls} relative`}>
-                            <Gift className="h-3 w-3" />
-                            {label}
+                          <button onClick={openChangelog} className={`${cls} w-full text-left relative`}>
+                            <span className="flex items-center gap-2">
+                              <Gift className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                              {label}
+                            </span>
                             {!hasSeenLatest && (
-                              <span className="absolute -top-0.5 -right-2 flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                              <span className="flex h-1.5 w-1.5 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-1.5 w-1.5 rounded-full bg-blue-400 opacity-75" />
                                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-500" />
                               </span>
                             )}
@@ -187,7 +149,7 @@ export function AppFooter() {
                         {external ? (
                           <a href={href!} target="_blank" rel="noopener noreferrer" className={cls}>
                             {label}
-                            <ExternalLink className="h-2.5 w-2.5 opacity-50" />
+                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
                           </a>
                         ) : (
                           <Link href={href!} className={cls}>
@@ -203,23 +165,85 @@ export function AppFooter() {
           </div>
         </div>
 
-        <div className="border-t border-border py-4">
-          <div className="container mx-auto max-w-4xl flex flex-col items-center justify-between gap-3 px-4 sm:flex-row">
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} DishIs Technologies. All rights reserved.
-            </p>
-            <a
-              href="https://www.buymeacoffee.com/dishantsinghdev"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
-                alt="Buy Me A Coffee"
-                className="h-7 w-auto"
-              />
-            </a>
+        {/* ── brand + status row ──────────────────────────────────────── */}
+        <div className="border-b border-border">
+          <div className="max-w-[90rem] mx-auto grid grid-cols-2 sm:grid-cols-4 divide-x divide-border">
+
+            {/* Brand */}
+            <div className="px-8 py-8 col-span-2 sm:col-span-1 border-r border-border space-y-4">
+              <p className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</p>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-[180px]">
+                Disposable email with smart features. Private, fast, and free.
+              </p>
+              <div className="flex items-center gap-3">
+                {SOCIAL_LINKS.map(({ icon: Icon, href, label }) => (
+                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                    className="text-muted-foreground/60 hover:text-foreground transition-colors">
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="px-8 py-8 col-span-2 sm:col-span-1 flex items-start gap-2">
+              <span className="mt-0.5 h-2 w-2 rounded-full bg-green-500 shrink-0" />
+              <div>
+                <p className="text-sm text-foreground font-medium">All systems normal</p>
+                <a
+                  href="https://status.freecustom.email"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-border"
+                >
+                  status.freecustom.email
+                </a>
+              </div>
+            </div>
+
+            {/* Payment methods */}
+            <div className="px-8 py-8 col-span-2 sm:col-span-2 border-l border-border space-y-3">
+              <p className="text-xs text-muted-foreground">Secure checkout · 200+ countries</p>
+              <div className="flex flex-wrap gap-1.5">
+                {PAYMENT_METHODS.map(({ icon: Icon, label }) => (
+                  <span key={label} title={label}
+                    className="flex items-center justify-center rounded border border-border bg-muted/20 px-2 py-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors">
+                    <Icon className="h-4 w-auto" />
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* ── bottom bar ──────────────────────────────────────────────── */}
+        <div className="max-w-[90rem] mx-auto grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-b border-border">
+          {/* Copyright */}
+          <div className="px-8 py-5 col-span-2 sm:col-span-1 flex items-center">
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} DishIs Technologies
+            </p>
+          </div>
+
+          {/* Bottom nav links */}
+          {BOTTOM_LINKS.map(({ label, href }) => (
+            <div key={label} className="px-8 py-5 flex items-center">
+              <Link href={href} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                {label}
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        {/* ── buy me a coffee ─────────────────────────────────────────── */}
+        <div className="max-w-[90rem] mx-auto px-8 py-5">
+          <a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank" rel="noopener noreferrer">
+            <img
+              src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
+              alt="Buy Me A Coffee"
+              className="h-7 w-auto"
+            />
+          </a>
         </div>
 
       </footer>

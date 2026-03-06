@@ -118,11 +118,11 @@ function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRe
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/20 hover:bg-muted/20">
-            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-16">Type</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-20">Host</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Value</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-20 text-center">Priority</TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-16 text-center">TTL</TableHead>
+            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-16">Type</TableHead>
+            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-20">Host</TableHead>
+            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground">Value</TableHead>
+            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-20 text-center">Priority</TableHead>
+            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-16 text-center">TTL</TableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
@@ -210,29 +210,29 @@ function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxR
           <div className="mt-2 space-y-6 text-sm">
 
             {/* Provider info */}
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-4 py-2.5 text-xs">
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-4 py-2.5">
               {loading ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                  <span className="text-muted-foreground">{t("guide_loading")}</span>
+                  <span className="text-xs text-muted-foreground">{t("guide_loading")}</span>
                 </>
               ) : error ? (
-                <span className="text-muted-foreground">{error}</span>
+                <span className="text-xs text-muted-foreground">{error}</span>
               ) : (
                 <>
-                  <span className="text-muted-foreground">{t("guide_provider")}</span>
-                  <span className="font-medium text-foreground">{provider ?? "Not detected"}</span>
+                  <span className="text-xs text-muted-foreground">{t("guide_provider")}</span>
+                  <span className="text-xs font-medium text-foreground">{provider ?? "Not detected"}</span>
                   {nameservers && (
-                    <span className="text-muted-foreground">({nameservers.join(", ")})</span>
+                    <span className="text-xs text-muted-foreground font-mono">({nameservers.join(", ")})</span>
                   )}
                 </>
               )}
             </div>
 
             {/* Steps */}
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Setup Steps</p>
-              <ol className="space-y-3">
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-4">Setup Steps</p>
+              <ol className="space-y-0">
                 {[
                   t("guide_step_1"),
                   t.rich("guide_step_2", { provider: provider ?? "your registrar/DNS panel" }),
@@ -240,11 +240,11 @@ function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxR
                   t("guide_step_4"),
                   t("guide_step_5"),
                 ].map((step, i) => (
-                  <li key={i} className="flex gap-3 text-sm border-t border-border pt-3 first:border-t-0 first:pt-0">
-                    <span className="flex-shrink-0 text-xs font-mono text-muted-foreground w-4 mt-0.5">
+                  <li key={i} className="flex gap-4 border-t border-border py-3.5 first:border-t-0">
+                    <span className="flex-shrink-0 font-mono text-xs text-muted-foreground w-4 mt-0.5">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="text-muted-foreground leading-relaxed">{step}</span>
+                    <span className="text-sm text-muted-foreground leading-relaxed">{step}</span>
                   </li>
                 ))}
               </ol>
@@ -423,7 +423,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
   return (
     <>
       <div>
-        {/* Section header */}
+        {/* Section header — matches profile page InfoRow label style */}
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {t("domains_title")}
@@ -431,14 +431,14 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
           {!isPro && (
             <button
               onClick={() => openUpsell("Custom Domains")}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
             >
               <Lock className="h-3 w-3" />
               Pro
             </button>
           )}
         </div>
-        <p className="text-sm text-muted-foreground mb-5">{t("domains_desc")}</p>
+        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{t("domains_desc")}</p>
 
         <div className="border-t border-border" />
 
@@ -463,7 +463,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                 }
               }}
               disabled={isLoading}
-              className={`w-full ${domainError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+              className={`w-full font-mono text-sm ${domainError ? "border-destructive focus-visible:ring-destructive" : ""}`}
               aria-invalid={!!domainError}
               aria-describedby={domainError ? "domain-error" : undefined}
             />
@@ -475,7 +475,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
           </div>
           <div className="flex gap-2 mt-4 sm:mt-0">
             <Button type="submit" disabled={isLoading || !newDomain || !!domainError} size="sm">
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
               {t("domains_add_btn")}
             </Button>
             <Button
@@ -502,30 +502,38 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
                 }
               }}
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           </div>
         </form>
 
-        {/* Domains list */}
+        {/* Domains list — InfoRow-style borders */}
         <div className="space-y-0">
           {domains && domains.length > 0 ? (
             domains.filter((d) => !!d && !!d.domain).map((d) => (
               <div key={d.domain} className="border-t border-border py-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={`flex-shrink-0 h-1.5 w-1.5 rounded-full ${d.verified ? "bg-foreground" : "bg-muted-foreground/40"}`} />
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Status dot */}
+                    <span
+                      className={`flex-shrink-0 h-1.5 w-1.5 rounded-full ${
+                        d.verified ? "bg-foreground" : "bg-muted-foreground/40"
+                      }`}
+                    />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{d.domain}</p>
+                      <p className="text-sm font-medium text-foreground font-mono truncate">{d.domain}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {d.verified ? t("domains_status_verified") : t("domains_status_pending")}
+                        {d.verified
+                          ? <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" />{t("domains_status_verified")}</span>
+                          : t("domains_status_pending")
+                        }
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => initiateDelete(d.domain)}
                     disabled={isLoading}
-                    className="flex-shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex-shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border transition-all"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -555,7 +563,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
               </div>
             ))
           ) : (
-            <div className="border-t border-border py-10 text-center">
+            <div className="border-t border-border py-12 text-center">
               <p className="text-sm text-muted-foreground">
                 {isPro ? t("domains_empty_desc_pro") : t("domains_empty_desc_free")}
               </p>
@@ -574,17 +582,17 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
             <DialogTitle>Delete Domain</DialogTitle>
             <DialogDescription>
               This action cannot be undone. This will permanently delete{" "}
-              <span className="font-medium text-foreground">{domainToDelete}</span>{" "}
+              <code className="font-mono text-xs bg-muted/60 px-1.5 py-0.5 rounded text-foreground">{domainToDelete}</code>{" "}
               and remove all associated email addresses and data.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-3 py-3">
-            <Label htmlFor="domain-confirm" className="text-sm font-medium">
+            <Label htmlFor="domain-confirm" className="text-sm font-medium text-muted-foreground">
               Type{" "}
-              <span className="font-mono bg-muted/20 border border-border px-1 py-0.5 rounded text-xs">
+              <code className="font-mono bg-muted/20 border border-border px-1.5 py-0.5 rounded text-xs text-foreground">
                 {domainToDelete}
-              </span>{" "}
+              </code>{" "}
               to confirm:
             </Label>
             <Input
@@ -593,6 +601,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
               onChange={(e) => setDeleteConfirmation(e.target.value)}
               placeholder={domainToDelete || ""}
               autoComplete="off"
+              className="font-mono text-sm"
             />
           </div>
 
@@ -605,7 +614,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
               onClick={confirmDelete}
               disabled={deleteConfirmation !== domainToDelete || isLoading}
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
               Delete Domain
             </Button>
           </DialogFooter>

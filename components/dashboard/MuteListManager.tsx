@@ -94,14 +94,14 @@ export function MuteListManager({ initialSenders, isPro }: MuteListManagerProps)
           {!isPro && (
             <button
               onClick={() => setIsUpsellOpen(true)}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
             >
               <Lock className="h-3 w-3" />
               Pro
             </button>
           )}
         </div>
-        <p className="text-sm text-muted-foreground mb-5">{t("mute_desc")}</p>
+        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{t("mute_desc")}</p>
 
         <div className="border-t border-border" />
 
@@ -112,34 +112,37 @@ export function MuteListManager({ initialSenders, isPro }: MuteListManagerProps)
             value={newSender}
             onChange={(e) => setNewSender(e.target.value)}
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 font-mono text-sm"
           />
           <Button type="submit" size="sm" disabled={isLoading || !newSender}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
             {t("mute_btn")}
           </Button>
         </form>
 
-        {/* Muted senders list */}
+        {/* Muted senders list — InfoRow-style */}
         <div className="space-y-0 min-h-[8rem]">
           {mutedSenders.length > 0 ? (
             mutedSenders.map((sender) => (
               <div
                 key={sender}
-                className="border-t border-border py-3 flex items-center justify-between gap-3"
+                className="border-t border-border py-3.5 flex items-center justify-between gap-3 text-sm"
               >
-                <span className="text-sm font-mono text-foreground truncate">{sender}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                  <span className="font-mono text-sm text-foreground truncate">{sender}</span>
+                </div>
                 <button
                   onClick={() => handleUnmuteSender(sender)}
                   disabled={isLoading}
-                  className="flex-shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex-shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border transition-all"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))
           ) : (
-            <div className="border-t border-border pt-8 text-center">
+            <div className="border-t border-border pt-10 text-center">
               <p className="text-sm text-muted-foreground">{t("mute_empty")}</p>
               {!isPro && (
                 <p className="text-xs text-muted-foreground mt-1">{t("mute_empty_upsell")}</p>

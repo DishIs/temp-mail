@@ -1,21 +1,21 @@
+// components/PlaygroundHeader.tsx
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, Sun, Moon, Laptop } from "lucide-react";
+import { Menu as MenuIcon, Sun, Moon, Laptop, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 
 const NAV_LINKS = [
-  { href: "/api", label: "Overview" },
-  { href: "/api/docs", label: "Docs" },
-  { href: "/api/pricing", label: "Pricing" },
+  { href: "/api",                label: "Overview"  },
+  { href: "/api/docs",           label: "Docs"      },
+  { href: "/api/pricing",        label: "Pricing"   },
   { href: "/api/docs/changelog", label: "Changelog" },
-  { href: "/api/dashboard", label: "Dashboard" },
+  { href: "/api/dashboard",      label: "Dashboard" },
 ];
 
 interface ApiStatusData {
@@ -23,184 +23,188 @@ interface ApiStatusData {
   usage?: { credits_remaining?: number };
 }
 
+// ── shared theme-ripple hook ───────────────────────────────────────────────
+function useThemeRipple() {
+  const { theme, setTheme } = useTheme();
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const toggle = useCallback(() => {
+    const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+
+    if (!btnRef.current || !document.startViewTransition) {
+      setTheme(next);
+      return;
+    }
+
+    const rect = btnRef.current.getBoundingClientRect();
+    const x = rect.left + rect.width  / 2;
+    const y = rect.top  + rect.height / 2;
+    const maxR = Math.hypot(
+      Math.max(x, window.innerWidth  - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    document.startViewTransition(() => setTheme(next)).ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
+        { duration: 420, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }
+      );
+    });
+  }, [theme, setTheme]);
+
+  return { theme, toggle, btnRef };
+}
+
+function ThemeIcon({ theme, mounted }: { theme: string | undefined; mounted: boolean }) {
+  if (!mounted) return <span className="h-4 w-4" />;
+  return (
+    <span className="relative h-4 w-4 block">
+      <Sun    className={`absolute h-4 w-4 transition-all duration-200 ${theme === "light"  ? "opacity-100 scale-100" : "opacity-0 scale-75"}`} />
+      <Moon   className={`absolute h-4 w-4 transition-all duration-200 ${theme === "dark"   ? "opacity-100 scale-100" : "opacity-0 scale-75"}`} />
+      <Laptop className={`absolute h-4 w-4 transition-all duration-200 ${theme === "system" ? "opacity-100 scale-100" : "opacity-0 scale-75"}`} />
+    </span>
+  );
+}
+
 export function PlaygroundHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const { theme, setTheme } = useTheme();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const { theme, toggle, btnRef } = useThemeRipple();
+  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [mounted,   setMounted]   = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatusData | null>(null);
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.id) {
-      setApiStatus(null);
-      return;
-    }
+    if (status !== "authenticated" || !session?.user?.id) { setApiStatus(null); return; }
     fetch("/api/user/api-status")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const data = d?.data ?? d;
-        if (data?.plan || data?.usage) setApiStatus(data);
-      })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { const data = d?.data ?? d; if (data?.plan || data?.usage) setApiStatus(data); })
       .catch(() => {});
   }, [status, session?.user?.id]);
 
-  const toggleTheme = useCallback(() => {
-    if (theme === "light") setTheme("dark");
-    else if (theme === "dark") setTheme("system");
-    else setTheme("light");
-  }, [theme, setTheme]);
-
   const isLoggedIn = status === "authenticated" && !!session?.user;
-  const planLabel = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
-  const credits = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
+  const planLabel  = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
+  const credits    = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
   const isFreeUser = (!planLabel || String(planLabel).toLowerCase() === "free") && credits <= 0;
 
-  const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
-    const isActive = pathname === href || (href !== "/api" && pathname.startsWith(href));
-    return (
-      <Link
-        href={href}
-        onClick={() => setMenuOpen(false)}
-        className={`text-sm font-medium transition-colors hover:text-primary ${
-          isActive ? "text-primary" : "text-muted-foreground"
-        }`}
-      >
-        {children}
-      </Link>
-    );
-  };
+  const isActive = (href: string) =>
+    pathname === href || (href !== "/api" && pathname.startsWith(href));
 
   return (
-    <header className="border-b w-full bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 shrink-0">
-      <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/api" className="flex items-center gap-1.5" aria-label="API Home">
-          <Image
-            src="/logo.webp"
-            alt="FreeCustom.Email"
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0"
-            priority
-          />
-          <div className="flex flex-col leading-none">
-            <span className="text-base sm:text-lg font-bold tracking-tight text-foreground">
-              FreeCustom.Email
-            </span>
-            <span className="text-[11px] font-normal text-muted-foreground tracking-tight text-end -mt-2">
-              for developers
-            </span>
-          </div>
-        </Link>
+    <>
+      <style>{`
+        ::view-transition-old(root),
+        ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+        ::view-transition-new(root) { z-index: 9999; }
+      `}</style>
 
-        <nav className="hidden md:flex items-center gap-6">
-          {NAV_LINKS.map(({ href, label }) => (
-            <NavLink key={href} href={href}>
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+      <header className="border-b border-border w-full bg-background/90 backdrop-blur-md sticky top-0 z-50 shrink-0">
+        <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-[90rem]">
 
-        <div className="hidden md:flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            aria-label="Toggle theme"
-          >
-            {mounted ? (
-              <div className="relative h-4 w-4">
-                <Sun className={`absolute h-4 w-4 transition-all ${theme === "light" ? "rotate-0 scale-100" : "-rotate-90 scale-0"}`} />
-                <Moon className={`absolute h-4 w-4 transition-all ${theme === "dark" ? "rotate-0 scale-100" : "rotate-90 scale-0"}`} />
-                <Laptop className={`absolute h-4 w-4 transition-all ${theme === "system" ? "scale-100" : "scale-0"}`} />
-              </div>
-            ) : (
-              <span className="h-4 w-4" />
-            )}
-          </Button>
-          {isLoggedIn ? (
-            <Button asChild size="sm" variant="default">
-              <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
-                {isFreeUser ? "Upgrade" : "Dashboard"}
+          {/* Logo */}
+          <Link href="/api" className="flex items-center gap-2 shrink-0" aria-label="API Home">
+            <Image src="/logo.webp" alt="FreeCustom.Email" width={28} height={28} className="h-7 w-7" priority />
+            <div className="flex flex-col leading-none">
+              <span className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</span>
+              <span className="text-[10px] font-normal text-muted-foreground tracking-widest uppercase -mt-0.5">for developers</span>
+            </div>
+          </Link>
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-0.5">
+            {NAV_LINKS.map(({ href, label }) => (
+              <Link key={href} href={href}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  isActive(href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
               </Link>
-            </Button>
-          ) : (
-            <>
-              <Button asChild size="sm" variant="ghost">
-                <Link href="/auth?callbackUrl=/api/playground">Sign in</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/auth?callbackUrl=/api/dashboard">Get API key</Link>
-              </Button>
-            </>
-          )}
-        </div>
+            ))}
+          </nav>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden h-9 w-9"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <MenuIcon className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {menuOpen && (
-        <nav className="md:hidden px-4 pb-4 pt-2 flex flex-col gap-2 border-t bg-background">
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMenuOpen(false)}
-              className="p-2 rounded-md hover:bg-muted text-sm font-medium"
-            >
-              {label}
-            </Link>
-          ))}
-          <div className="border-t pt-3 flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              onClick={toggleTheme}
+          {/* Right */}
+          <div className="hidden md:flex items-center gap-2">
+            <button ref={btnRef} onClick={toggle}
+              className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Toggle theme"
             >
-              {mounted ? (
-                <div className="relative h-4 w-4">
-                  <Sun className={`absolute h-4 w-4 transition-all ${theme === "light" ? "rotate-0 scale-100" : "-rotate-90 scale-0"}`} />
-                  <Moon className={`absolute h-4 w-4 transition-all ${theme === "dark" ? "rotate-0 scale-100" : "rotate-90 scale-0"}`} />
-                  <Laptop className={`absolute h-4 w-4 transition-all ${theme === "system" ? "scale-100" : "scale-0"}`} />
-                </div>
-              ) : (
-                <span className="h-4 w-4" />
-              )}
-            </Button>
+              <ThemeIcon theme={theme} mounted={mounted} />
+            </button>
+
             {isLoggedIn ? (
-              <Link
-                href={isFreeUser ? "/api/pricing" : "/api/dashboard"}
-                onClick={() => setMenuOpen(false)}
-                className="p-2 rounded-md bg-primary text-primary-foreground text-sm font-medium text-center"
-              >
-                {isFreeUser ? "Upgrade" : "Dashboard"}
-              </Link>
+              <Button asChild size="sm">
+                <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
+                  {isFreeUser ? "Upgrade" : "Dashboard"}
+                </Link>
+              </Button>
             ) : (
               <>
-                <Link href="/auth?callbackUrl=/api/playground" onClick={() => setMenuOpen(false)} className="p-2 rounded-md hover:bg-muted text-sm font-medium">
-                  Sign in
-                </Link>
-                <Link href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)} className="p-2 rounded-md bg-primary text-primary-foreground text-sm font-medium text-center">
-                  Get API key
-                </Link>
+                <Button asChild size="sm" variant="ghost">
+                  <Link href="/auth?callbackUrl=/api/playground">Sign in</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/auth?callbackUrl=/api/dashboard">Get API key</Link>
+                </Button>
               </>
             )}
           </div>
-        </nav>
-      )}
-    </header>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+          </button>
+        </div>
+
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-border bg-background px-4 pb-5 pt-3">
+            <nav className="flex flex-col gap-0.5 mb-4">
+              {NAV_LINKS.map(({ href, label }) => (
+                <Link key={href} href={href} onClick={() => setMenuOpen(false)}
+                  className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                    isActive(href)
+                      ? "text-foreground font-medium bg-muted/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            <div className="border-t border-border pt-4 flex items-center gap-2 flex-wrap">
+              <button ref={btnRef} onClick={toggle}
+                className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                aria-label="Toggle theme"
+              >
+                <ThemeIcon theme={theme} mounted={mounted} />
+              </button>
+              {isLoggedIn ? (
+                <Button asChild size="sm" className="ml-auto">
+                  <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"} onClick={() => setMenuOpen(false)}>
+                    {isFreeUser ? "Upgrade" : "Dashboard"}
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link href="/auth?callbackUrl=/api/playground" onClick={() => setMenuOpen(false)}>Sign in</Link>
+                  </Button>
+                  <Button asChild size="sm">
+                    <Link href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)}>Get API key</Link>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </header>
+    </>
   );
 }
