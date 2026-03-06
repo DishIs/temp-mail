@@ -32,6 +32,7 @@ const FOOTER_LINKS = [
       { label: "Pricing",         href: "/api/pricing",         external: false },
       { label: "Status",           href: "https://status.freecustom.email", external: true },
       { label: "Changelog",       href: "/api/docs/changelog",  external: false },
+      { label: "Open Source",       href: "/open-source",  external: false },
     ],
   },
   {
@@ -50,7 +51,7 @@ const FOOTER_LINKS = [
       { label: "Contact",          href: "/contact",            external: false },
       { label: "Discord",          href: "https://discord.com/invite/Ztp7kT2QBz",                    external: true },
       { label: "Reddit",           href: "https://www.reddit.com/r/FreeCustomEmail/",                external: true },
-      { label: "GitHub",           href: "https://github.com/DishIs/temp-mail",                      external: true },
+      { label: "GitHub",           href: "https://github.com/DishIs",                      external: true },
     ],
   },
 ];
