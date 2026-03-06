@@ -76,9 +76,13 @@ This frontend is hosted on Cloudflare Workers, which allows for incredibly fast 
     ```
 
 3.  **Set up Environment Variables:**
-    Copy `.env.example` to `.env.local` and fill in your keys.
+    Copy `.env.example` to `.env.local` and fill in your keys for local development.
     ```bash
     cp .env.example .env.local
+    ```
+    For production deployments with Cloudflare, copy `wrangler.jsonc.example` to `wrangler.jsonc` and fill in your keys.
+    ```bash
+    cp wrangler.jsonc.example wrangler.jsonc
     ```
 
 4.  **Run the Development Server:**

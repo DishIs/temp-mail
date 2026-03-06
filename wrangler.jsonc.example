@@ -1,0 +1,73 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "freecustom-email",
+  "compatibility_date": "2025-03-20",
+  "compatibility_flags": [
+    "nodejs_compat_v2",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "freecustom-email"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "your-r2-bucket-name"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "AUTH_KV",
+      "id": "your-kv-namespace-id"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "head_sampling_rate": 0.1
+    }
+  },
+  "vars": {
+    "SERVICE_API_URL": "https://your-backend-api-url.com",
+    "JWT_SECRET": "your-jwt-secret",
+    "AUTH_SECRET": "your-nextauth-secret",
+    "AUTH_URL": "https://your-domain.com",
+    "INTERNAL_API_KEY": "your-internal-api-key",
+    "GOOGLE_CLIENT_ID": "your-google-client-id",
+    "GOOGLE_CLIENT_SECRET": "your-google-client-secret",
+    "GITHUB_ID": "your-github-id",
+    "GITHUB_SECRET": "your-github-secret",
+    "RESEND_API_KEY": "your-resend-api-key",
+    "ADMIN_EMAIL": "your-admin-email@example.com",
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY": "your-turnstile-site-key",
+    "TURNSTILE_SECRET_KEY": "your-turnstile-secret-key",
+    "DITBLOGS_API_KEY": "your-ditblogs-api-key",
+    "DITBLOGS_WEBHOOK_SECRET": "your-ditblogs-webhook-secret",
+    "AUTH_TRUST_HOST": true,
+    "NEXT_PUBLIC_PADDLE_ENV": "sandbox",
+    "NEXT_PUBLIC_PADDLE_CLIENT_TOKEN": "your-paddle-client-token",
+    "PADDLE_PRICE_WEEKLY": "your-paddle-price-id",
+    "PADDLE_PRICE_MONTHLY_W_TRIAL": "your-paddle-price-id",
+    "PADDLE_PRICE_MONTHLY_W_NO_TRIAL": "your-paddle-price-id",
+    "PADDLE_PRICE_YEARLY": "your-paddle-price-id",
+    "PADDLE_WEBHOOK_SECRET": "your-paddle-webhook-secret",
+    "PADDLE_API_KEY": "your-paddle-api-key",
+    "PADDLE_PRICE_API_DEVELOPER": "your-paddle-price-id",
+    "PADDLE_PRICE_API_STARTUP": "your-paddle-price-id",
+    "PADDLE_PRICE_API_GROWTH": "your-paddle-price-id",
+    "PADDLE_PRICE_API_ENTERPRISE": "your-paddle-price-id",
+    "PADDLE_PRICE_CREDITS_STARTER": "your-paddle-price-id",
+    "PADDLE_PRICE_CREDITS_BUILDER": "your-paddle-price-id",
+    "PADDLE_PRICE_CREDITS_SCALE": "your-paddle-price-id",
+    "PADDLE_PRICE_CREDITS_PRO": "your-paddle-price-id"
+  }
+}
