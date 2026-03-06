@@ -1,7 +1,7 @@
+// components/dashboard/CustomDomainManager.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Copy, Trash2, CheckCircle, HelpCircle, RefreshCw, Lock, Crown, Check, AlertTriangle } from "lucide-react";
+import {
+  Loader2, Copy, Trash2, CheckCircle, HelpCircle,
+  RefreshCw, Lock, Crown, Check, AlertTriangle, ExternalLink,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { UpsellModal } from "@/components/upsell-modal";
@@ -23,10 +26,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 
 interface CustomDomain {
@@ -51,7 +52,6 @@ interface DnsRecord {
 
 // ---------------------------------------------------------------------------
 // ICANN-compliant domain validation
-// Labels: 1–63 chars, [a-z0-9] + hyphens (not at start/end), 2+ labels, TLD ≥ 2 alpha chars
 // ---------------------------------------------------------------------------
 const DOMAIN_LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 
@@ -60,19 +60,16 @@ function isValidDomain(value: string): boolean {
   const labels = value.split(".");
   if (labels.length < 2) return false;
   const tld = labels[labels.length - 1];
-  if (!/^[a-z]{2,}$/i.test(tld)) return false; // TLD must be all-alpha, ≥ 2 chars
+  if (!/^[a-z]{2,}$/i.test(tld)) return false;
   return labels.every((label) => DOMAIN_LABEL_RE.test(label));
 }
 
-// Strip characters that are never valid in a domain name
 function sanitizeDomainInput(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9.\-]/g, ""); // only allow: letters, digits, dots, hyphens
+  return value.toLowerCase().replace(/[^a-z0-9.\-]/g, "");
 }
 
 // ---------------------------------------------------------------------------
-// Copy button with transient "copied" feedback
+// Copy button
 // ---------------------------------------------------------------------------
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -89,13 +86,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
     <button
       onClick={handleCopy}
       title={`Copy ${label}`}
-      className={`
-        inline-flex items-center justify-center h-7 w-7 rounded-md border transition-all duration-150
-        ${copied
-          ? "border-emerald-400 bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:border-emerald-600 dark:text-emerald-400"
-          : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted"
-        }
-      `}
+      className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
@@ -103,7 +94,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// DNS Records Table inside the guide dialog
+// DNS Records Table
 // ---------------------------------------------------------------------------
 function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRecord: string; txtRecord: string }) {
   const records: DnsRecord[] = [
@@ -123,31 +114,23 @@ function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRe
   ];
 
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="rounded-lg border border-border overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="text-xs font-semibold uppercase tracking-wide w-16">Type</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide w-20">Hostname</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide">Value</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide w-20 text-center">Priority</TableHead>
-            <TableHead className="text-xs font-semibold uppercase tracking-wide w-16 text-center">TTL</TableHead>
+          <TableRow className="bg-muted/20 hover:bg-muted/20">
+            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-16">Type</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-20">Host</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Value</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-20 text-center">Priority</TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-widest text-muted-foreground w-16 text-center">TTL</TableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {records.map((rec, i) => (
-            <TableRow key={i} className="group">
+            <TableRow key={i} className="border-t border-border">
               <TableCell>
-                <span className={`
-                  inline-flex items-center rounded px-1.5 py-0.5 text-xs font-bold tracking-wide
-                  ${rec.type === "MX"
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                    : "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                  }
-                `}>
-                  {rec.type}
-                </span>
+                <span className="font-mono text-xs font-semibold text-foreground">{rec.type}</span>
               </TableCell>
               <TableCell>
                 <code className="text-xs font-mono text-muted-foreground">{rec.hostname}</code>
@@ -176,10 +159,10 @@ function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRe
 }
 
 // ---------------------------------------------------------------------------
-// Separate component to handle its own translations and state
+// Domain Setup Guide dialog
 // ---------------------------------------------------------------------------
 function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxRecord: string; txtRecord: string }) {
-  const t = useTranslations('Dashboard');
+  const t = useTranslations("Dashboard");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
@@ -212,76 +195,78 @@ function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxR
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full sm:w-auto">
-          {t('guide_btn')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{t('guide_title', { domain })}</DialogTitle>
-          <DialogDescription>{t('guide_desc')}</DialogDescription>
-        </DialogHeader>
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="w-full sm:w-auto">
+        {t("guide_btn")}
+      </Button>
 
-        <div className="mt-2 space-y-5 text-sm">
-          {/* Provider info */}
-          <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
-            {loading ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                <span className="text-muted-foreground text-xs">{t('guide_loading')}</span>
-              </>
-            ) : error ? (
-              <span className="text-red-500 text-xs">{error}</span>
-            ) : (
-              <>
-                <span className="text-xs text-muted-foreground">{t('guide_provider')}</span>
-                <span className="text-xs font-semibold">{provider ?? "Not detected"}</span>
-                {nameservers && (
-                  <span className="text-xs text-muted-foreground ml-1">({nameservers.join(", ")})</span>
-                )}
-              </>
-            )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("guide_title", { domain })}</DialogTitle>
+            <DialogDescription>{t("guide_desc")}</DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2 space-y-6 text-sm">
+
+            {/* Provider info */}
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-4 py-2.5 text-xs">
+              {loading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  <span className="text-muted-foreground">{t("guide_loading")}</span>
+                </>
+              ) : error ? (
+                <span className="text-muted-foreground">{error}</span>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">{t("guide_provider")}</span>
+                  <span className="font-medium text-foreground">{provider ?? "Not detected"}</span>
+                  {nameservers && (
+                    <span className="text-muted-foreground">({nameservers.join(", ")})</span>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Setup Steps</p>
+              <ol className="space-y-3">
+                {[
+                  t("guide_step_1"),
+                  t.rich("guide_step_2", { provider: provider ?? "your registrar/DNS panel" }),
+                  "Add the DNS records below to your domain.",
+                  t("guide_step_4"),
+                  t("guide_step_5"),
+                ].map((step, i) => (
+                  <li key={i} className="flex gap-3 text-sm border-t border-border pt-3 first:border-t-0 first:pt-0">
+                    <span className="flex-shrink-0 text-xs font-mono text-muted-foreground w-4 mt-0.5">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="text-muted-foreground leading-relaxed">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* DNS Records */}
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">DNS Records</p>
+              <DnsRecordsTable domain={domain} mxRecord={mxRecord} txtRecord={txtRecord} />
+            </div>
+
+            <p className="text-xs text-muted-foreground border-t border-border pt-4">{t("guide_tip")}</p>
           </div>
 
-          {/* Step-by-step */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Setup Steps</p>
-            <ol className="space-y-2">
-              {[
-                t('guide_step_1'),
-                t.rich('guide_step_2', { provider: provider ?? "your registrar/DNS panel" }),
-                "Add the DNS records below to your domain.",
-                t('guide_step_4'),
-                t('guide_step_5'),
-              ].map((step, i) => (
-                <li key={i} className="flex gap-3 text-sm">
-                  <span className="flex-shrink-0 flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold mt-0.5">
-                    {i + 1}
-                  </span>
-                  <span className="text-muted-foreground leading-relaxed">{step}</span>
-                </li>
-              ))}
-            </ol>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              {t("guide_close")}
+            </Button>
           </div>
-
-          {/* DNS Records Table */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">DNS Records</p>
-            <DnsRecordsTable domain={domain} mxRecord={mxRecord} txtRecord={txtRecord} />
-          </div>
-
-          <p className="text-xs text-muted-foreground border-t pt-3">{t('guide_tip')}</p>
-        </div>
-
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            {t('guide_close')}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -302,7 +287,7 @@ function normalizeDomain(input: Partial<CustomDomain> & { domain?: string }): Cu
 // Main component
 // ---------------------------------------------------------------------------
 export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManagerProps) {
-  const t = useTranslations('Dashboard');
+  const t = useTranslations("Dashboard");
   const { data: session } = useSession();
   const user = session?.user;
   const [domains, setDomains] = useState<CustomDomain[]>(
@@ -313,7 +298,6 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
   const [isLoading, setIsLoading] = useState(false);
   const [verifyingDomain, setVerifyingDomain] = useState<string | null>(null);
 
-  // States for Delete Confirmation Modal
   const [domainToDelete, setDomainToDelete] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
@@ -336,16 +320,12 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
 
   const handleAddDomain = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isPro) { openUpsell(t('domains_title')); return; }
+    if (!isPro) { openUpsell(t("domains_title")); return; }
     if (!newDomain || !user) return;
-
-    if (!isValidDomain(newDomain)) {
-      setDomainError("Enter a valid domain (e.g. example.com)");
-      return;
-    }
+    if (!isValidDomain(newDomain)) { setDomainError("Enter a valid domain (e.g. example.com)"); return; }
 
     setIsLoading(true);
-    const toastId = toast.loading(t('domains_add_btn') + "...");
+    const toastId = toast.loading(t("domains_add_btn") + "...");
     try {
       const response = await fetch("/api/user/domains", {
         method: "POST",
@@ -353,7 +333,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
         body: JSON.stringify({ domain: newDomain, wyiUserId: user.id }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result?.message || t('domains_add_fail'));
+      if (!response.ok) throw new Error(result?.message || t("domains_add_fail"));
 
       if (result?.data) {
         pushDomainSafe(result.data);
@@ -368,25 +348,22 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
       }
       setNewDomain("");
       setDomainError(null);
-      toast.success(t('domains_add_success'), { id: toastId });
+      toast.success(t("domains_add_success"), { id: toastId });
     } catch (error: any) {
-      toast.error(error?.message ?? t('domains_add_fail'), { id: toastId });
+      toast.error(error?.message ?? t("domains_add_fail"), { id: toastId });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Opens the modal
   const initiateDelete = (domain: string) => {
     if (!isPro) { openUpsell("Manage Domains"); return; }
     setDomainToDelete(domain);
     setDeleteConfirmation("");
   };
 
-  // Performs the actual API deletion
   const confirmDelete = async () => {
     if (!domainToDelete || !user) return;
-    
     setIsLoading(true);
     const toastId = toast.loading(`Deleting ${domainToDelete}...`);
     try {
@@ -396,13 +373,13 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
         body: JSON.stringify({ domain: domainToDelete, wyiUserId: user.id }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result?.message || t('domains_del_fail'));
-      
+      if (!response.ok) throw new Error(result?.message || t("domains_del_fail"));
+
       setDomains((prev) => prev.filter((d) => d.domain !== domainToDelete));
-      toast.success(t('domains_del_success'), { id: toastId });
-      setDomainToDelete(null); // Close modal
+      toast.success(t("domains_del_success"), { id: toastId });
+      setDomainToDelete(null);
     } catch (error: any) {
-      toast.error(error?.message ?? t('domains_del_fail'), { id: toastId });
+      toast.error(error?.message ?? t("domains_del_fail"), { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -412,7 +389,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
     if (!isPro) { openUpsell("Domain Verification"); return; }
     if (!user) return;
     setVerifyingDomain(domainToVerify);
-    const toastId = toast.loading(`${t('domains_verifying')} ${domainToVerify}...`);
+    const toastId = toast.loading(`${t("domains_verifying")} ${domainToVerify}...`);
     try {
       const response = await fetch("/api/user/domains/verify", {
         method: "POST",
@@ -420,24 +397,24 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
         body: JSON.stringify({ domain: domainToVerify, wyiUserId: user.id }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result?.message || t('domains_verify_fail'));
+      if (!response.ok) throw new Error(result?.message || t("domains_verify_fail"));
 
       if (result?.success && result?.verified) {
         setDomains((prev) =>
           prev.map((d) => (d.domain === domainToVerify ? { ...d, verified: true } : d))
         );
-        toast.success(t('domains_verify_success'), { id: toastId });
+        toast.success(t("domains_verify_success"), { id: toastId });
       } else {
         const returned = normalizeDomain(result?.data ?? {});
         if (returned && returned.domain === domainToVerify && returned.verified) {
           setDomains((prev) => prev.map((d) => (d.domain === domainToVerify ? returned : d)));
-          toast.success(t('domains_verify_success'), { id: toastId });
+          toast.success(t("domains_verify_success"), { id: toastId });
         } else {
-          throw new Error(result?.message || t('domains_verify_fail'));
+          throw new Error(result?.message || t("domains_verify_fail"));
         }
       }
     } catch (error: any) {
-      toast.error(error?.message ?? t('domains_verify_fail'), { id: toastId });
+      toast.error(error?.message ?? t("domains_verify_fail"), { id: toastId });
     } finally {
       setVerifyingDomain(null);
     }
@@ -445,186 +422,182 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
 
   return (
     <>
-      <Card className={!isPro ? "opacity-90 relative overflow-hidden" : ""}>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
-              {t('domains_title')}
-              {!isPro && <Lock className="h-4 w-4 text-muted-foreground" />}
-            </CardTitle>
-            <CardDescription>{t('domains_desc')}</CardDescription>
-          </div>
+      <div>
+        {/* Section header */}
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            {t("domains_title")}
+          </p>
           {!isPro && (
-            <Badge onClick={() => openUpsell("Custom Domains")} variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-              <Crown className="w-3 h-3 mr-1" /> {t('domains_pro_badge')}
-            </Badge>
+            <button
+              onClick={() => openUpsell("Custom Domains")}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Lock className="h-3 w-3" />
+              Pro
+            </button>
           )}
-        </CardHeader>
+        </div>
+        <p className="text-sm text-muted-foreground mb-5">{t("domains_desc")}</p>
 
-        <CardContent>
-          {/* ADD DOMAIN FORM */}
-          <form onSubmit={handleAddDomain} className="flex flex-col sm:flex-row gap-2 mb-6">
-            <div className="relative w-full sm:flex-1">
-              <Input
-                placeholder={t('domains_placeholder')}
-                value={newDomain}
-                onChange={(e) => {
-                  const sanitized = sanitizeDomainInput(e.target.value);
-                  setNewDomain(sanitized);
-                  if (sanitized && !isValidDomain(sanitized)) {
-                    setDomainError("Enter a valid domain (e.g. example.com)");
-                  } else {
-                    setDomainError(null);
-                  }
-                }}
-                onBlur={() => {
-                  if (newDomain && !isValidDomain(newDomain)) {
-                    setDomainError("Enter a valid domain (e.g. example.com)");
-                  }
-                }}
-                disabled={isLoading}
-                className={`w-full ${domainError ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                aria-invalid={!!domainError}
-                aria-describedby={domainError ? "domain-error" : undefined}
-              />
-              {domainError && (
-                <p id="domain-error" className="absolute top-full left-0 mt-1 text-xs text-destructive">
-                  {domainError}
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2 mt-4 sm:mt-0">
-              <Button type="submit" disabled={isLoading || !newDomain || !!domainError}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t('domains_add_btn')}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={async () => {
-                  if (!isPro) { openUpsell("Refresh Domains"); return; }
-                  if (!user) return;
-                  setIsLoading(true);
-                  try {
-                    const res = await fetch(`/api/user/dashboard-data`, { cache: "no-store" });
-                    const json = await res.json();
-                    const list = json?.customDomains ?? json?.data?.customDomains ?? [];
-                    const normalized = Array.isArray(list)
-                      ? list.map((d: any) => normalizeDomain(d)).filter(Boolean)
-                      : [];
-                    setDomains(normalized as CustomDomain[]);
-                    toast.success(t('domains_refresh_success'));
-                  } catch {
-                    toast.error(t('domains_refresh_fail'));
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }}
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-          </form>
+        <div className="border-t border-border" />
 
-          {/* DOMAINS LIST */}
-          <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-            {domains && domains.length > 0 ? (
-              domains.filter((d) => !!d && !!d.domain).map((d) => (
-                <Card key={d.domain} className="flex flex-col border shadow-sm">
-                  <CardHeader className="flex-row items-center justify-between pb-3 pt-4 px-4">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {/* Verified status dot */}
-                      <span className={`flex-shrink-0 h-2 w-2 rounded-full ${d.verified ? "bg-emerald-500" : "bg-amber-400"}`} />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{d.domain}</p>
-                        <p className={`text-xs mt-0.5 ${d.verified ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-                          {d.verified ? (
-                            <span className="inline-flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {t('domains_status_verified')}</span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1"><HelpCircle className="h-3 w-3" /> {t('domains_status_pending')}</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => initiateDelete(d.domain)}
-                      disabled={isLoading}
-                      className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </CardHeader>
-
-                  <CardContent className="px-4 pb-4 pt-0">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      {!d.verified && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleVerifyDomain(d.domain)}
-                          disabled={verifyingDomain === d.domain}
-                          className="w-full sm:w-auto"
-                        >
-                          {verifyingDomain === d.domain && <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                          {t('domains_verify_btn')}
-                        </Button>
-                      )}
-                      <DomainSetupGuide domain={d.domain} mxRecord={d.mxRecord} txtRecord={d.txtRecord} />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="text-center col-span-full py-12 border rounded-md border-dashed">
-                <h3 className="text-lg font-medium">{t('domains_empty_title')}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {isPro ? t('domains_empty_desc_pro') : t('domains_empty_desc_free')}
-                </p>
-              </div>
+        {/* Add domain form */}
+        <form onSubmit={handleAddDomain} className="flex flex-col sm:flex-row gap-2 mt-5 mb-6">
+          <div className="relative flex-1">
+            <Input
+              placeholder={t("domains_placeholder")}
+              value={newDomain}
+              onChange={(e) => {
+                const sanitized = sanitizeDomainInput(e.target.value);
+                setNewDomain(sanitized);
+                if (sanitized && !isValidDomain(sanitized)) {
+                  setDomainError("Enter a valid domain (e.g. example.com)");
+                } else {
+                  setDomainError(null);
+                }
+              }}
+              onBlur={() => {
+                if (newDomain && !isValidDomain(newDomain)) {
+                  setDomainError("Enter a valid domain (e.g. example.com)");
+                }
+              }}
+              disabled={isLoading}
+              className={`w-full ${domainError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+              aria-invalid={!!domainError}
+              aria-describedby={domainError ? "domain-error" : undefined}
+            />
+            {domainError && (
+              <p id="domain-error" className="absolute top-full left-0 mt-1 text-xs text-destructive">
+                {domainError}
+              </p>
             )}
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex gap-2 mt-4 sm:mt-0">
+            <Button type="submit" disabled={isLoading || !newDomain || !!domainError} size="sm">
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("domains_add_btn")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                if (!isPro) { openUpsell("Refresh Domains"); return; }
+                if (!user) return;
+                setIsLoading(true);
+                try {
+                  const res = await fetch(`/api/user/dashboard-data`, { cache: "no-store" });
+                  const json = await res.json();
+                  const list = json?.customDomains ?? json?.data?.customDomains ?? [];
+                  const normalized = Array.isArray(list)
+                    ? list.map((d: any) => normalizeDomain(d)).filter(Boolean)
+                    : [];
+                  setDomains(normalized as CustomDomain[]);
+                  toast.success(t("domains_refresh_success"));
+                } catch {
+                  toast.error(t("domains_refresh_fail"));
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </form>
 
-      {/* DELETE CONFIRMATION MODAL */}
-      <Dialog open={!!domainToDelete} onOpenChange={(open) => {
-        if (!open && !isLoading) setDomainToDelete(null);
-      }}>
+        {/* Domains list */}
+        <div className="space-y-0">
+          {domains && domains.length > 0 ? (
+            domains.filter((d) => !!d && !!d.domain).map((d) => (
+              <div key={d.domain} className="border-t border-border py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`flex-shrink-0 h-1.5 w-1.5 rounded-full ${d.verified ? "bg-foreground" : "bg-muted-foreground/40"}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{d.domain}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {d.verified ? t("domains_status_verified") : t("domains_status_pending")}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => initiateDelete(d.domain)}
+                    disabled={isLoading}
+                    className="flex-shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {!d.verified && (
+                  <div className="flex flex-wrap gap-2 mt-3 pl-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleVerifyDomain(d.domain)}
+                      disabled={verifyingDomain === d.domain}
+                    >
+                      {verifyingDomain === d.domain && (
+                        <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      )}
+                      {t("domains_verify_btn")}
+                    </Button>
+                    <DomainSetupGuide domain={d.domain} mxRecord={d.mxRecord} txtRecord={d.txtRecord} />
+                  </div>
+                )}
+                {d.verified && (
+                  <div className="mt-3 pl-4">
+                    <DomainSetupGuide domain={d.domain} mxRecord={d.mxRecord} txtRecord={d.txtRecord} />
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="border-t border-border py-10 text-center">
+              <p className="text-sm text-muted-foreground">
+                {isPro ? t("domains_empty_desc_pro") : t("domains_empty_desc_free")}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={!!domainToDelete}
+        onOpenChange={(open) => { if (!open && !isLoading) setDomainToDelete(null); }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Delete Domain
-            </DialogTitle>
+            <DialogTitle>Delete Domain</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete 
-              <span className="font-semibold text-foreground"> {domainToDelete} </span> 
+              This action cannot be undone. This will permanently delete{" "}
+              <span className="font-medium text-foreground">{domainToDelete}</span>{" "}
               and remove all associated email addresses and data.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-3 py-3">
             <Label htmlFor="domain-confirm" className="text-sm font-medium">
-              Type <span className="font-mono bg-muted px-1 rounded">{domainToDelete}</span> to confirm:
+              Type{" "}
+              <span className="font-mono bg-muted/20 border border-border px-1 py-0.5 rounded text-xs">
+                {domainToDelete}
+              </span>{" "}
+              to confirm:
             </Label>
             <Input
               id="domain-confirm"
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
               placeholder={domainToDelete || ""}
-              className="col-span-3"
               autoComplete="off"
             />
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setDomainToDelete(null)}
-              disabled={isLoading}
-            >
+            <Button variant="outline" onClick={() => setDomainToDelete(null)} disabled={isLoading}>
               Cancel
             </Button>
             <Button

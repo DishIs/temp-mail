@@ -1,3 +1,4 @@
+// app/account-deletion-scheduled/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -5,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AlertTriangle, RotateCcw, Loader2 } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function AccountDeletionScheduledPage() {
@@ -52,11 +52,14 @@ export default function AccountDeletionScheduledPage() {
     }
   };
 
-  if (status === "loading" || (status === "authenticated" && session?.user?.deletion_status !== "scheduled")) {
+  if (
+    status === "loading" ||
+    (status === "authenticated" && session?.user?.deletion_status !== "scheduled")
+  ) {
     return (
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       </ThemeProvider>
     );
@@ -64,42 +67,63 @@ export default function AccountDeletionScheduledPage() {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md border-amber-500/30 bg-amber-500/5">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
-              <AlertTriangle className="h-5 w-5" />
-              <CardTitle>Account scheduled for deletion</CardTitle>
-            </div>
-            <CardDescription>
-              Your account is set to be permanently deleted
-              {scheduledAt ? ` on ${scheduledAt.toLocaleDateString(undefined, { dateStyle: "long" })}` : " in 7 days"}.
-              {canRestoreUntil && (
-                <span className="block mt-1">
-                  You can cancel deletion until {canRestoreUntil.toLocaleDateString(undefined, { dateStyle: "long" })}.
-                </span>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              We sent a confirmation email with a restore link. You can also cancel deletion below.
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-sm">
+
+          {/* Top rule */}
+          <div className="border-t border-border mb-8" />
+
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-4">
+            Account · Deletion Scheduled
+          </p>
+
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-3">
+            Account scheduled for deletion
+          </h1>
+
+          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+            Your account is set to be permanently deleted
+            {scheduledAt
+              ? ` on ${scheduledAt.toLocaleDateString(undefined, { dateStyle: "long" })}`
+              : " in 7 days"}.
+          </p>
+
+          {canRestoreUntil && (
+            <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+              You can cancel deletion until{" "}
+              {canRestoreUntil.toLocaleDateString(undefined, { dateStyle: "long" })}.
             </p>
-            <Button
-              className="w-full"
-              onClick={handleRestore}
-              disabled={restoring}
+          )}
+
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+            We sent a confirmation email with a restore link. You can also cancel deletion below.
+          </p>
+
+          <div className="border-t border-border mb-8" />
+
+          <Button
+            className="w-full mb-4"
+            onClick={handleRestore}
+            disabled={restoring}
+          >
+            {restoring ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RotateCcw className="h-4 w-4 mr-2" />
+            )}
+            Do not delete my account
+          </Button>
+
+          <p className="text-xs text-muted-foreground text-center">
+            <Link
+              href="/policies/privacy"
+              className="underline underline-offset-4 decoration-border hover:decoration-foreground hover:text-foreground transition-colors"
             >
-              {restoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
-              Do not delete my account
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              <Link href="/policies/privacy" className="underline hover:no-underline">
-                Privacy policy
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+              Privacy policy
+            </Link>
+          </p>
+
+        </div>
       </div>
     </ThemeProvider>
   );
