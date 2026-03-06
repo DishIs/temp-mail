@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { FaDiscord, FaGithub } from "react-icons/fa";
 import { SiReddit, SiBuymeacoffee, SiPatreon } from "react-icons/si";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import { Session } from "next-auth";
@@ -22,43 +22,62 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// ── theme ripple helper ────────────────────────────────────────────────────
+// ── theme ripple — position computed from the click event, not a shared ref ──
+// This fixes the dual-ref bug where both desktop + mobile buttons pointed to
+// the same ref, so the ripple always originated from the wrong element.
 function useThemeRipple() {
   const { theme, setTheme } = useTheme();
-  const btnRef = useRef<HTMLButtonElement>(null);
 
-  const toggle = useCallback(() => {
-    const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+  const toggle = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const next =
+        theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
 
-    if (!btnRef.current || !document.startViewTransition) {
-      setTheme(next);
-      return;
-    }
+      if (!document.startViewTransition) {
+        setTheme(next);
+        return;
+      }
 
-    const btn = btnRef.current;
-    const rect = btn.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top  + rect.height / 2;
-
-    const maxR = Math.hypot(
-      Math.max(x, window.innerWidth  - x),
-      Math.max(y, window.innerHeight - y)
-    );
-
-    document.startViewTransition(() => {
-      setTheme(next);
-    }).ready.then(() => {
-      document.documentElement.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
-        { duration: 420, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }
+      // Use the clicked button's bounding rect — always correct, no shared ref
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = rect.left + rect.width  / 2;
+      const y = rect.top  + rect.height / 2;
+      const maxR = Math.hypot(
+        Math.max(x, window.innerWidth  - x),
+        Math.max(y, window.innerHeight - y),
       );
-    });
-  }, [theme, setTheme]);
 
-  return { theme, toggle, btnRef };
+      document.startViewTransition(() => {
+        setTheme(next);
+      }).ready.then(() => {
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${maxR}px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 420,
+            easing: "ease-in-out",
+            pseudoElement: "::view-transition-new(root)",
+          },
+        );
+      });
+    },
+    [theme, setTheme],
+  );
+
+  return { theme, toggle };
 }
 
-function ThemeIcon({ theme, mounted }: { theme: string | undefined; mounted: boolean }) {
+function ThemeIcon({
+  theme,
+  mounted,
+}: {
+  theme: string | undefined;
+  mounted: boolean;
+}) {
   if (!mounted) return <span className="h-4 w-4" />;
   return (
     <span className="relative h-4 w-4 block">
@@ -76,11 +95,15 @@ const NAV_LINKS = [
   { href: "/api",       label: "API",      mono: true },
 ];
 
-export function AppHeader({ initialSession }: { initialSession: Session | null }) {
+export function AppHeader({
+  initialSession,
+}: {
+  initialSession: Session | null;
+}) {
   const { data: session, status } = useSession();
-  const { theme, toggle, btnRef } = useThemeRipple();
-  const [menuOpen, setMenuOpen]   = useState(false);
-  const [mounted,  setMounted]    = useState(false);
+  const { theme, toggle } = useThemeRipple();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted]   = useState(false);
   const pathname = usePathname();
 
   useEffect(() => { setMounted(true); }, []);
@@ -101,13 +124,28 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="relative outline-none">
-              <Avatar className={`h-8 w-8 border transition-all ${isPro ? "border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]" : "border-border"}`}>
-                <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
+              <Avatar
+                className={`h-8 w-8 border transition-all ${
+                  isPro
+                    ? "border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]"
+                    : "border-border"
+                }`}
+              >
+                <AvatarImage
+                  src={session.user.image || ""}
+                  alt={session.user.name || "User"}
+                />
                 <AvatarFallback className="text-xs font-bold bg-muted">
                   {session.user.name?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1 rounded-sm leading-none py-px border ${isPro ? "bg-amber-400 text-black border-amber-500" : "bg-muted text-muted-foreground border-border"}`}>
+              <span
+                className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1 rounded-sm leading-none py-px border ${
+                  isPro
+                    ? "bg-amber-400 text-black border-amber-500"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+              >
                 {isPro ? "PRO" : "FREE"}
               </span>
             </button>
@@ -115,18 +153,22 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
           <DropdownMenuContent className="w-60 p-2" align="end">
             <DropdownMenuLabel className="font-normal px-2 py-2">
               <p className="text-sm font-semibold truncate">{session.user.name}</p>
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{session.user.email}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {session.user.email}
+              </p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard" className="cursor-pointer">
-                  <LayoutDashboard className="mr-2 h-4 w-4 text-muted-foreground" />Dashboard
+                  <LayoutDashboard className="mr-2 h-4 w-4 text-muted-foreground" />
+                  Dashboard
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/profile" className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4 text-muted-foreground" />Profile &amp; Billing
+                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                  Profile &amp; Billing
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -134,7 +176,10 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
             {!isPro && (
               <div className="p-1 mb-1">
                 <Button asChild size="sm" className="w-full h-8 text-xs">
-                  <Link href="/pricing"><CreditCard className="mr-1.5 h-3 w-3" />Upgrade to Pro</Link>
+                  <Link href="/pricing">
+                    <CreditCard className="mr-1.5 h-3 w-3" />
+                    Upgrade to Pro
+                  </Link>
                 </Button>
               </div>
             )}
@@ -142,7 +187,8 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
               onClick={() => signOut({ callbackUrl: "/" })}
               className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
             >
-              <LogOut className="mr-2 h-4 w-4" />Log out
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -151,14 +197,15 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
 
     return (
       <div className="flex items-center gap-2">
-        <Button asChild size="sm" variant="ghost"><Link href="/auth">Sign in</Link></Button>
+        <Button asChild size="sm" variant="ghost">
+          <Link href="/auth">Sign in</Link>
+        </Button>
       </div>
     );
   };
 
   return (
     <>
-      {/* Global view-transition CSS */}
       <style>{`
         ::view-transition-old(root),
         ::view-transition-new(root) {
@@ -175,39 +222,58 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="Home">
-            <Image src="/logo.webp" alt="FreeCustom.Email" width={28} height={28} className="h-7 w-7" priority />
+            <Image
+              src="/logo.webp"
+              alt="FreeCustom.Email"
+              width={28}
+              height={28}
+              className="h-7 w-7"
+              priority
+            />
             <div className="flex flex-col leading-none">
-              <span className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</span>
-              <span className="text-[10px] font-normal text-muted-foreground tracking-widest uppercase -mt-0.5">temp mail</span>
+              <span className="text-sm font-semibold tracking-tight text-foreground">
+                FreeCustom.Email
+              </span>
+              <span className="text-[10px] font-normal text-muted-foreground tracking-widest uppercase -mt-0.5">
+                temp mail
+              </span>
             </div>
           </Link>
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-0.5">
             {NAV_LINKS.map(({ href, label, mono }) => {
-              const show = href === "/blog" || href === "/pricing" ? !isPro || !isLoggedIn : true;
+              const show =
+                href === "/blog" || href === "/pricing"
+                  ? !isPro || !isLoggedIn
+                  : true;
               if (!show) return null;
               return (
                 <Link
                   key={href}
                   href={href}
                   className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                    isActive(href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                    isActive(href)
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {mono
-                    ? <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted border border-border/80">{label}</span>
-                    : label
-                  }
+                  {mono ? (
+                    <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted border border-border/80">
+                      {label}
+                    </span>
+                  ) : (
+                    label
+                  )}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Right */}
+          {/* Desktop right */}
           <div className="hidden md:flex items-center gap-2">
+            {/* Each button gets its own onClick(e) — no shared ref needed */}
             <button
-              ref={btnRef}
               onClick={toggle}
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Toggle theme"
@@ -220,7 +286,6 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
           {/* Mobile actions */}
           <div className="md:hidden flex items-center gap-1.5">
             <button
-              ref={btnRef}
               onClick={toggle}
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
               aria-label="Toggle theme"
@@ -260,17 +325,25 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
             <div className="border-t border-border pt-4 flex flex-wrap gap-3 items-center">
               <div className="flex items-center gap-3">
                 {[
-                  { href: "https://github.com/DishIs/temp-mail", icon: FaGithub, label: "GitHub" },
-                  { href: "https://discord.com/invite/Ztp7kT2QBz", icon: FaDiscord, label: "Discord" },
-                  { href: "https://www.reddit.com/r/FreeCustomEmail", icon: SiReddit, label: "Reddit" },
-                  { href: "https://www.buymeacoffee.com/dishantsinghdev", icon: SiBuymeacoffee, label: "BuyMeACoffee" },
-                  { href: "https://www.patreon.com/c/maildrop", icon: SiPatreon, label: "Patreon" },
+                  { href: "https://github.com/DishIs/temp-mail",         icon: FaGithub,        label: "GitHub"       },
+                  { href: "https://discord.com/invite/Ztp7kT2QBz",       icon: FaDiscord,       label: "Discord"      },
+                  { href: "https://www.reddit.com/r/FreeCustomEmail",     icon: SiReddit,        label: "Reddit"       },
+                  { href: "https://www.buymeacoffee.com/dishantsinghdev", icon: SiBuymeacoffee,  label: "BuyMeACoffee" },
+                  { href: "https://www.patreon.com/c/maildrop",           icon: SiPatreon,       label: "Patreon"      },
                 ].map(({ href, icon: Icon, label }) => (
-                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
-                    className="text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
                     <Icon className="h-4 w-4" />
                   </a>
                 ))}
+              </div>
+              <div className="ml-auto">
               </div>
             </div>
           </div>

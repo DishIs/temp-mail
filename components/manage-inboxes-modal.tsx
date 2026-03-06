@@ -1,16 +1,11 @@
+// ─────────────────────────────────────────────────────────────────────────────
 // components/manage-inboxes-modal.tsx
+// ─────────────────────────────────────────────────────────────────────────────
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { List } from "lucide-react";
+import { Inbox, X } from "lucide-react";
 
 interface ManageInboxesModalProps {
   isOpen: boolean;
@@ -19,44 +14,64 @@ interface ManageInboxesModalProps {
   onSelectInbox: (inbox: string) => void;
 }
 
-export function ManageInboxesModal({ isOpen, onClose, inboxes, onSelectInbox }: ManageInboxesModalProps) {
-  const handleUseClick = (inbox: string) => {
-    onSelectInbox(inbox);
-    onClose();
-  };
-
+export function ManageInboxesModal({
+  isOpen, onClose, inboxes, onSelectInbox,
+}: ManageInboxesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Manage Your Inboxes</DialogTitle>
-          <DialogDescription>
-            Select an inbox from your history to make it active.
-          </DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="h-72 w-full rounded-md border p-4">
-          <div className="space-y-2">
-            {inboxes.length > 0 ? (
-              inboxes.map((inbox) => (
-                <div key={inbox} className="flex items-center justify-between">
-                  <span className="text-sm font-medium truncate pr-2">{inbox}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleUseClick(inbox)}
-                  >
-                    Use
-                  </Button>
-                </div>
-              ))
-            ) : (
-              <div className="text-center text-sm text-muted-foreground py-8">
-                <List className="mx-auto h-8 w-8 mb-2" />
-                No saved inboxes found.
-              </div>
-            )}
+      <DialogContent
+        className={[
+          "sm:max-w-[420px] p-0 gap-0 overflow-hidden",
+          "bg-background border border-border rounded-lg",
+          "[&>button:first-of-type]:hidden",
+        ].join(" ")}
+      >
+        {/* Title bar */}
+        <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+          <div className="flex items-center gap-1.5 shrink-0" aria-hidden>
+            <span className="h-2.5 w-2.5 rounded-full border border-border bg-background" />
+            <span className="h-2.5 w-2.5 rounded-full border border-border bg-background" />
+            <span className="h-2.5 w-2.5 rounded-full border border-border bg-background" />
           </div>
-        </ScrollArea>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground flex-1">
+            Manage inboxes
+          </span>
+          <button onClick={onClose}
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Label */}
+        <div className="px-5 pt-5 pb-2">
+          <p className="text-xs text-muted-foreground">
+            Select an inbox from your history to make it active.
+          </p>
+        </div>
+
+        {/* List */}
+        <div className="overflow-y-auto max-h-72 mx-5 mb-5 border border-border rounded-lg divide-y divide-border">
+          {inboxes.length > 0 ? (
+            inboxes.map((inbox) => (
+              <div key={inbox}
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted/10 transition-colors">
+                <span className="font-mono text-xs text-foreground truncate pr-3">{inbox}</span>
+                <Button variant="outline" size="sm"
+                  className="shrink-0 font-mono text-[10px] uppercase tracking-widest h-7 px-3"
+                  onClick={() => { onSelectInbox(inbox); onClose(); }}>
+                  Use
+                </Button>
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <Inbox className="h-6 w-6 text-muted-foreground/40" />
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                No saved inboxes
+              </p>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

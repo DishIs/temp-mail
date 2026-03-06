@@ -26,8 +26,7 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
-import { UpsellModal } from "./upsell-modal";
-import { AuthNeed } from "./auth-needed-moda";
+import { AuthNeed, UpsellModal } from "./upsell-modal";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 
 const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";

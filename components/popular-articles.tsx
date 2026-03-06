@@ -1,60 +1,89 @@
+// components/popular-articles.tsx
 import Link from 'next/link';
 import { blogClient } from '@/lib/blog-client';
-import { Calendar, ArrowRight } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Calendar, ArrowRight, Tag } from 'lucide-react';
 
-// Helper function to match your blog page date formatting
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+    year: 'numeric', month: 'short', day: 'numeric',
   });
 }
 
 export async function PopularArticles() {
-  // 1. Fetch data directly from the blogClient
-  // We request page 1 with a limit of 4 posts
-  const { posts } = await blogClient.getPosts({
-    page: 1,
-    limit: 4
-  });
+  const { posts } = await blogClient.getPosts({ page: 1, limit: 4 });
 
   return (
-    <section className="my-14">
-      <h2 className="mb-6 text-sm font-medium uppercase tracking-widest text-muted-foreground">Popular Articles</h2>
+    <div>
+      {/* Section label — same style as the main page's sub-labels */}
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-0">
+        Popular Articles
+      </p>
 
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
-        {posts.map((post) => (
-          <article key={post.slug} className="flex flex-col rounded-lg border border-border bg-card p-4 sm:p-5 transition-colors hover:border-primary/20">
-            {post.category && (
-              <Badge variant="secondary" className="mb-2 w-fit text-xs font-normal">
-                {post.category.name}
-              </Badge>
-            )}
+      {/* gap-px grid exactly like every other panel on the page */}
+      <div className="rounded-lg border border-border overflow-hidden mt-3">
+        <div className="grid gap-px bg-border sm:grid-cols-2">
+          {posts.map((post, i) => (
+            <article
+              key={post.slug}
+              className="group bg-background px-7 py-6 flex flex-col hover:bg-muted/10 transition-colors"
+            >
+              {/* Meta row */}
+              <div className="flex items-center gap-2 mb-3">
+                {/* Index */}
+                <span className="font-mono text-xs text-border/70 font-bold select-none w-5 shrink-0">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
 
-            <Link href={`/blog/${post.slug}`}>
-              <h3 className="mb-1.5 text-base font-medium text-foreground hover:underline underline-offset-2">
-                {post.title}
-              </h3>
-            </Link>
+                {post.category && (
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground border border-border px-1.5 py-0.5 rounded">
+                    {post.category.name}
+                  </span>
+                )}
 
-            <p className="flex-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-              {post.excerpt}
-            </p>
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60 ml-auto shrink-0">
+                  <Calendar className="h-2.5 w-2.5" />
+                  {formatDate(post.publishedAt)}
+                </span>
+              </div>
 
-            <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3" />
-                {formatDate(post.publishedAt)}
-              </span>
-              <Link href={`/blog/${post.slug}`} className="text-xs font-medium text-foreground underline-offset-2 hover:underline inline-flex items-center gap-0.5">
-                Read <ArrowRight className="h-3 w-3" />
+              {/* Title */}
+              <Link href={`/blog/${post.slug}`}>
+                <h3 className="text-sm font-semibold text-foreground leading-snug mb-2 group-hover:underline underline-offset-4 decoration-border group-hover:decoration-foreground transition-all">
+                  {post.title}
+                </h3>
               </Link>
-            </div>
-          </article>
-        ))}
+
+              {/* Excerpt */}
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1 mb-4">
+                {post.excerpt}
+              </p>
+
+              {/* Footer row */}
+              <div className="flex items-center justify-between border-t border-border pt-3 mt-auto">
+                {/* Tags */}
+                <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                  {post.tags?.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag.slug}
+                      className="flex items-center gap-0.5 text-[10px] text-muted-foreground/60 truncate"
+                    >
+                      <Tag className="h-2.5 w-2.5 shrink-0" />
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+
+                <Link
+                  href={`/blog/${post.slug}`}
+                  className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors shrink-0 ml-3"
+                >
+                  Read <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
