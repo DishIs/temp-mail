@@ -81,7 +81,7 @@ function DomainPromoCard() {
   );
 }
 
-// ── OTP badge — real code for Pro, blurred •••••• + Crown for others ──────────
+// ── OTP badge ─────────────────────────────────────────────────────────────────
 function OtpBadge({
   otp, isPro, onCopy, onUpsell, copied
 }: { otp: string; isPro: boolean; onCopy: () => void; onUpsell: () => void, copied: boolean }) {
@@ -314,8 +314,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   // ── Inline badges ─────────────────────────────────────────────────────────
   const renderBadges = useCallback((msg: Message) => {
-    // Server now sends '__DETECTED__' sentinel for free/anonymous users,
-    // and the real value for pro — no client-side sniffing needed.
     const hasOtp = !!msg.otp;
     const hasVerify = !!msg.verificationLink;
     if (!hasOtp && !hasVerify) return null;
@@ -351,7 +349,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     const prev = wsRef.current;
     if (prev) { prev.onclose = null; if (prev.readyState < 2) prev.close(1000, "mailbox_change"); }
 
-    // Fetch a short-lived ticket scoped to this mailbox
     let wsToken = '';
     try {
       const res = await fetch('/api/ws-ticket', {
@@ -361,9 +358,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       });
       const data = await res.json();
       wsToken = data.token ?? '';
-    } catch {
-      // Proceed without token — backend will reject if auth required
-    }
+    } catch { }
 
     const url = `wss://api2.freecustom.email/?mailbox=${encodeURIComponent(mailbox)}&token=${encodeURIComponent(wsToken)}`;
     const ws = new WebSocket(url);
@@ -626,7 +621,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     return () => { if (h) h.style.display = ""; if (f) f.style.display = ""; if (n) n.style.display = ""; };
   }, [userSettings.layout, isZen, isMinimal, isRetro]);
 
-  // ── Placement 3: Empty state domain promo (free users only) ───────────────
+  // ── Empty state domain promo ──────────────────────────────────────────────
   const renderEmptyStateDomainPromo = () => {
     if (isPro) return null;
     return (
@@ -730,7 +725,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           <div className="bg-muted/30 p-4 rounded-full mb-4">{activeTab === "all" ? <Mail className="h-8 w-8 text-muted-foreground/50" /> : <Archive className="h-8 w-8 text-muted-foreground/50" />}</div>
           <p className="text-base font-medium">{activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}</p>
           <p className="text-sm text-muted-foreground max-w-xs mt-1">{activeTab === "all" ? t("inbox_empty_subtitle") : "Emails you dismiss appear here."}</p>
-          {/* ── Placement 3: Empty inbox domain promo ── */}
           {activeTab === "all" && renderEmptyStateDomainPromo()}
         </div>
       ) : filteredMessages.map((msg) => {
@@ -755,11 +749,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               </div>
               {!isCompact && (
                 <div className="flex items-center justify-between mt-1">
-                  {/* Expiry timer: hidden on mobile (touch devices have no hover), visible on sm+ */}
                   <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/70 hover:text-amber-600 cursor-pointer" onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Storage"); }}>
                     <Clock className="h-3 w-3" /><span>{isPro ? "Permanent" : getExpiry(msg.date, 24)}</span>
                   </div>
-                  {/* Action buttons: always visible on mobile, hover-only on sm+ */}
                   <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     {userPlan === "free" && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-4 w-4", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}><Trash2 className="h-4 w-4" /></Button>
@@ -782,9 +774,13 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   );
 
   return (
-    <Card className={cn("border-dashed", isZen && "border-0 shadow-none bg-transparent")}>
-      <CardContent className="space-y-2 pt-3">
-        {/* ── Placement 4: Email bar domain hint (free users only) ── */}
+    // ── CHANGE 1: border-dashed → border border-border, remove shadow, explicit bg ──
+    <Card className={cn(
+      "border border-border bg-background shadow-none rounded-lg",
+      isZen && "border-0 shadow-none bg-transparent"
+    )}>
+      {/* ── CHANGE 2: px-4 sm:px-6 added for consistent horizontal padding ── */}
+      <CardContent className="space-y-2 pt-4 px-4 sm:px-6">
         <div className="flex items-center gap-2">
           {isEditing ? (
             <div className="flex flex-1 items-center gap-2">
@@ -808,8 +804,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             </div>
           ) : (
             <div className="flex-1 flex flex-col gap-0.5">
-              <div className="rounded-md bg-muted p-2 text-sm">{email || t("loading")}</div>
-              {/* ── Placement 4: subtle text under email bar ── */}
+              {/* ── CHANGE 3: email display — solid border + font-mono ── */}
+              <div className="rounded-md bg-muted/60 border border-border p-2 text-sm font-mono tracking-tight">
+                {email || t("loading")}
+              </div>
               {!isPro && (
                 <p className="text-[10px] text-muted-foreground/70 pl-1">
                   Want your own domain like this?{" "}
@@ -879,7 +877,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <h3 className="text-base font-semibold mb-2">{t("history_title")}</h3>
               <ul className="space-y-2">{emailHistory.map((he, i) => (<li key={i} className="flex items-center justify-between"><span className="text-sm text-muted-foreground truncate">{he}</span><Button variant="ghost" size="sm" onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); }}>{t("history_use")}</Button></li>))}</ul>
             </div>
-            {/* ── Placement 1: Native domain promo card (replaces ad) ── */}
             {!isPro && (
               <div className="w-full md:w-80 shrink-0">
                 <DomainPromoCard />
@@ -889,7 +886,14 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
       </CardContent>
 
-      {!isZen && <CardHeader><h2 className="text-xl font-semibold">{t("card_header_title")}</h2><p className="text-sm text-muted-foreground">{t("card_header_p")}</p></CardHeader>}
+      {/* ── CHANGE 4 (CardHeader): border-t + mono label above title ── */}
+      {!isZen && (
+        <CardHeader className="border-t border-border px-4 sm:px-6 pt-5 pb-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Inbox</p>
+          <h2 className="text-xl font-semibold text-foreground">{t("card_header_title")}</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">{t("card_header_p")}</p>
+        </CardHeader>
+      )}
 
       {showAttachmentNotice && !isZen && (
         <div className="p-3 mb-4 mx-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-zinc-800 dark:text-yellow-300 text-center cursor-pointer hover:underline" onClick={() => openUpsell("Large Attachments")}>

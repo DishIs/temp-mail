@@ -154,7 +154,6 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
     return (
       <div className="flex items-center gap-2">
         <Button asChild size="sm" variant="ghost"><Link href="/auth">Sign in</Link></Button>
-        <Button asChild size="sm"><Link href="/auth">Get started</Link></Button>
       </div>
     );
   };

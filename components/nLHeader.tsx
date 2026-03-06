@@ -4,157 +4,145 @@
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import {
-  Moon,
-  Sun,
-  Menu as MenuIconLucide,
-  Laptop,
-  LogOut,
-  Settings,
-  LayoutDashboard,
-  CreditCard,
-  User,
-  Mail
+  Moon, Sun, Laptop, Menu as MenuIcon, X,
+  LogOut, LayoutDashboard, CreditCard, User,
 } from "lucide-react";
 import Link from "next/link";
 import { FaDiscord, FaGithub } from "react-icons/fa";
-import { useState, useCallback, useEffect } from "react";
+import { SiReddit, SiBuymeacoffee, SiPatreon } from "react-icons/si";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import { Session } from "next-auth";
 import { usePathname } from "next/navigation";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup,
+  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { SiBuymeacoffee, SiPatreon, SiReddit } from "react-icons/si";
+
+// ── theme ripple helper ────────────────────────────────────────────────────
+function useThemeRipple() {
+  const { theme, setTheme } = useTheme();
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const toggle = useCallback(() => {
+    const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+
+    if (!btnRef.current || !document.startViewTransition) {
+      setTheme(next);
+      return;
+    }
+
+    const btn = btnRef.current;
+    const rect = btn.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top  + rect.height / 2;
+
+    const maxR = Math.hypot(
+      Math.max(x, window.innerWidth  - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    document.startViewTransition(() => {
+      setTheme(next);
+    }).ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
+        { duration: 420, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }
+      );
+    });
+  }, [theme, setTheme]);
+
+  return { theme, toggle, btnRef };
+}
+
+function ThemeIcon({ theme, mounted }: { theme: string | undefined; mounted: boolean }) {
+  if (!mounted) return <span className="h-4 w-4" />;
+  return (
+    <span className="relative h-4 w-4 block">
+      <Sun    className={`absolute h-4 w-4 transition-all duration-200 ${theme === "light"  ? "opacity-100 scale-100" : "opacity-0 scale-75"}`} />
+      <Moon   className={`absolute h-4 w-4 transition-all duration-200 ${theme === "dark"   ? "opacity-100 scale-100" : "opacity-0 scale-75"}`} />
+      <Laptop className={`absolute h-4 w-4 transition-all duration-200 ${theme === "system" ? "opacity-100 scale-100" : "opacity-0 scale-75"}`} />
+    </span>
+  );
+}
+
+const NAV_LINKS = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/pricing",   label: "Pricing"   },
+  { href: "/blog",      label: "Blog"      },
+  { href: "/api",       label: "API",      mono: true },
+];
 
 export function AppHeader({ initialSession }: { initialSession: Session | null }) {
   const { data: session, status } = useSession();
-  // const session = sessionData || initialSession;
-
-  const { theme, setTheme } = useTheme();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const { theme, toggle, btnRef } = useThemeRipple();
+  const [menuOpen, setMenuOpen]   = useState(false);
+  const [mounted,  setMounted]    = useState(false);
   const pathname = usePathname();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  const toggleTheme = useCallback(() => {
-    if (theme === 'light') setTheme('dark');
-    else if (theme === 'dark') setTheme('system');
-    else setTheme('light');
-  }, [theme, setTheme]);
-
-  const toggleMobileMenu = useCallback(() => {
-    setMenuOpen((prev) => !prev);
-  }, []);
-
-  const handleMobileLinkClick = useCallback(() => {
-    setMenuOpen(false);
-  }, []);
-
-  const isLoggedIn = status === 'authenticated' || !!session?.user;
+  const isLoggedIn = status === "authenticated" || !!session?.user;
   // @ts-ignore
-  const userPlan = session?.user?.plan || 'free';
-  const isPro = userPlan === 'pro';
+  const isPro = (session?.user?.plan ?? "free") === "pro";
 
-  const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
-    const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
-    return (
-      <Link
-        href={href}
-        onClick={menuOpen ? handleMobileLinkClick : undefined}
-        className={`text-sm font-medium transition-colors hover:text-primary ${isActive ? 'text-primary' : 'text-muted-foreground'
-          }`}
-      >
-        {children}
-      </Link>
-    );
-  };
+  const isActive = (href: string) =>
+    pathname === href || (href !== "/" && pathname.startsWith(href));
 
-  const RenderAuthButton = () => {
-    if (status === 'loading') {
-      return <div className="h-9 w-9 bg-muted rounded-full animate-pulse" />;
-    }
+  const AuthSection = () => {
+    if (status === "loading")
+      return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
 
     if (isLoggedIn && session?.user) {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 ml-2 hover:bg-transparent">
-              <Avatar className={`h-9 w-9 border-2 transition-all ${isPro ? 'border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.4)]' : 'border-border'}`}>
+            <button className="relative outline-none">
+              <Avatar className={`h-8 w-8 border transition-all ${isPro ? "border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]" : "border-border"}`}>
                 <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                <AvatarFallback className="text-xs font-bold bg-muted">
                   {session.user.name?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-
-              {/* Status Badge */}
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
-                <Badge
-                  variant={isPro ? "default" : "secondary"}
-                  className={`px-1 py-0 text-[9px] h-4 min-w-max border leading-none ${isPro ? "bg-amber-400 hover:bg-amber-500 text-black border-amber-500" : "bg-muted text-muted-foreground border-border"}`}
-                >
-                  {isPro ? 'PRO' : 'FREE'}
-                </Badge>
-              </div>
-            </Button>
+              <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1 rounded-sm leading-none py-px border ${isPro ? "bg-amber-400 text-black border-amber-500" : "bg-muted text-muted-foreground border-border"}`}>
+                {isPro ? "PRO" : "FREE"}
+              </span>
+            </button>
           </DropdownMenuTrigger>
-
-          <DropdownMenuContent className="w-64 p-2" align="end" forceMount>
-            {/* User Info Header */}
-            <DropdownMenuLabel className="font-normal p-2">
-              <div className="flex flex-col space-y-1.5">
-                <p className="text-sm font-semibold leading-none truncate">{session.user.name}</p>
-                <p className="text-xs leading-none text-muted-foreground truncate">{session.user.email}</p>
-              </div>
+          <DropdownMenuContent className="w-60 p-2" align="end">
+            <DropdownMenuLabel className="font-normal px-2 py-2">
+              <p className="text-sm font-semibold truncate">{session.user.name}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{session.user.email}</p>
             </DropdownMenuLabel>
-
             <DropdownMenuSeparator />
-
             <DropdownMenuGroup>
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/dashboard">
-                  <LayoutDashboard className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>Dashboard</span>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard" className="cursor-pointer">
+                  <LayoutDashboard className="mr-2 h-4 w-4 text-muted-foreground" />Dashboard
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/dashboard/profile">
-                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>Profile & Billing</span>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/profile" className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4 text-muted-foreground" />Profile &amp; Billing
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
-
             <DropdownMenuSeparator />
-
             {!isPro && (
               <div className="p-1 mb-1">
-                <Button asChild className="w-full h-8 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 text-xs" size="sm">
-                  <Link href="/pricing">
-                    <CreditCard className="mr-2 h-3 w-3" />
-                    Upgrade to Pro
-                  </Link>
+                <Button asChild size="sm" className="w-full h-8 text-xs">
+                  <Link href="/pricing"><CreditCard className="mr-1.5 h-3 w-3" />Upgrade to Pro</Link>
                 </Button>
               </div>
             )}
-
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20"
+              className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <LogOut className="mr-2 h-4 w-4" />Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -162,180 +150,132 @@ export function AppHeader({ initialSession }: { initialSession: Session | null }
     }
 
     return (
-      <Button asChild size="sm" className="ml-2 font-semibold">
-        <Link href="/auth">
-          Login
-        </Link>
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button asChild size="sm" variant="ghost"><Link href="/auth">Sign in</Link></Button>
+      </div>
     );
   };
 
   return (
-    <header className="border-b w-full bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 transition-all duration-300">
-      <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+    <>
+      {/* Global view-transition CSS */}
+      <style>{`
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+          animation: none;
+          mix-blend-mode: normal;
+        }
+        ::view-transition-new(root) {
+          z-index: 9999;
+        }
+      `}</style>
 
-        {/* LOGO */}
-        <Link href="/" className="flex items-center gap-2 group" aria-label="Home" onClick={menuOpen ? handleMobileLinkClick : undefined}>
-          <div className="relative">
-            <Image
-              src="/logo.webp"
-              alt="FreeCustom.Email Logo"
-              width={32}
-              height={32}
-              className="h-8 w-8 transition-transform group-hover:scale-110"
-              priority
-            />
-          </div>
-          <span className="text-base sm:text-lg font-bold whitespace-nowrap hidden xs:block tracking-tight">
-            FreeCustom.Email
-          </span>
-          <span className="text-base font-bold whitespace-nowrap xs:hidden">
-            FC.E
-          </span>
-        </Link>
+      <header className="border-b border-border w-full bg-background/90 backdrop-blur-md sticky top-0 z-50">
+        <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-[90rem]">
 
-        {/* DESKTOP NAV */}
-        <div className="hidden md:flex items-center gap-6">
-          <nav className="flex items-center gap-6">
-            <NavLink href="/dashboard">Dashboard</NavLink>
-            <Link
-              href="/api"
-              className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary text-muted-foreground"
-            >
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
-                API
-              </span>
-            </Link>
-            {!isLoggedIn && <NavLink href="/blog">Blog</NavLink>}
-            {(!isLoggedIn || !isPro) && <NavLink href="/pricing">Pricing</NavLink>}
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="Home">
+            <Image src="/logo.webp" alt="FreeCustom.Email" width={28} height={28} className="h-7 w-7" priority />
+            <div className="flex flex-col leading-none">
+              <span className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</span>
+              <span className="text-[10px] font-normal text-muted-foreground tracking-widest uppercase -mt-0.5">temp mail</span>
+            </div>
+          </Link>
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-0.5">
+            {NAV_LINKS.map(({ href, label, mono }) => {
+              const show = href === "/blog" || href === "/pricing" ? !isPro || !isLoggedIn : true;
+              if (!show) return null;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    isActive(href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {mono
+                    ? <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted border border-border/80">{label}</span>
+                    : label
+                  }
+                </Link>
+              );
+            })}
           </nav>
 
-          <div className="flex items-center border-l pl-4 ml-2 gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="h-9 w-9 text-muted-foreground hover:text-primary"
+          {/* Right */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              ref={btnRef}
+              onClick={toggle}
+              className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Toggle theme"
             >
-              {mounted ? (
-                <div className="relative h-4 w-4">
-                  <Sun className={`absolute h-4 w-4 transition-all ${theme === 'light' ? 'rotate-0 scale-100' : '-rotate-90 scale-0'}`} />
-                  <Moon className={`absolute h-4 w-4 transition-all ${theme === 'dark' ? 'rotate-0 scale-100' : 'rotate-90 scale-0'}`} />
-                  <Laptop className={`absolute h-4 w-4 transition-all ${theme === 'system' ? 'scale-100' : 'scale-0'}`} />
-                </div>
-              ) : (
-                <span className="h-4 w-4" />
-              )}
-            </Button>
-            <RenderAuthButton />
+              <ThemeIcon theme={theme} mounted={mounted} />
+            </button>
+            <AuthSection />
+          </div>
+
+          {/* Mobile actions */}
+          <div className="md:hidden flex items-center gap-1.5">
+            <button
+              ref={btnRef}
+              onClick={toggle}
+              className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+              aria-label="Toggle theme"
+            >
+              <ThemeIcon theme={theme} mounted={mounted} />
+            </button>
+            <AuthSection />
+            <button
+              className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+            </button>
           </div>
         </div>
 
-        {/* MOBILE ACTIONS */}
-        <div className="md:hidden flex items-center gap-2">
-          <RenderAuthButton />
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-9 w-9"
-            aria-label="Toggle theme"
-          >
-            {mounted ? (
-              <div className="relative h-4 w-4">
-                <Sun className={`absolute h-4 w-4 transition-all ${theme === 'light' ? 'rotate-0 scale-100' : '-rotate-90 scale-0'}`} />
-                <Moon className={`absolute h-4 w-4 transition-all ${theme === 'dark' ? 'rotate-0 scale-100' : 'rotate-90 scale-0'}`} />
-                <Laptop className={`absolute h-4 w-4 transition-all ${theme === 'system' ? 'scale-100' : 'scale-0'}`} />
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-border bg-background px-4 pb-5 pt-3">
+            <nav className="flex flex-col gap-0.5 mb-4">
+              {NAV_LINKS.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                    isActive(href)
+                      ? "text-foreground font-medium bg-muted/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            <div className="border-t border-border pt-4 flex flex-wrap gap-3 items-center">
+              <div className="flex items-center gap-3">
+                {[
+                  { href: "https://github.com/DishIs/temp-mail", icon: FaGithub, label: "GitHub" },
+                  { href: "https://discord.com/invite/Ztp7kT2QBz", icon: FaDiscord, label: "Discord" },
+                  { href: "https://www.reddit.com/r/FreeCustomEmail", icon: SiReddit, label: "Reddit" },
+                  { href: "https://www.buymeacoffee.com/dishantsinghdev", icon: SiBuymeacoffee, label: "BuyMeACoffee" },
+                  { href: "https://www.patreon.com/c/maildrop", icon: SiPatreon, label: "Patreon" },
+                ].map(({ href, icon: Icon, label }) => (
+                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                    className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
               </div>
-            ) : (
-              <span className="h-4 w-4" />
-            )}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleMobileMenu}
-            className="h-9 w-9"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-          >
-            <MenuIconLucide className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* MOBILE MENU */}
-      {menuOpen && (
-        <nav className="md:hidden px-4 pb-4 pt-2 flex flex-col gap-4 bg-background border-b shadow-lg animate-in slide-in-from-top-2">
-          <div className="flex flex-col gap-1 pt-2">
-            <Link
-              href="/dashboard"
-              onClick={handleMobileLinkClick}
-              className="flex items-center gap-2 p-2 rounded-md hover:bg-muted text-sm font-medium"
-            >
-              <LayoutDashboard className="h-4 w-4" /> Dashboard
-            </Link>
-            <Link
-              href="/api"
-              onClick={handleMobileLinkClick}
-              className="flex items-center gap-2 p-2 rounded-md hover:bg-muted text-sm font-medium"
-            >
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">API</span>
-            </Link>
-            {!isLoggedIn && (
-              <Link
-                href="/blog"
-                onClick={handleMobileLinkClick}
-                className="flex items-center gap-2 p-2 rounded-md hover:bg-muted text-sm font-medium"
-              >
-                <Mail className="h-4 w-4" /> Blog
-              </Link>
-            )}
-            {(!isLoggedIn || !isPro) && (
-              <Link
-                href="/pricing"
-                onClick={handleMobileLinkClick}
-                className="flex items-center gap-2 p-2 rounded-md hover:bg-muted text-sm font-medium"
-              >
-                <CreditCard className="h-4 w-4" /> Pricing
-              </Link>
-            )}
-          </div>
-
-          <div className="border-t pt-3 flex flex-col gap-3">
-            <Link href="/api" className="text-sm text-muted-foreground hover:text-primary transition-colors px-2" onClick={handleMobileLinkClick}>
-              API Overview
-            </Link>
-            <Link href="/api/docs" className="text-sm text-muted-foreground hover:text-primary transition-colors px-2" onClick={handleMobileLinkClick}>
-              API Documentation
-            </Link>
-            <Link href="/api/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors px-2" onClick={handleMobileLinkClick}>
-              API Dashboard
-            </Link>
-            <div className="flex gap-4 px-2">
-              <a href="https://github.com/DishIs/temp-mail" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="GitHub">
-                <FaGithub className="h-5 w-5" />
-              </a>
-              <a href="https://discord.com/invite/Ztp7kT2QBz" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Discord">
-                <FaDiscord className="h-5 w-5" />
-              </a>
-              <a href="https://www.reddit.com/r/FreeCustomEmail" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Reddit">
-                <SiReddit className="h-5 w-5" />
-              </a>
-              <a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Reddit">
-                <SiBuymeacoffee className="h-5 w-5" />
-              </a>
-              <a href="https://www.patreon.com/c/maildrop" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Reddit">
-                <SiPatreon className="h-5 w-5" />
-              </a>
             </div>
-
           </div>
-        </nav>
-      )}
-    </header>
+        )}
+      </header>
+    </>
   );
 }

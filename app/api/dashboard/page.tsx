@@ -221,7 +221,7 @@ function ApiDashboardContent() {
             <div className="flex flex-wrap items-end gap-4">
               <h1 className="text-3xl font-bold tracking-tight text-foreground">
                 {planLabel ?? planName ?? "Free"}
-                {planPrice && <span className="ml-2 text-lg font-normal text-muted-foreground">{planPrice}</span>}
+                {planPrice && planPrice !== 'free' && <span className="ml-2 text-lg font-normal text-muted-foreground">{planPrice}</span>}
               </h1>
               <span className={`text-xs font-mono px-2 py-1 rounded-md border border-border ${statusBadge === "active" ? "text-foreground bg-muted/30" : "text-muted-foreground bg-muted/20"}`}>
                 {statusBadge}
