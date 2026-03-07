@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import type { Locale } from "next-intl";
 import Script from "next/script";
+import Link from "next/link";
 
 const FAQ_IDS = [
   "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
@@ -247,12 +248,12 @@ export default async function FAQPage({ params }: Props) {
               {/* Bottom note */}
               <p className="mt-6 font-mono text-[11px] text-muted-foreground/60">
                 Still have questions?{" "}
-                <a
+                <Link
                   href="/contact"
                   className="text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
                 >
                   Contact us →
-                </a>
+                </Link>
               </p>
             </div>
           </main>
