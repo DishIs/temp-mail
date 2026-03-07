@@ -31,13 +31,11 @@ import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal"
 
 const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
 
-// Seed fallback — used until /api/domains responds. Never shipped as the
-// authoritative list; the server response always overwrites this.
+// Seed fallback — safe, generic domain. Never shipped as the authoritative list;
+// the server response always overwrites this to prevent bot scraping.
 const DOMAIN_SEED: FetchedDomain[] = [
-  "ditube.info", "ditplay.info", "ditapi.info", "ditcloud.info",
-  "ditdrive.info", "ditgame.info", "ditlearn.info", "ditpay.info",
-  "junkstopper.info", "areueally.info",
-].map(domain => ({ domain, tier: "free" as const, tags: [] }));
+  { domain: "ditube.info", tier: "free", tags: [] }
+];
 
 interface Attachment { filename: string; contentType: string; content: string; size: number; }
 interface Message {
@@ -381,9 +379,26 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const availableDomains = useMemo(() => {
     const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
-    const fetched = fetchedDomains.map(d => d.domain);
-    return [...new Set([...custom, ...fetched])];
+    
+    // Sort fetched domains: Featured > Popular > New > Pro > Rest > Alphabetical
+    const sortedFetched = [...fetchedDomains].sort((a, b) => {
+      const score = (d: FetchedDomain) => {
+        let s = 0;
+        if (d.tags.includes('featured')) s += 100;
+        if (d.tags.includes('popular')) s += 50;
+        if (d.tags.includes('new')) s += 25;
+        if (d.tier === 'pro') s += 10;
+        return s;
+      };
+      const scoreDiff = score(b) - score(a);
+      if (scoreDiff !== 0) return scoreDiff;
+      return a.domain.localeCompare(b.domain);
+    }).map(d => d.domain);
+
+    return [...new Set([...custom, ...sortedFetched])];
   }, [initialCustomDomains, fetchedDomains]);
+
+  const hasNewDomain = useMemo(() => fetchedDomains.some(d => d.tags.includes('new')), [fetchedDomains]);
 
   const isSplit = userSettings.layout === "split" && isPro;
   const isCompact = userSettings.layout === "compact";
@@ -470,9 +485,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           sessionStorage.removeItem(cacheKey);
         }
       }
-      fetch("/api/domains", {
-        headers: { "x-fce-client": "web-client" }
-      })
+      fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
         .then(r => r.json())
         .then(d => {
           if (Array.isArray(d?.data)) {
@@ -928,12 +941,16 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-background shadow-lg border border-border z-50">
                     {availableDomains.map(d => {
-                      // A domain is "custom" (user-owned) if it's not in the server-fetched list at all
+                      const fetchedDomain = fetchedDomains.find(fd => fd.domain === d);
                       const isFetchedFree = freeDomainSet.has(d);
-                      const isFetchedPro = fetchedDomains.some(fd => fd.domain === d && fd.tier === "pro");
-                      const isUserCustom = !isFetchedFree && !isFetchedPro;
-                      const isProLocked = isFetchedPro && !isPro;
-                      const isNew = fetchedDomains.find(fd => fd.domain === d)?.tags?.includes("new");
+                      const isFetchedPro  = fetchedDomain?.tier === "pro";
+                      const isUserCustom  = !isFetchedFree && !isFetchedPro;
+                      const isProLocked   = isFetchedPro && !isPro;
+                      
+                      const tags = fetchedDomain?.tags || [];
+                      const isNew = tags.includes("new");
+                      const isFeatured = tags.includes("featured");
+                      const isPopular = tags.includes("popular");
 
                       return (
                         <DropdownMenuItem key={d}
@@ -942,17 +959,27 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                             if (isUserCustom && !isPro) { openUpsell("Custom Domains"); return; }
                             setSelectedDomain(d); setEmail(`${email.split("@")[0]}@${d}`);
                           }}
-                          className="flex items-center justify-between px-3 py-2 rounded cursor-pointer hover:bg-muted font-mono text-xs">
+                          className="flex items-center justify-between px-3 py-2 rounded cursor-pointer hover:bg-muted font-mono text-xs"
+                        >
                           <div className="flex items-center gap-2">
                             {(isUserCustom || isFetchedPro) && <Crown className="h-3 w-3 text-amber-500" />}
                             {isProLocked && <Lock className="h-3 w-3 text-amber-500" />}
                             <span>@{d}</span>
-                            {isNew && (
-                              <span className="font-mono text-[9px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 rounded px-1 py-px">NEW</span>
-                            )}
-                            {isProLocked && (
-                              <span className="font-mono text-[9px] text-amber-500">PRO</span>
-                            )}
+                            
+                            <div className="flex gap-1.5">
+                              {isFeatured && (
+                                <span className="font-mono text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded px-1 py-px uppercase tracking-wider">Top</span>
+                              )}
+                              {isPopular && !isFeatured && (
+                                <span className="font-mono text-[9px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded px-1 py-px uppercase tracking-wider">Hot</span>
+                              )}
+                              {isNew && (
+                                <span className="font-mono text-[9px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded px-1 py-px uppercase tracking-wider">New</span>
+                              )}
+                              {isProLocked && (
+                                <span className="font-mono text-[9px] text-amber-500 uppercase tracking-wider">Pro</span>
+                              )}
+                            </div>
                           </div>
                           <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-transparent shrink-0"
                             onClick={(e) => {
@@ -967,6 +994,19 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                         </DropdownMenuItem>
                       );
                     })}
+                    
+                    {!isPro && (
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          openUpsell("Premium Domains");
+                        }}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 mt-1 rounded cursor-pointer font-mono text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/20 transition-colors"
+                      >
+                        <Lock className="h-3 w-3 shrink-0" />
+                        <span>Get more domains</span>
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -974,12 +1014,17 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <div className="flex-1 min-w-0">
                 <div
                   className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 group hover:border-foreground/30 transition-colors cursor-text"
-                  onClick={isAuthenticated ? () => setIsEditing(true) : undefined}
+                  onClick={isAuthenticated ? () => { setIsEditing(true); setDiscoveredUpdates({ newDomains: true }); } : undefined}
                 >
                   <span className="font-mono text-[10px] text-muted-foreground/40 shrink-0 select-none">TO</span>
                   <span className="font-mono text-sm text-foreground flex-1 truncate">{email || t("loading")}</span>
                   {isAuthenticated && (
-                    <Edit className="h-3 w-3 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <div className="relative flex items-center justify-center">
+                      <Edit className="h-3 w-3 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      {hasNewDomain && !discoveredUpdates.newDomains && (
+                        <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      )}
+                    </div>
                   )}
                 </div>
                 {!isPro && (
@@ -1020,13 +1065,16 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             <div className="flex gap-px border-t border-border" style={{ background: "var(--border)" }}>
               {([
                 { icon: <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />, label: isRefreshing ? t("refreshing") : t("refresh"), hint: "R", disabled: blockButtons || isRefreshing, onClick: refreshInbox },
-                { icon: isEditing ? <CheckCheck className="h-3 w-3" /> : <Edit className="h-3 w-3" />, label: isEditing ? t("save") : t("change"), hint: "N", disabled: blockButtons, onClick: () => { changeEmail(); setDiscoveredUpdates({ newDomains: true }); } },
+                { icon: isEditing ? <CheckCheck className="h-3 w-3" /> : <Edit className="h-3 w-3" />, label: isEditing ? t("save") : t("change"), hint: "N", disabled: blockButtons, onClick: () => { changeEmail(); setDiscoveredUpdates({ newDomains: true }); }, hasBadge: hasNewDomain && !discoveredUpdates.newDomains && !isEditing },
                 { icon: <Trash2 className="h-3 w-3" />, label: t("delete"), hint: "D", disabled: blockButtons, onClick: () => handleDeleteAction("inbox") },
                 { icon: <ListOrdered className="h-3 w-3" />, label: "Manage", hint: "", disabled: false, onClick: () => { if (isPro) setIsManageModalOpen(true); else openUpsell("Inbox Management"); } },
-              ] as const).map(({ icon, label, hint, disabled, onClick }) => (
+              ] as const).map(({ icon, label, hint, disabled, onClick, hasBadge }) => (
                 <button key={label} disabled={disabled as boolean} onClick={onClick as () => void}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-background hover:bg-muted/30 transition-colors font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed">
-                  {icon}
+                  <div className="relative flex items-center justify-center">
+                    {icon}
+                    {hasBadge && <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                  </div>
                   <span className="hidden sm:inline">{label}</span>
                   {hint && <span className="hidden sm:inline font-mono text-[9px] text-muted-foreground/35 normal-case tracking-normal">{hint}</span>}
                 </button>
