@@ -37,12 +37,12 @@ export default function RefundPolicyPage() {
               <div className="bg-background p-6">
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Eligible</p>
                 <p className="text-sm font-medium text-foreground mb-1">First 14 Days</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">First-time subscriptions</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">First-time Pro or API plan subscriptions</p>
               </div>
               <div className="bg-background p-6">
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Not Eligible</p>
-                <p className="text-sm font-medium text-foreground mb-1">Renewals</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">Automatic recurring payments</p>
+                <p className="text-sm font-medium text-foreground mb-1">Renewals & Credits</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">Automatic recurring payments and one-time credit top-ups</p>
               </div>
             </section>
 
@@ -52,11 +52,12 @@ export default function RefundPolicyPage() {
                 01 — First 14 Days
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                If you purchased a <span className="font-medium text-foreground">Pro</span> subscription for the first time, you are eligible for a full refund within 14 days of your initial payment.
+                If you purchased a <span className="font-medium text-foreground">Pro</span> subscription or an <span className="font-medium text-foreground">API plan</span> (Developer, Startup, Growth, or Enterprise) for the first time, you are eligible for a full refund within 14 days of your initial payment.
               </p>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <div className="border-t border-border pt-3">No questions asked</div>
-                <div className="border-t border-border pt-3">Includes Weekly, Monthly, & Yearly plans</div>
+                <div className="border-t border-border pt-3">Includes Weekly, Monthly, & Yearly Pro plans</div>
+                <div className="border-t border-border pt-3">Includes all paid API plans (Developer, Startup, Growth, Enterprise)</div>
               </div>
             </section>
 
@@ -68,7 +69,7 @@ export default function RefundPolicyPage() {
                 02 — Renewals
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                We do <span className="font-medium text-foreground">not</span> offer refunds for automatic renewals. It is your responsibility to cancel your subscription before the renewal date if you no longer wish to use the service.
+                We do <span className="font-medium text-foreground">not</span> offer refunds for automatic renewals. It is your responsibility to cancel your subscription before the renewal date if you no longer wish to use the service. This applies equally to Pro subscriptions and API plans.
               </p>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <div className="border-t border-border pt-3">Forgot to cancel? Not refundable.</div>
@@ -78,13 +79,30 @@ export default function RefundPolicyPage() {
 
             <div className="border-t border-border" />
 
+            {/* Credits */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                03 — API Credits
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                One-time API credit top-ups (Starter, Builder, Scale, Pro credit packages) are <span className="font-medium text-foreground">non-refundable</span>. Credits never expire and carry over indefinitely, so there is no risk of losing unused balance.
+              </p>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="border-t border-border pt-3">Credits are consumed only when your monthly plan quota is exceeded.</div>
+                <div className="border-t border-border pt-3">Unused credits remain on your account until fully used — they do not expire.</div>
+                <div className="border-t border-border pt-3">If you believe credits were consumed incorrectly due to a technical error, contact us and we will investigate.</div>
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
             {/* Payment Provider */}
             <section>
               <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
-                03 — Payment Provider
+                04 — Payment Provider
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-5">
-                We use Paddle as our secure payment processor. Refund processing times depend on their policies and your bank.
+                We use Paddle as our secure payment processor for both Pro subscriptions and API plans. Refund processing times depend on their policies and your bank.
               </p>
               <div className="rounded-lg bg-muted/20 border border-border px-5 py-4">
                 <p className="text-sm font-medium text-foreground mb-1">Paddle Refunds</p>
@@ -99,17 +117,21 @@ export default function RefundPolicyPage() {
             {/* FAQ */}
             <section>
               <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-8">
-                04 — Common Questions
+                05 — Common Questions
               </h2>
               <div className="space-y-0">
                 {[
                   {
                     q: "How do I request a refund?",
-                    a: <>Please contact our support team at <a href="mailto:support@freecustom.email" className="text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors">support@freecustom.email</a> within 14 days of your purchase. Include your Order ID or the email address used for purchase.</>
+                    a: <>Please contact our support team at <a href="mailto:support@freecustom.email" className="text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors">support@freecustom.email</a> within 14 days of your purchase. Include your Order ID or the email address used for purchase, and whether it is for a Pro subscription or an API plan.</>
                   },
                   {
                     q: "I forgot to cancel my subscription. Can I get a refund?",
-                    a: "As per our policy, we do not refund renewals. However, you can cancel immediately to prevent future charges. You will retain access to Pro features until the end of your current billing period."
+                    a: "As per our policy, we do not refund renewals for either Pro or API plans. However, you can cancel immediately to prevent future charges. You will retain access to your plan's features until the end of your current billing period."
+                  },
+                  {
+                    q: "Can I get a refund for API credits?",
+                    a: "No. One-time credit purchases are non-refundable. Credits never expire and are only consumed when you exceed your plan's monthly quota, so your balance is always preserved. If you believe a technical error caused incorrect consumption, reach out and we will review it."
                   },
                   {
                     q: "What happens if I dispute the charge with my bank?",
@@ -117,7 +139,11 @@ export default function RefundPolicyPage() {
                   },
                   {
                     q: "Are technical issues grounds for a refund?",
-                    a: "Yes. If our service is not working as advertised and we cannot fix the issue for you, you are eligible for a refund even outside the 14-day window in specific cases."
+                    a: "Yes. If our service is not working as advertised and we cannot fix the issue for you, you are eligible for a refund even outside the 14-day window in specific cases. This applies to both Pro subscriptions and API plans."
+                  },
+                  {
+                    q: "I upgraded my API plan mid-cycle. Am I eligible for a refund on the old plan?",
+                    a: "Plan upgrades are prorated — you are charged only for the remaining portion of the new billing cycle. The 14-day refund window applies to your initial first-time purchase on each distinct plan tier, not to upgrade charges."
                   },
                 ].map((item, i) => (
                   <div key={i} className="border-t border-border py-6 last:pb-0">

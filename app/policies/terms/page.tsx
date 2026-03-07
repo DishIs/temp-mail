@@ -72,15 +72,15 @@ export default function TermsOfServicePage() {
                 {[
                   {
                     title: "Temporary & Disposable",
-                    body: "Emails are not intended for long-term storage. We are not responsible for data loss due to the ephemeral nature of the service."
+                    body: "Emails are not intended for long-term storage. We are not responsible for data loss due to the ephemeral nature of the service. Pro subscribers and API users with Pro-persistence plans are subject to their respective retention terms."
                   },
                   {
                     title: "No Account Creation",
-                    body: "You use the service without a formal account/password (unless upgrading to Pro). This underscores its temporary nature."
+                    body: "You use the service without a formal account/password (unless upgrading to Pro or using the API). This underscores its temporary nature."
                   },
                   {
                     title: "No Permanent Access",
-                    body: "Saving emails in your history does not guarantee permanent access to that address or its contents."
+                    body: "Saving emails in your history does not guarantee permanent access to that address or its contents unless you hold an active Pro subscription."
                   },
                 ].map((item, i) => (
                   <div key={i} className="border-t border-border py-5 last:pb-0">
@@ -106,7 +106,7 @@ export default function TermsOfServicePage() {
                   Do not send or receive sensitive personal information (passwords, financial details, etc.) through our service.
                 </p>
                 <p>
-                  Treat messages as potentially viewable if an address were to be re-used or guessed by others.
+                  Treat messages as potentially viewable if an address were to be re-used or guessed by others. API users provisioning inboxes for end-users carry this responsibility for their own users.
                 </p>
               </div>
             </section>
@@ -125,9 +125,10 @@ export default function TermsOfServicePage() {
                   "Phishing & Malware distribution",
                   "Harassment, Stalking, or Defamation",
                   "Impersonation for malicious purposes",
-                  "Automated Abuse (Bots/Scripts)",
+                  "Automated Abuse (Bots/Scripts) beyond your API plan's rate limits",
                   "Circumventing Security Measures",
                   "Unauthorized Commercial Resale",
+                  "Exposing API keys in public repositories or client-side code",
                 ].map((item, i) => (
                   <div key={i} className="border-t border-border py-3 text-sm text-muted-foreground">
                     {item}
@@ -154,13 +155,30 @@ export default function TermsOfServicePage() {
                   </Link>.
                 </p>
                 <p>
-                  <span className="font-medium text-foreground">Acceptable use:</span> You may use the API only for lawful purposes—e.g. testing, development, automation, and temporary inbox needs. You must not use the API to send spam, phish, harass, or circumvent other services' security. Rate limits and plan-specific feature restrictions (OTP, WebSocket, attachments, custom domains) apply as described in the API documentation and pricing.
+                  <span className="font-medium text-foreground">Acceptable use:</span> You may use the API only for lawful purposes — e.g. testing, development, automation, and temporary inbox needs. You must not use the API to send spam, phish, harass, or circumvent other services' security. Rate limits and plan-specific feature restrictions (OTP, WebSocket, attachments, custom domains) apply as described in the{" "}
+                  <Link
+                    href="/api/pricing"
+                    className="text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
+                  >
+                    API pricing
+                  </Link>{" "}
+                  and documentation.
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Plans & Credits:</span> Paid API plans (Developer, Startup, Growth, Enterprise) unlock features and set base rate limits. One-time credit top-ups add request capacity beyond your monthly quota and never expire. Credits are non-refundable; paid API plan subscriptions are subject to our{" "}
+                  <Link
+                    href="/policies/refund"
+                    className="text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors"
+                  >
+                    Refund Policy
+                  </Link>{" "}
+                  (14-day window on first-time purchases).
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Credentials:</span> You are responsible for keeping your API keys secure. Do not expose keys in client-side code or public repositories. We may revoke keys or suspend access for abuse or violation of these terms.
                 </p>
                 <p>
-                  <span className="font-medium text-foreground">Data:</span> Data processed via the API (inbox addresses, messages, OTPs) is subject to the same data retention and deletion policies as the web app. Account deletion applies to both app and API usage.
+                  <span className="font-medium text-foreground">Data:</span> Data processed via the API (inbox addresses, messages, OTPs) is subject to the same data retention and deletion policies as the web app. Persistence duration depends on your API plan — Free and Developer plans retain emails for up to 24 hours; Growth and Enterprise plans retain emails indefinitely (up to plan storage limits). Account deletion applies to both app and API usage.
                 </p>
               </div>
             </section>
@@ -183,6 +201,7 @@ export default function TermsOfServicePage() {
                           <p>Monitor usage to ensure compliance with our terms.</p>
                           <p>Block access from certain IP addresses or ranges if abuse is detected.</p>
                           <p>Remove or block access to email addresses found to be involved in prohibited activities.</p>
+                          <p>Revoke API keys or suspend API access for accounts that violate these terms.</p>
                           <p>Terminate or suspend access to our service for users who violate these terms, without prior notice.</p>
                         </div>
                       </>
@@ -194,7 +213,7 @@ export default function TermsOfServicePage() {
                   },
                   {
                     title: "Limitation of Liability",
-                    body: "By using our service, you agree that FreeCustom.Email and its operators are not liable for any damages, data loss, or consequences arising from your use of, or inability to use, the service."
+                    body: "By using our service, you agree that FreeCustom.Email and its operators are not liable for any damages, data loss, or consequences arising from your use of, or inability to use, the service. This includes use of the API and any downstream applications built on top of it."
                   },
                 ].map((item, i) => (
                   <div key={i} className="border-t border-border py-6 last:pb-0">
@@ -213,7 +232,7 @@ export default function TermsOfServicePage() {
                 Your Agreement
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xl">
-                By accessing or using FreeCustom.Email, you signify your agreement to abide by the spirit of these guidelines.
+                By accessing or using FreeCustom.Email — including the web app and API — you signify your agreement to abide by the spirit of these guidelines.
               </p>
               <div className="flex gap-3">
                 <Link href="/">
