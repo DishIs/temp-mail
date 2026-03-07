@@ -236,7 +236,7 @@ We've built and operated this exact infrastructure at scale. We know every failu
 **Pricing is reasonable.** We're not an enterprise vendor. Talk to us.
 
 > **Get in touch:**
-> - 📧 [dishis@dishis.tech](mailto:dishis@dishis.tech)
+> - 📧 [dishant@dishis.tech](mailto:dishant@dishis.tech)
 > - 🌐 [freecustom.email/contact](https://www.freecustom.email/contact)
 
 ---
