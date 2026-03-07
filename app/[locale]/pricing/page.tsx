@@ -4,7 +4,7 @@ import {
   Check, X, Crown, Loader2, EyeOff, Zap, Globe, Link2,
   Paperclip, Clock, Mail, MessageSquareCode,
   Star, MailOpen, Shield, Sparkles,
-  Keyboard, Lock, Users, HeartHandshake, Gift,
+  Keyboard, Lock, Users, HeartHandshake, Gift, RefreshCw,
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,50 @@ function PaddleTrustStrip() {
   );
 }
 
-// ── Layout primitives ──────────────────────────────────────────────────────
+// ── Domain freshness callout ──────────────────────────────────────────────
+function DomainCallout() {
+  return (
+    <div className="w-full max-w-xl mx-auto mt-10 rounded-lg border border-border bg-background overflow-hidden">
+      {/* top label bar */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/20">
+        <RefreshCw className="h-3 w-3 text-muted-foreground shrink-0" />
+        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Fresh domains · Pro
+        </span>
+        <span className="ml-auto font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px text-muted-foreground">
+          Biggest advantage
+        </span>
+      </div>
+
+      <div className="px-5 py-4">
+        <p className="text-sm font-semibold text-foreground leading-snug mb-1">
+          New domains added regularly — never blocked, never blacklisted.
+        </p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Most temp mail services reuse the same old domains for years. Sites block them on day one.
+          Pro members get access to freshly rotated domains that haven't been seen by spam filters yet —
+          so your signups, verifications, and OTPs actually land.
+        </p>
+
+        {/* three micro-stats */}
+        <div className="mt-4 grid grid-cols-3 gap-px bg-border rounded-md overflow-hidden">
+          {[
+            { label: "Rotation",   value: "Regular" },
+            { label: "Blocked",    value: "Rarely"  },
+            { label: "Free plan",  value: "Sometimes" },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-background px-3 py-2.5">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">{label}</p>
+              <p className="text-xs font-semibold text-foreground">{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function AsciiLayer() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden>
@@ -289,8 +332,15 @@ export default function PricingPage() {
               Permanent inbox. New domains regularly. Custom domains. Auto OTP. One plan for everything.
             </motion.p>
 
+            {/* Domain freshness callout */}
+            <motion.div
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}>
+              <DomainCallout />
+            </motion.div>
+
             {/* Social proof row */}
-            <motion.div className="flex flex-wrap items-center justify-center gap-4 mb-10 text-sm text-muted-foreground"
+            <motion.div className="flex flex-wrap items-center justify-center gap-4 mt-10 mb-10 text-sm text-muted-foreground"
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.25 }}>
               <div className="flex -space-x-2">
@@ -429,7 +479,7 @@ export default function PricingPage() {
                   </thead>
                   <tbody>
                     <SectionRow label="Retention" />
-                    <FeatureRow icon={<Clock className="h-3.5 w-3.5" />} label="New domains" hint="How regular new and unlisted/unblocked domains gets added" highlight
+                    <FeatureRow icon={<RefreshCw className="h-3.5 w-3.5" />} label="Fresh domains added regularly" hint="New, unblocked domains rotated in for Pro — free plan gets leftovers, guests get nothing" highlight isNew
                       guest={<V v="Never" />} free={<V v="Sometimes" />} pro={<V v="Regularly" accent />} />
                     <FeatureRow icon={<Clock className="h-3.5 w-3.5" />} label="Email retention" hint="How long emails stay on our server" highlight
                       guest={<V v="10 hrs" />} free={<V v="24 hrs" />} pro={<V v="Forever" accent />} />
@@ -548,15 +598,21 @@ export default function PricingPage() {
 
                       <div className="mt-8 grid sm:grid-cols-2 gap-3">
                         {[
+                          "Fresh domains added regularly",
+                          "New domains rarely blocked or blacklisted",
                           "Emails kept forever + 5 GB storage",
                           "Auto OTP extraction",
                           "Verification link detection",
                           "Custom domains",
                           "Private inboxes",
                           "Completely ad-free",
-                        ].map((b) => (
-                          <div key={b} className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Check className="h-3.5 w-3.5 text-foreground shrink-0" />{b}
+                        ].map((b, i) => (
+                          <div key={b} className={cn(
+                            "flex items-center gap-2 text-sm",
+                            i < 2 ? "text-foreground font-medium" : "text-muted-foreground"
+                          )}>
+                            <Check className={cn("h-3.5 w-3.5 shrink-0", i < 2 ? "text-foreground" : "text-foreground")} />{b}
+                            {i === 0 && <span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px text-muted-foreground ml-auto">Key feature</span>}
                           </div>
                         ))}
                       </div>
@@ -623,6 +679,7 @@ export default function PricingPage() {
             <div className="space-y-0">
               {[
                 { id: "trial",     q: "How does the 3-day free trial work?",          a: "Select the Monthly plan and start your trial — no charge until day 4. Full Pro access during the trial. Cancel any time before day 4 and you won't be billed a single cent." },
+                { id: "domains",   q: "Why do Pro domains actually work where others get blocked?", a: "Most temp mail providers have used the same domains for years — they're in every spam database and blocklist on the internet. We regularly rotate in new domains for Pro members that have zero history with spam filters. Fresh domains aren't on blocklists yet, so signups and verification emails land every time. Free plan users share older domains that sites may already know and reject." },
                 { id: "cancel",    q: "Can I cancel anytime?",                        a: "Yes. Cancel from your account settings — no fees, no hoops. If you're on a trial, cancelling before day 4 means zero charges." },
                 { id: "retention", q: "What happens to my emails if I don't upgrade?",a: "Free plan emails are automatically deleted after 24 hours. Pro keeps all your emails and attachments forever (up to 5 GB)." },
                 { id: "otp",       q: "How does auto OTP extraction work?",            a: "Our SMTP plugin scans the subject and body the moment an email arrives. It uses layered regex patterns to detect 4–8 digit codes. The code appears instantly in your inbox list without opening the email. Pro only." },
