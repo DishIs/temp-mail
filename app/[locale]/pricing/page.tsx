@@ -238,7 +238,7 @@ export default function PricingPage() {
               className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed mb-8"
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.2 }}>
-              Permanent inbox. Custom domains. Auto OTP. One plan for everything.
+              Permanent inbox. New domains regularly. Custom domains. Auto OTP. One plan for everything.
             </motion.p>
 
             {/* Social proof row */}
@@ -378,6 +378,8 @@ export default function PricingPage() {
                   </thead>
                   <tbody>
                     <SectionRow label="Retention" />
+                    <FeatureRow icon={<Clock className="h-3.5 w-3.5" />} label="New domains" hint="How regular new and unlisted/unblocked domains gets added" highlight
+                      guest={<V v="Never" />} free={<V v="Sometimes" />} pro={<V v="Regularly" accent />} />
                     <FeatureRow icon={<Clock className="h-3.5 w-3.5" />} label="Email retention" hint="How long emails stay on our server" highlight
                       guest={<V v="10 hrs" />} free={<V v="24 hrs" />} pro={<V v="Forever" accent />} />
                     <FeatureRow icon={<MailOpen className="h-3.5 w-3.5" />} label="Inbox capacity" hint="Max emails stored per address"
