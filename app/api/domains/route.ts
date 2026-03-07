@@ -24,12 +24,8 @@ import { auth } from '@/auth';
 import { fetchFromServiceAPI } from '@/lib/api';
 import { rateLimit } from '@/lib/rate-limit';
 
-const jwtSecret  = new TextEncoder().encode(process.env.JWT_SECRET);
-const limiter    = rateLimit({ interval: 60 * 1000, uniqueTokenPerInterval: 500 });
-
-// Next.js / CDN cache headers — public so the CDN can cache per plan tier,
-// but we key on Authorization so different plans don't bleed.
-const CACHE_MAX_AGE = 300; // 5 min — matches the Redis TTL on the backend
+const jwtSecret = new TextEncoder().encode(process.env.JWT_SECRET);
+const limiter = rateLimit({ interval: 60 * 1000, uniqueTokenPerInterval: 500 });
 
 async function signServiceToken(plan: string): Promise<string> {
   return new SignJWT({ plan })
@@ -39,12 +35,16 @@ async function signServiceToken(plan: string): Promise<string> {
     .sign(jwtSecret);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // 1. Anti-Scraping check: Require the custom header from your frontend
+  if (request.headers.get('x-fce-client') !== 'web-client') {
+    return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
+  }
+
   const session = await auth();
   const plan    = (session?.user as any)?.plan ?? 'free';
   const userId  = session?.user?.id ?? 'anonymous';
 
-  // Light rate-limit — domain lists are cached so this rarely hits the backend
   try {
     await limiter.check(60, `domains:${userId}`);
   } catch {
@@ -59,14 +59,21 @@ export async function GET() {
 
     const response = NextResponse.json(data);
 
-    // Tell the browser (and any CDN/edge cache) to hold this for CACHE_MAX_AGE.
-    // Using s-maxage so a CDN can cache per variation but the browser still
-    // respects max-age.  stale-while-revalidate means zero-latency on the
-    // cached copy while the background refresh happens.
-    response.headers.set(
-      'Cache-Control',
-      `public, max-age=${CACHE_MAX_AGE}, s-maxage=${CACHE_MAX_AGE}, stale-while-revalidate=60`,
-    );
+    // 2. Prevent search engines from indexing this JSON
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+
+    // 3. Fix the CDN caching leak
+    // We tell the CDN: "If the user has a different Cookie, give them a different cached version"
+    response.headers.set('Vary', 'Cookie, Authorization');
+
+    if (plan === 'pro') {
+      // Pro users get PRIVATE cache. Only their specific browser caches it. 
+      // The CDN will NEVER cache this for other users.
+      response.headers.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
+    } else {
+      // Free users get PUBLIC cache, so the CDN can absorb the heavy traffic of anonymous users.
+      response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=60');
+    }
 
     return response;
   } catch {

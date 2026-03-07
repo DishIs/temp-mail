@@ -470,7 +470,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           sessionStorage.removeItem(cacheKey);
         }
       }
-      fetch("/api/domains")
+      fetch("/api/domains", {
+        headers: { "x-fce-client": "web-client" }
+      })
         .then(r => r.json())
         .then(d => {
           if (Array.isArray(d?.data)) {
@@ -928,10 +930,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     {availableDomains.map(d => {
                       // A domain is "custom" (user-owned) if it's not in the server-fetched list at all
                       const isFetchedFree = freeDomainSet.has(d);
-                      const isFetchedPro  = fetchedDomains.some(fd => fd.domain === d && fd.tier === "pro");
-                      const isUserCustom  = !isFetchedFree && !isFetchedPro;
-                      const isProLocked   = isFetchedPro && !isPro;
-                      const isNew         = fetchedDomains.find(fd => fd.domain === d)?.tags?.includes("new");
+                      const isFetchedPro = fetchedDomains.some(fd => fd.domain === d && fd.tier === "pro");
+                      const isUserCustom = !isFetchedFree && !isFetchedPro;
+                      const isProLocked = isFetchedPro && !isPro;
+                      const isNew = fetchedDomains.find(fd => fd.domain === d)?.tags?.includes("new");
 
                       return (
                         <DropdownMenuItem key={d}
