@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: FreeCustom.Email API
-  version: 2.0.0
+  version: 2.1.0
   description: |
     **Last updated:** March 2026
 
@@ -93,6 +93,125 @@ paths:
                 $ref: "#/components/schemas/PlansResponse"
 
   # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — Domains
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/domains:
+    get:
+      summary: List available domains
+      operationId: listDomains
+      tags: [Public v1 - Domains]
+      description: |
+        Returns the domains available for inbox creation, filtered by your plan:
+
+        - **Free / Developer / Startup** — free-tier domains only.
+        - **Growth / Enterprise** — free-tier + pro-tier domains.
+
+        Results are cached for up to 5 minutes. New domains appear automatically
+        without requiring a code change on your side.
+
+        Tags on each domain:
+        - `new` — recently added domain, shown for ~30 days.
+        - `popular` — high-traffic domain.
+
+        Domains that are expiring within 30 days include `expires_at` and
+        `expires_in_days` as a heads-up to migrate inboxes. Healthy domains
+        omit these fields entirely to keep the payload lean.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainsListResponse"
+              examples:
+                free_plan:
+                  summary: Free / Developer / Startup plan
+                  value:
+                    success: true
+                    count: 10
+                    note: "Upgrade to Growth plan to access additional pro domains."
+                    data:
+                      - domain: "ditube.info"
+                        tier: "free"
+                        tags: ["popular"]
+                      - domain: "ditplay.info"
+                        tier: "free"
+                        tags: ["popular"]
+                      - domain: "ditapi.info"
+                        tier: "free"
+                        tags: []
+                      - domain: "getnotify.io"
+                        tier: "free"
+                        tags: ["new"]
+                        expires_at: "2026-04-01"
+                        expires_in_days: 25
+                        expiring_soon: true
+                growth_plan:
+                  summary: Growth / Enterprise plan
+                  value:
+                    success: true
+                    count: 14
+                    note: "Growth/Enterprise plan: free + pro domains included."
+                    data:
+                      - domain: "ditube.info"
+                        tier: "free"
+                        tags: ["popular"]
+                      - domain: "inboxrelay.net"
+                        tier: "pro"
+                        tags: ["new"]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/domains/all:
+    get:
+      summary: List all domains with full metadata
+      operationId: listDomainsAll
+      tags: [Public v1 - Domains]
+      description: |
+        Same domain list as `GET /v1/domains` but always includes full expiry
+        metadata for every domain — useful for dashboard integrations that
+        monitor domain health or want to proactively alert users before a
+        domain expires.
+
+        Plan gating is identical: Growth / Enterprise see pro-tier domains,
+        all other plans see free-tier only.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainsAllResponse"
+              example:
+                success: true
+                count: 10
+                data:
+                  - domain: "ditube.info"
+                    tier: "free"
+                    tags: ["popular"]
+                    expires_at: "2026-08-01"
+                    expires_in_days: 147
+                    expiring_soon: false
+                    expired: false
+                  - domain: "getnotify.io"
+                    tier: "free"
+                    tags: ["new"]
+                    expires_at: "2026-04-01"
+                    expires_in_days: 25
+                    expiring_soon: true
+                    expired: false
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Public v1 — Inboxes
   # ─────────────────────────────────────────────────────────────────────────
   /v1/inboxes:
@@ -117,7 +236,10 @@ paths:
       summary: Register an inbox
       operationId: createInbox
       tags: [Public v1 - Inboxes]
-      description: Registers an inbox for API use. Custom domain inboxes require Growth+ and prior domain verification.
+      description: |
+        Registers an inbox for API use. The domain must appear in `GET /v1/domains`
+        for your plan. Custom domain inboxes require Growth+ and prior domain
+        verification in the dashboard.
       security:
         - BearerAuth: []
       requestBody:
@@ -131,7 +253,7 @@ paths:
                 inbox:
                   type: string
                   format: email
-                  example: "test@freecustom.email"
+                  example: "test@ditube.info"
       responses:
         "201":
           description: Inbox registered
@@ -139,26 +261,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InboxCreatedResponse"
-        "400":
-          description: Missing or invalid inbox
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error400Inbox" }
-        "403":
-          description: Plan restriction or domain not verified
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error403Plan" }
-        "409":
-          description: Inbox already registered
+        "200":
+          description: Inbox was already registered (idempotent)
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  success: { type: boolean, example: false }
-                  error: { type: string, example: "already_registered" }
-                  message: { type: string }
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Inbox already registered." }
+                  inbox: { type: string }
+        "400":
+          description: Missing or invalid inbox address
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error400Inbox" }
+        "403":
+          description: Domain not allowed for your plan, or domain not verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
@@ -173,7 +295,7 @@ paths:
         - name: inbox
           in: path
           required: true
-          description: URL-encoded email address (e.g. test%40freecustom.email)
+          description: URL-encoded email address (e.g. test%40ditube.info)
           schema: { type: string }
       security:
         - BearerAuth: []
@@ -317,7 +439,13 @@ paths:
       summary: Get latest OTP
       operationId: getOtp
       tags: [Public v1 - OTP]
-      description: Returns the OTP and/or verification link from the most recent message that contains one. Requires Developer plan or higher.
+      description: |
+        Returns the OTP and/or verification link from the most recent message
+        that contains one. Requires Developer plan or higher.
+
+        On Free plan, message list endpoints return `otp: "__DETECTED__"` as a
+        hint that an OTP exists — use this endpoint (Developer+) to read the
+        actual value.
       parameters:
         - name: inbox
           in: path
@@ -333,7 +461,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/OtpResponse"
         "403":
-          description: Plan too low (free returns __DETECTED__ on other endpoints; this one requires Developer+)
+          description: Plan too low — requires Developer plan ($7/mo) or above
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error403Plan" }
@@ -348,12 +476,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Developer API key as Bearer token (e.g. Bearer fce_xxx)
+      description: Developer API key as Bearer token (e.g. `Bearer fce_xxx`)
     ApiKeyQuery:
       type: apiKey
       in: query
       name: api_key
-      description: API key as query parameter (alternative to Bearer)
+      description: API key as query parameter (alternative to Bearer header)
 
   responses:
     Unauthorized:
@@ -362,7 +490,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error401" }
     Forbidden:
-      description: Forbidden (e.g. inbox not owned)
+      description: Forbidden (e.g. inbox not owned by this account)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error403Forbidden" }
@@ -370,12 +498,116 @@ components:
       description: Rate limit exceeded (per-second or monthly quota)
       headers:
         Retry-After:
-          schema: { type: integer, description: "Seconds to wait" }
+          schema: { type: integer, description: "Seconds to wait before retrying" }
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error429" }
 
   schemas:
+    # ── Domains ─────────────────────────────────────────────────────────────
+    DomainEntry:
+      type: object
+      required: [domain, tier, tags]
+      properties:
+        domain:
+          type: string
+          example: "ditube.info"
+          description: Bare domain name (no leading @).
+        tier:
+          type: string
+          enum: [free, pro]
+          description: |
+            `free` — available on all plans.
+            `pro` — requires Growth or Enterprise plan.
+        tags:
+          type: array
+          items:
+            type: string
+            enum: [new, popular]
+          description: |
+            `new` — recently added, shown for ~30 days.
+            `popular` — high-traffic domain.
+          example: ["popular"]
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+          description: |
+            ISO 8601 date when the domain registration expires at the registrar.
+            Only present when `expiring_soon` is true (within 30 days).
+          example: "2026-04-01"
+        expires_in_days:
+          type: integer
+          nullable: true
+          description: Days remaining until expiry. Only present when `expiring_soon` is true.
+          example: 25
+        expiring_soon:
+          type: boolean
+          nullable: true
+          description: |
+            True when the domain expires within 30 days. Omitted entirely for
+            healthy domains to keep the payload lean. When true, migrate inboxes
+            to a different domain or your own custom domain.
+          example: true
+
+    DomainEntryFull:
+      allOf:
+        - $ref: "#/components/schemas/DomainEntry"
+        - type: object
+          required: [expires_at, expires_in_days, expiring_soon, expired]
+          properties:
+            expires_at:
+              type: string
+              format: date
+              description: ISO 8601 registrar expiry date. Always present on this endpoint.
+              example: "2026-08-01"
+            expires_in_days:
+              type: integer
+              description: Days remaining until expiry. Always present on this endpoint.
+              example: 147
+            expiring_soon:
+              type: boolean
+              description: True when expiry is within 30 days. Always present on this endpoint.
+              example: false
+            expired:
+              type: boolean
+              description: True when the domain has already passed its expiry date.
+              example: false
+
+    DomainsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        count:
+          type: integer
+          description: Total number of domains returned.
+          example: 10
+        note:
+          type: string
+          description: Human-readable note about plan gating.
+          example: "Upgrade to Growth plan to access additional pro domains."
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainEntry"
+
+    DomainsAllResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        count:
+          type: integer
+          example: 10
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainEntryFull"
+
+    # ── Account ──────────────────────────────────────────────────────────────
     MeResponse:
       type: object
       properties:
@@ -468,6 +700,7 @@ components:
         websocket: { type: boolean }
         max_ws_connections: { type: integer }
 
+    # ── Inboxes ──────────────────────────────────────────────────────────────
     InboxesListResponse:
       type: object
       properties:
@@ -488,6 +721,7 @@ components:
             inbox: { type: string }
             registered_at: { type: string, format: date-time }
 
+    # ── Messages ─────────────────────────────────────────────────────────────
     MessageSummary:
       type: object
       properties:
@@ -496,7 +730,12 @@ components:
         subject: { type: string }
         date: { type: string, format: date-time }
         has_attachment: { type: boolean }
-        otp: { type: string, nullable: true, description: "Or __DETECTED__ on free plan" }
+        otp:
+          type: string
+          nullable: true
+          description: |
+            The extracted OTP code, or `__DETECTED__` on Free plan (upgrade to
+            Developer+ or use `GET /v1/inboxes/{inbox}/otp` to read the value).
         verification_link: { type: string, nullable: true }
 
     MessagesListResponse:
@@ -537,6 +776,7 @@ components:
                   content_type: { type: string }
                   size_bytes: { type: integer }
 
+    # ── OTP ──────────────────────────────────────────────────────────────────
     OtpResponse:
       type: object
       properties:
@@ -553,6 +793,7 @@ components:
             received_at: { type: string, format: date-time, nullable: true }
             message: { type: string, nullable: true }
 
+    # ── Errors ───────────────────────────────────────────────────────────────
     Error401:
       type: object
       properties:
@@ -597,6 +838,11 @@ components:
 tags:
   - name: Public v1 - Account
     description: Account info, usage, and plans
+  - name: Public v1 - Domains
+    description: |
+      List domains available for inbox creation.
+      Results are plan-gated and Redis-cached (5-min TTL).
+      New domains appear automatically without a code change.
   - name: Public v1 - Inboxes
     description: Register and manage inboxes
   - name: Public v1 - Messages
@@ -609,7 +855,7 @@ x-websocket:
   description: |
     Real-time push for incoming emails. Requires Startup plan or higher.
 
-    **Connection:** `wss://api2.freecustom.email/v1/ws?api_key=fce_...&mailbox=test@freecustom.email`
+    **Connection:** `wss://api2.freecustom.email/v1/ws?api_key=fce_...&mailbox=test@ditube.info`
 
     | Query param | Required | Description |
     |-------------|----------|-------------|
