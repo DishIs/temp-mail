@@ -269,7 +269,7 @@ You are free to use, modify, and distribute this software. If you build somethin
     &nbsp;·&nbsp;
     <a href="https://www.reddit.com/r/FreeCustomEmail/">Reddit</a>
     &nbsp;·&nbsp;
-    <a href="mailto:dishis@dishis.tech">dishis@dishis.tech</a>
+    <a href="mailto:dishant@dishis.tech">dishant@dishis.tech</a>
   </p>
   <br />
 </div>
