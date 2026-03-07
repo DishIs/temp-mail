@@ -134,8 +134,8 @@ export function AppFooter() {
                               {label}
                             </span>
                             {!hasSeenLatest && (
-                              <span className="flex h-1.5 w-1.5 shrink-0">
-                                <span className="animate-ping absolute inline-flex h-1.5 w-1.5 rounded-full bg-blue-400 opacity-75" />
+                              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-500" />
                               </span>
                             )}
@@ -185,11 +185,23 @@ export function AppFooter() {
               </div>
             </div>
 
-            {/* Status */}
-            <div className="px-8 py-8 col-span-2 sm:col-span-1 flex items-start gap-2">
-              <span className="mt-0.5 h-2 w-2 rounded-full bg-green-500 shrink-0" />
+            {/* ── Status ── */}
+            <div className="px-8 py-8 col-span-2 sm:col-span-1 flex items-start gap-3">
+              {/*
+                Pinging dot:
+                - `relative flex` wrapper gives the ping a positional context
+                - `mt-[3px]` nudges it down to optically align with the
+                  cap-height of the 14px "All systems normal" text next to it
+              */}
+              <span className="relative mt-[3px] flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+              </span>
+
               <div>
-                <p className="text-sm text-foreground font-medium">All systems normal</p>
+                <p className="text-sm text-foreground font-medium leading-none mb-1.5">
+                  All systems normal
+                </p>
                 <a
                   href="https://status.freecustom.email"
                   target="_blank"
