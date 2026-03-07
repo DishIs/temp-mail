@@ -31,6 +31,14 @@ import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal"
 
 const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
 
+// Seed fallback — used until /api/domains responds. Never shipped as the
+// authoritative list; the server response always overwrites this.
+const DOMAIN_SEED: FetchedDomain[] = [
+  "ditube.info", "ditplay.info", "ditapi.info", "ditcloud.info",
+  "ditdrive.info", "ditgame.info", "ditlearn.info", "ditpay.info",
+  "junkstopper.info", "areueally.info",
+].map(domain => ({ domain, tier: "free" as const, tags: [] }));
+
 interface Attachment { filename: string; contentType: string; content: string; size: number; }
 interface Message {
   id: string; from: string; to: string; subject: string; date: string;
@@ -38,14 +46,22 @@ interface Message {
   hasAttachments?: boolean; attachments?: Attachment[];
   otp?: string | null; verificationLink?: string | null;
 }
+interface DomainExpiry {
+  domain: string;
+  expires_at: string;
+  expires_in_days: number;
+  expiring_soon: boolean;
+  expired: boolean;
+}
+interface FetchedDomain {
+  domain: string;
+  tier: "free" | "pro";
+  tags: string[];
+  expires_at?: string;
+  expires_in_days?: number;
+  expiring_soon?: boolean;
+}
 
-const FREE_DOMAINS = [
-  "areueally.info", "ditapi.info", "ditcloud.info", "ditdrive.info",
-  "ditgame.info", "ditlearn.info", "ditpay.info", "ditplay.info",
-  "ditube.info", "junkstopper.info",
-];
-
-// Helper to prevent JSON.parse crashes from corrupted localStorage
 const safeJsonParse = <T,>(str: string | null, fallback: T): T => {
   if (!str) return fallback;
   try { return JSON.parse(str) as T; } catch { return fallback; }
@@ -56,8 +72,10 @@ function generateRandomEmail(domain: string) {
   return [...Array(6)].map(() => chars[Math.floor(Math.random() * chars.length)]).join("") + "@" + domain;
 }
 
-const getPreferredDomain = (domains: string[], last: string | null) =>
-  (last && domains.includes(last)) ? last : (domains[0] && !FREE_DOMAINS.includes(domains[0]) ? domains[0] : domains[0] || FREE_DOMAINS[0]);
+const getPreferredDomain = (domains: string[], last: string | null, freeSet: Set<string>) =>
+  (last && domains.includes(last))
+    ? last
+    : (domains[0] && !freeSet.has(domains[0]) ? domains[0] : domains[0] || [...freeSet][0] || "ditube.info");
 
 const fmtDate = (s: string) =>
   new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "numeric", hour12: true }).format(new Date(s));
@@ -78,8 +96,11 @@ const getExpiry = (dateStr: string, hours: number) => {
   return `Today ${timeStr}`;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Sub-components
+// ─────────────────────────────────────────────────────────────────────────────
+
 function NewEmailFlash({ from, subject, onDone }: { from: string; subject: string; onDone: () => void }) {
-  // Added a ref to prevent strict-mode double-firing issues, though key fixes the main bug
   useEffect(() => {
     const t = setTimeout(onDone, 3400);
     return () => clearTimeout(t);
@@ -163,6 +184,61 @@ function VerifyChip({ url }: { url: string }) {
   );
 }
 
+function DomainExpiryBanner({
+  expiry, isPro, onUpsell,
+}: {
+  expiry: DomainExpiry; isPro: boolean; onUpsell: (f: string) => void;
+}) {
+  if (!expiry.expiring_soon && !expiry.expired) return null;
+
+  const urgent = expiry.expired || expiry.expires_in_days <= 7;
+  const label = expiry.expired
+    ? `@${expiry.domain} has expired — emails may stop delivering.`
+    : `@${expiry.domain} expires in ${expiry.expires_in_days} day${expiry.expires_in_days !== 1 ? "s" : ""}.`;
+
+  return (
+    <div
+      className={cn(
+        "border-t px-4 py-2.5 flex items-center gap-2 transition-colors",
+        urgent
+          ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/10"
+          : "border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10",
+        !isPro && "cursor-pointer",
+      )}
+      onClick={() => { if (!isPro) onUpsell("Custom Domain — keep your inbox forever"); }}
+    >
+      <Clock className={cn("h-3 w-3 shrink-0", urgent ? "text-red-500" : "text-amber-500")} />
+      <span className={cn("font-mono text-[11px] flex-1", urgent ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400")}>
+        {label}
+        {!isPro && (
+          <span className="ml-1 underline underline-offset-2">Get your own domain →</span>
+        )}
+        {isPro && (
+          <span className="ml-1 text-muted-foreground/60">Transfer to a custom domain in Settings.</span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function DomainPromoCard() {
+  return (
+    <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Permanent inbox</p>
+      </div>
+      <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
+        Get a custom domain + private email in 2 min. Stop losing access when temp addresses expire.
+      </p>
+      <a rel="sponsored" href={DOMAIN_AFFILIATE_URL} target="_blank"
+        className="inline-flex items-center gap-1 font-mono text-[11px] text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground transition-colors">
+        Get .COM from Namecheap →
+      </a>
+    </div>
+  );
+}
+
 const SplitPaneMessageView = ({
   message, token, apiEndpoint, isPro, onUpsell,
 }: { message: Message; token: string | null; apiEndpoint: string; isPro: boolean; onUpsell: (f: string) => void }) => {
@@ -226,23 +302,9 @@ const SplitPaneMessageView = ({
   );
 };
 
-function DomainPromoCard() {
-  return (
-    <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-2">
-      <div className="flex items-center gap-2">
-        <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Permanent inbox</p>
-      </div>
-      <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
-        Get a custom domain + private email in 2 min. Stop losing access when temp addresses expire.
-      </p>
-      <a rel="sponsored" href={DOMAIN_AFFILIATE_URL} target="_blank"
-        className="inline-flex items-center gap-1 font-mono text-[11px] text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground transition-colors">
-        Get .COM from Namecheap →
-      </a>
-    </div>
-  );
-}
+// ─────────────────────────────────────────────────────────────────────────────
+//  Main component
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface EmailBoxProps {
   initialSession: Session | null;
@@ -260,6 +322,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const isPro = userPlan === "pro";
   const API_ENDPOINT = isAuthenticated ? "/api/private-mailbox" : "/api/public-mailbox";
 
+  // Domain list — seeded with fallback, overwritten by /api/domains response
+  const [fetchedDomains, setFetchedDomains] = useState<FetchedDomain[]>(DOMAIN_SEED);
+
+  const [domainExpiry, setDomainExpiry] = useState<DomainExpiry | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [email, setEmail] = useState(initialCurrentInbox || initialInboxes[0] || "");
   const [isEditing, setIsEditing] = useState(false);
@@ -303,19 +369,25 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const currentEmailRef = useRef("");
   const sendNotificationRef = useRef<(t: string, b: string) => void>(() => { });
   const setMessagesRef = useRef(setMessages);
-  const isRefreshingThrottleRef = useRef(false); // Throttle hotkey spam
+  const isRefreshingThrottleRef = useRef(false);
 
   const openUpsell = (feature: string) => { setUpsellFeature(feature); setIsUpsellOpen(true); };
 
+  // ── Derived domain sets ───────────────────────────────────────────────────
+  const freeDomainSet = useMemo(
+    () => new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)),
+    [fetchedDomains],
+  );
+
   const availableDomains = useMemo(() => {
     const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
-    return [...new Set([...custom, ...FREE_DOMAINS])];
-  }, [initialCustomDomains]);
+    const fetched = fetchedDomains.map(d => d.domain);
+    return [...new Set([...custom, ...fetched])];
+  }, [initialCustomDomains, fetchedDomains]);
 
   const isSplit = userSettings.layout === "split" && isPro;
   const isCompact = userSettings.layout === "compact";
   const isZen = userSettings.layout === "zen";
-  const isMinimal = userSettings.layout === "minimal";
   const isClassic = userSettings.layout === "classic";
   const isMobile = userSettings.layout === "mobile" && isPro;
   const isRetro = userSettings.layout === "retro" && isPro;
@@ -384,6 +456,30 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   useEffect(() => {
     const init = async () => {
       await fetchToken();
+
+      // Fetch domain list from server — not from the bundle.
+      // sessionStorage cache means repeat page loads are instant.
+      const cacheKey = `domains_v2_${isPro ? "pro" : isAuthenticated ? "free" : "anon"}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < 5 * 60 * 1000) setFetchedDomains(data);
+          else throw new Error("stale");
+        } catch {
+          sessionStorage.removeItem(cacheKey);
+        }
+      }
+      fetch("/api/domains")
+        .then(r => r.json())
+        .then(d => {
+          if (Array.isArray(d?.data)) {
+            setFetchedDomains(d.data);
+            sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() }));
+          }
+        })
+        .catch(() => { /* seed fallback stays in state */ });
+
       const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
       const lastDomain = localStorage.getItem("lastUsedDomain");
       let initEmail: string, hist: string[];
@@ -403,18 +499,21 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             ? merged.slice(0, 5)
             : merged;
         initEmail = initialCurrentInbox || initialInboxes[0];
+      } else if (localHistory.length > 0) {
+        hist = localHistory; initEmail = localHistory[0];
+      } else {
+        // Use seed domains for initial generation; fetchedDomains will update after
+        const seedFreeSet = new Set(DOMAIN_SEED.map(d => d.domain));
+        const d = getPreferredDomain(DOMAIN_SEED.map(d => d.domain), lastDomain, seedFreeSet);
+        initEmail = generateRandomEmail(d); hist = [initEmail];
       }
-      else if (localHistory.length > 0) { hist = localHistory; initEmail = localHistory[0]; }
-      else { const d = getPreferredDomain(availableDomains, lastDomain); initEmail = generateRandomEmail(d); hist = [initEmail]; }
 
-      if (!email) {
-        setEmail(initEmail);
-      }
-      setEmailHistory(hist);
-      setSelectedDomain(initEmail.split("@")[1] || "");
+      if (!email) setEmail(initEmail!);
+      setEmailHistory(hist!);
+      setSelectedDomain(initEmail!.split("@")[1] || "");
     };
     init();
-  }, []);
+  }, []); // eslint-disable-line
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -455,7 +554,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   useEffect(() => {
     if (!email) return;
     if (isAuthenticated) fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => { });
-
     const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
     let next = [email, ...h.filter(e => e !== email)];
     if (userPlan === "free") next = next.slice(0, 7); else if (!isAuthenticated) next = next.slice(0, 5);
@@ -480,7 +578,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const refreshInbox = async () => {
     if (isRefreshingThrottleRef.current) return;
     if (isAuthenticated && !token) return;
-
     isRefreshingThrottleRef.current = true;
     setIsRefreshing(true);
     try {
@@ -488,7 +585,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}`, { headers });
       if (!r.ok) throw new Error(r.status === 429 ? "Refreshing too fast." : `HTTP ${r.status}`);
-      const d = await r.json(); setShowAttachmentNotice(!!d.wasAttachmentStripped);
+      const d = await r.json();
+      setShowAttachmentNotice(!!d.wasAttachmentStripped);
+      setDomainExpiry(d.domain_expiry ?? null);
       if (d.success && Array.isArray(d.data)) {
         const newMsgs = d.data.filter((m: Message) => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
         if (newMsgs.length > 0 && messages.length > 0) sendNotification(`New Email from ${newMsgs[0].from}`, newMsgs[0].subject || "(No Subject)");
@@ -497,7 +596,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       }
     } catch (e) { console.error(e); } finally {
       setIsRefreshing(false);
-      setTimeout(() => { isRefreshingThrottleRef.current = false; }, 1000); // 1s throttle
+      setTimeout(() => { isRefreshingThrottleRef.current = false; }, 1000);
     }
   };
 
@@ -530,8 +629,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   };
 
   const deleteEmail = () => {
-    const d = getPreferredDomain(availableDomains, localStorage.getItem("lastUsedDomain"));
-    const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set());
+    const d = getPreferredDomain(availableDomains, localStorage.getItem("lastUsedDomain"), freeDomainSet);
+    const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
   };
 
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
@@ -541,8 +640,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   };
 
   const handleDeleteConfirmation = async () => {
-    if (itemToDelete?.type === "email") { const d = getPreferredDomain(availableDomains, localStorage.getItem("primaryDomain")); const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); }
-    else if (itemToDelete?.type === "message" && itemToDelete.id) {
+    if (itemToDelete?.type === "email") {
+      const d = getPreferredDomain(availableDomains, localStorage.getItem("primaryDomain"), freeDomainSet);
+      const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
+    } else if (itemToDelete?.type === "message" && itemToDelete.id) {
       try {
         const headers: Record<string, string> = { "x-fce-client": "web-client" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -557,8 +658,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const changeEmail = () => {
     if (!isAuthenticated) { setIsAuthNeedOpen(true); setAuthNeedFeature("Update Email"); return; }
-    if (isEditing) { const [p] = email.split("@"); if (p?.length > 0) { setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); } else setError("Enter a valid email prefix."); }
-    else setIsEditing(true);
+    if (isEditing) {
+      const [p] = email.split("@");
+      if (p?.length > 0) { setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null); }
+      else setError("Enter a valid email prefix.");
+    } else setIsEditing(true);
   };
 
   const handleProShortcut = (fn: () => void, name: string) => { if (isPro) fn(); else openUpsell(`Keyboard Shortcut: ${name}`); };
@@ -577,15 +681,16 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     return messages.filter(m => !dismissedMessageIds.has(m.id));
   }, [messages, activeTab, dismissedMessageIds]);
 
-  // Safely inject layout classes to the body to hide header/footer natively via CSS
   useEffect(() => {
     if (typeof document !== "undefined") {
-      document.body.setAttribute('data-fce-layout', userSettings.layout);
+      document.body.setAttribute("data-fce-layout", userSettings.layout);
     }
     return () => {
-      if (typeof document !== "undefined") document.body.removeAttribute('data-fce-layout');
+      if (typeof document !== "undefined") document.body.removeAttribute("data-fce-layout");
     };
   }, [userSettings.layout]);
+
+  // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderEmptyState = () => (
     <div className="py-14 flex flex-col items-center text-center px-6">
@@ -624,7 +729,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           0%  {opacity:1;}70%{opacity:1;}100%{opacity:0;}
         }
       `}</style>
-
       <div className="grid items-center border-b border-border bg-muted/20 px-3 py-1.5"
         style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4rem" }}>
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">#</span>
@@ -632,7 +736,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50 text-right">Time</span>
         <span />
       </div>
-
       {filteredMessages.length === 0 ? renderEmptyState() : (
         <div className="divide-y divide-border/50">
           {filteredMessages.map((msg, idx) => {
@@ -649,13 +752,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   isNew && "[animation:rowEnter_0.45s_ease-out]",
                 )}
                 style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4rem" }}>
-
                 {isNew && <div className="absolute inset-y-0 left-0 w-0.5 bg-emerald-500 [animation:glowFadeOut_1.4s_ease-out_forwards]" />}
-
                 <span className={cn("font-mono text-[10px] tabular-nums shrink-0", isNew ? "text-emerald-500 font-bold" : "text-muted-foreground/30")}>
                   {isNew ? "→" : String(idx + 1).padStart(2, "0")}
                 </span>
-
                 <div className="min-w-0 flex flex-col gap-0.5 pl-2">
                   <div className="flex items-center gap-2 min-w-0">
                     {!isCompact && (
@@ -682,11 +782,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     </span>
                   )}
                 </div>
-
                 <span className="font-mono text-[10px] text-muted-foreground/50 text-right tabular-nums">
                   {fmtDateShort(msg.date)}
                 </span>
-
                 <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
                   {userPlan === "free" && (
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}>
@@ -777,10 +875,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     </>
   );
 
+  // ── Main render ────────────────────────────────────────────────────────────
   return (
     <div className={cn("relative", isZen && "")}>
-
-      {/* Global Style Hiding based on layout setting */}
       <style dangerouslySetInnerHTML={{
         __html: `
         body[data-fce-layout="zen"] header, body[data-fce-layout="zen"] footer, body[data-fce-layout="zen"] nav { display: none !important; }
@@ -798,6 +895,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
       <div className={cn("rounded-lg border border-border bg-background overflow-hidden", isZen && "border-0 bg-transparent")}>
 
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="border-b border-border">
           <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
             <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isRefreshing ? "bg-amber-500 animate-pulse" : "bg-emerald-500 animate-pulse")} />
@@ -828,17 +926,40 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-background shadow-lg border border-border z-50">
                     {availableDomains.map(d => {
-                      const isCustom = !FREE_DOMAINS.includes(d);
+                      // A domain is "custom" (user-owned) if it's not in the server-fetched list at all
+                      const isFetchedFree = freeDomainSet.has(d);
+                      const isFetchedPro  = fetchedDomains.some(fd => fd.domain === d && fd.tier === "pro");
+                      const isUserCustom  = !isFetchedFree && !isFetchedPro;
+                      const isProLocked   = isFetchedPro && !isPro;
+                      const isNew         = fetchedDomains.find(fd => fd.domain === d)?.tags?.includes("new");
+
                       return (
                         <DropdownMenuItem key={d}
-                          onSelect={() => { if (isCustom && !isPro) { openUpsell("Custom Domains"); return; } setSelectedDomain(d); setEmail(`${email.split("@")[0]}@${d}`); }}
+                          onSelect={() => {
+                            if (isProLocked) { openUpsell("Pro Domains"); return; }
+                            if (isUserCustom && !isPro) { openUpsell("Custom Domains"); return; }
+                            setSelectedDomain(d); setEmail(`${email.split("@")[0]}@${d}`);
+                          }}
                           className="flex items-center justify-between px-3 py-2 rounded cursor-pointer hover:bg-muted font-mono text-xs">
                           <div className="flex items-center gap-2">
-                            {isCustom && <Crown className="h-3 w-3 text-amber-500" />}
+                            {(isUserCustom || isFetchedPro) && <Crown className="h-3 w-3 text-amber-500" />}
+                            {isProLocked && <Lock className="h-3 w-3 text-amber-500" />}
                             <span>@{d}</span>
+                            {isNew && (
+                              <span className="font-mono text-[9px] bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 rounded px-1 py-px">NEW</span>
+                            )}
+                            {isProLocked && (
+                              <span className="font-mono text-[9px] text-amber-500">PRO</span>
+                            )}
                           </div>
                           <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-transparent shrink-0"
-                            onClick={(e) => { e.stopPropagation(); if (!isPro) { openUpsell("Priority Domain"); return; } const c = localStorage.getItem("primaryDomain"); if (c === d) { localStorage.removeItem("primaryDomain"); setPrimaryDomain(null); } else { localStorage.setItem("primaryDomain", d); setPrimaryDomain(d); } }}>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isPro) { openUpsell("Priority Domain"); return; }
+                              const c = localStorage.getItem("primaryDomain");
+                              if (c === d) { localStorage.removeItem("primaryDomain"); setPrimaryDomain(null); }
+                              else { localStorage.setItem("primaryDomain", d); setPrimaryDomain(d); }
+                            }}>
                             <Star className={cn("h-3 w-3", primaryDomain === d ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground")} />
                           </Button>
                         </DropdownMenuItem>
@@ -931,6 +1052,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           )}
         </div>
 
+        {/* ── Domain expiry banner — only renders when server says so ──────── */}
+        {domainExpiry && (
+          <DomainExpiryBanner expiry={domainExpiry} isPro={isPro} onUpsell={openUpsell} />
+        )}
+
+        {/* ── Message list ────────────────────────────────────────────────── */}
         {isSplit ? (
           <div className="grid grid-cols-1 md:grid-cols-2 h-[560px]">
             <div className="border-r border-border overflow-y-auto">{renderInboxList()}</div>
@@ -946,6 +1073,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             : renderInboxList()
         }
 
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
         {!isZen && (
           <div className="border-t border-border">
             <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
@@ -955,7 +1083,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   {emailHistory.map((he, i) => (
                     <li key={i} className="flex items-center justify-between gap-2 group">
                       <span className="font-mono text-[11px] text-muted-foreground/60 truncate group-hover:text-muted-foreground transition-colors">{he}</span>
-                      <button onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); }}
+                      <button onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); setDomainExpiry(null); }}
                         className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground">
                         {t("history_use")}
                       </button>
@@ -989,7 +1117,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
       </div>
 
-      <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); }} />
+      <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); setDomainExpiry(null); }} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
       <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(f: string) => { setAuthNeedFeature(f); setIsAuthNeedOpen(true); }} />

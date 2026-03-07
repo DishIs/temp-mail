@@ -53,12 +53,6 @@ export async function WhySection() {
     },
   ];
 
-  const domains = [
-    'areureally.info', 'ditapi.info', 'ditcloud.info', 'ditdrive.info',
-    'ditgame.info', 'ditlearn.info', 'ditpay.info', 'ditplay.info',
-    'ditube.info', 'junkstopper.info',
-  ];
-
   return (
     <section className="mt-10 space-y-14 pb-12">
 
@@ -129,12 +123,7 @@ export async function WhySection() {
           {t('domain_list_p')}
         </p>
         <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-muted-foreground">
-          {domains.map((domain) => (
-            <li key={domain} className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-              {domain}
-            </li>
-          ))}
+          Select above, and new domains gets listed regularly.
         </ul>
       </div>
 
