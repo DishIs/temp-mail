@@ -16,6 +16,10 @@ import { ThemeProvider } from "@/components/theme-provider";
 import toast from "react-hot-toast";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
+import {
+  SiVisa, SiMastercard, SiAmericanexpress,
+  SiPaypal, SiApplepay, SiGooglepay,
+} from "react-icons/si";
 
 type BillingCycle = "monthly" | "yearly";
 
@@ -41,6 +45,50 @@ const ASCII_FRAGS = [
   { x: "67%", y: "87%", t: "MAIL FROM:<service@example.com>" },
   { x: "4%",  y: "93%", t: "Subject: Your verification code is 847291" },
 ];
+
+// ── Payment methods ────────────────────────────────────────────────────────
+const PAYMENT_METHODS = [
+  { icon: SiVisa,            label: "Visa"        },
+  { icon: SiMastercard,      label: "Mastercard"  },
+  { icon: SiAmericanexpress, label: "Amex"        },
+  { icon: SiPaypal,          label: "PayPal"      },
+  { icon: SiApplepay,        label: "Apple Pay"   },
+  { icon: SiGooglepay,       label: "Google Pay"  },
+];
+
+// ── Paddle trust strip ────────────────────────────────────────────────────
+function PaddleTrustStrip() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+      {/* Paddle badge */}
+      <span className="flex items-center gap-1.5 border border-border rounded-md px-3 py-1.5 bg-background text-xs text-muted-foreground font-mono">
+        <svg className="h-3.5 w-3.5 shrink-0 text-foreground/70" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1-11h2v2h-2V9zm0 4h2v6h-2v-6z"/>
+        </svg>
+        Secure checkout via Paddle
+      </span>
+
+      {/* Card icons */}
+      <div className="flex items-center gap-1">
+        {PAYMENT_METHODS.map(({ icon: Icon, label }) => (
+          <span
+            key={label}
+            title={label}
+            className="flex items-center justify-center rounded border border-border bg-muted/20 px-2 py-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+          >
+            <Icon className="h-3.5 w-auto" />
+          </span>
+        ))}
+      </div>
+
+      {/* 200+ countries */}
+      <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground border border-border rounded-md px-2.5 py-1.5 bg-background">
+        <Globe className="h-3 w-3 shrink-0" />
+        200+ countries
+      </span>
+    </div>
+  );
+}
 
 // ── Layout primitives ──────────────────────────────────────────────────────
 function AsciiLayer() {
@@ -319,6 +367,9 @@ export default function PricingPage() {
                   {isMonthly ? "No card charged today · Cancel anytime" : "Billed as $19.99/year · Cancel anytime"}
                 </p>
               )}
+
+              {/* ── Paddle trust strip ── */}
+              {!isPro && <PaddleTrustStrip />}
             </motion.div>
           </div>
         </section>
@@ -520,6 +571,19 @@ export default function PricingPage() {
                         <p className="text-xs text-muted-foreground text-center">
                           {isMonthly ? "No card charged today" : "Billed annually"}
                         </p>
+
+                        {/* ── Paddle trust strip (compact, in CTA cell) ── */}
+                        <div className="pt-1 border-t border-border space-y-2">
+                          <p className="text-[10px] text-muted-foreground font-mono text-center">Secure payment via Paddle · 200+ countries</p>
+                          <div className="flex flex-wrap justify-center gap-1">
+                            {PAYMENT_METHODS.map(({ icon: Icon, label }) => (
+                              <span key={label} title={label}
+                                className="flex items-center justify-center rounded border border-border bg-muted/20 px-1.5 py-1 text-muted-foreground/70 hover:text-muted-foreground transition-colors">
+                                <Icon className="h-3 w-auto" />
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="border-t border-border pt-6 space-y-3">

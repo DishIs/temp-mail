@@ -6,11 +6,15 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Check, X, Loader2 } from "lucide-react";
+import { Check, X, Loader2, Globe, ShieldCheck } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import toast from "react-hot-toast";
+import {
+  SiVisa, SiMastercard, SiAmericanexpress,
+  SiPaypal, SiApplepay, SiGooglepay,
+} from "react-icons/si";
 
 const PLANS = [
   { name: "Free",       price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",     otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Anonymous (10h)", recommended: false, planId: null as string | null },
@@ -39,7 +43,68 @@ const FAQ_ITEMS = [
   { q: "What is the difference between API plan and Pro plan?", a: "The Pro plan is for the main FreeCustom.Email web app. The API plan is for programmatic access. They are separate subscriptions; you can have one or both." },
 ];
 
-const Tick  = () => <Check className="h-4 w-4 text-foreground shrink-0 mx-auto" />;
+const PAYMENT_METHODS = [
+  { icon: SiVisa,            label: "Visa"        },
+  { icon: SiMastercard,      label: "Mastercard"  },
+  { icon: SiAmericanexpress, label: "Amex"        },
+  { icon: SiPaypal,          label: "PayPal"      },
+  { icon: SiApplepay,        label: "Apple Pay"   },
+  { icon: SiGooglepay,       label: "Google Pay"  },
+];
+
+// ── Paddle trust strip ────────────────────────────────────────────────────
+function PaddleTrustStrip() {
+  return (
+    <div className="flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-border">
+      {/* Paddle badge */}
+      <span className="flex items-center gap-1.5 border border-border rounded-md px-3 py-1.5 bg-muted/20 text-xs text-muted-foreground font-mono whitespace-nowrap">
+        <svg className="h-3.5 w-3.5 shrink-0 text-foreground/70" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1-11h2v2h-2V9zm0 4h2v6h-2v-6z"/>
+        </svg>
+        Secure checkout via Paddle
+      </span>
+
+      {/* Card icons */}
+      <div className="flex items-center gap-1">
+        {PAYMENT_METHODS.map(({ icon: Icon, label }) => (
+          <span
+            key={label}
+            title={label}
+            className="flex items-center justify-center rounded border border-border bg-muted/20 px-2 py-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+          >
+            <Icon className="h-3.5 w-auto" />
+          </span>
+        ))}
+      </div>
+
+      {/* 200+ countries */}
+      <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground border border-border rounded-md px-2.5 py-1.5 bg-muted/20 whitespace-nowrap">
+        <Globe className="h-3 w-3 shrink-0" />
+        200+ countries
+      </span>
+    </div>
+  );
+}
+
+// ── Money-back guarantee badge ────────────────────────────────────────────
+function MoneyBackBadge() {
+  return (
+    <div className="flex items-center gap-3 border border-border rounded-lg px-4 py-3 bg-background w-fit">
+      <ShieldCheck className="h-5 w-5 text-foreground/70 shrink-0" />
+      <div>
+        <p className="text-xs font-semibold text-foreground leading-snug">14-day money-back guarantee</p>
+        <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+          Not satisfied? Get a full refund within 14 days — no questions asked.{" "}
+          <Link href="/policies/refund" className="underline underline-offset-4 decoration-border hover:text-foreground transition-colors">
+            Refund policy →
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
 const Cross = () => <span className="h-4 w-4 rounded-full border border-border block mx-auto" />;
 
 const DOT_BG = { backgroundImage: "radial-gradient(circle at 1px 1px, hsl(0 0% 50% / 0.09) 1px, transparent 0)", backgroundSize: "28px 28px" } as const;
@@ -129,7 +194,7 @@ export default function ApiPricingPage() {
         </div>
 
         {/* Plans */}
-        <div className="grid gap-px bg-border rounded-lg overflow-hidden grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 mb-16">
+        <div className="grid gap-px bg-border rounded-lg overflow-hidden grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 mb-6">
           {PLANS.map((plan) => (
             <div key={plan.name} className={`bg-background flex flex-col p-6 relative ${plan.recommended ? "ring-1 ring-inset ring-border" : ""}`}>
               {plan.recommended && (
@@ -147,10 +212,10 @@ export default function ApiPricingPage() {
                 {[
                   { label: "Req/sec",       value: plan.reqSec },
                   { label: "Req/month",     value: plan.reqMonth },
-                  { label: "OTP",           value: plan.otp ? <Tick /> : <Cross /> },
+                  { label: "OTP",           value: plan.otp ? <Check /> : <Cross /> },
                   { label: "Attachments",   value: plan.attachments ? <span className="text-xs">{plan.maxAttachment}</span> : <Cross /> },
                   { label: "WebSocket",     value: plan.ws ? <span className="text-xs">{plan.maxWs} conn</span> : <Cross /> },
-                  { label: "Custom domain", value: plan.customDomains ? <Tick /> : <Cross /> },
+                  { label: "Custom domain", value: plan.customDomains ? <Check /> : <Cross /> },
                   { label: "Persistence",   value: <span className="text-xs text-right leading-tight">{plan.persistence}</span> },
                 ].map(row => (
                   <div key={row.label} className="border-t border-border pt-3 flex items-center justify-between gap-2 first:border-t-0 first:pt-0">
@@ -175,8 +240,16 @@ export default function ApiPricingPage() {
           ))}
         </div>
 
+        {/* ── Paddle trust strip below plans ── */}
+        <PaddleTrustStrip />
+
+        {/* ── Money-back guarantee ── */}
+        <div className="mt-4">
+          <MoneyBackBadge />
+        </div>
+
         {/* Credits */}
-        <div className="mb-16">
+        <div className="mb-16 mt-16">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-0.5 h-4 bg-border" aria-hidden />
             <span className="font-mono text-xs text-foreground font-semibold">[ 02 / 03 ]</span>
@@ -196,6 +269,14 @@ export default function ApiPricingPage() {
                 </Button>
               </div>
             ))}
+          </div>
+
+          {/* ── Paddle trust strip below credits ── */}
+          <PaddleTrustStrip />
+
+          {/* ── Money-back guarantee ── */}
+          <div className="mt-4">
+            <MoneyBackBadge />
           </div>
         </div>
 
