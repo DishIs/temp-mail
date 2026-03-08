@@ -27,8 +27,80 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogPortal,
+  DialogOverlay,
 } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Label } from "@/components/ui/label";
+
+// ---------------------------------------------------------------------------
+// ResponsiveDialogContent
+// Bypasses shadcn's DialogContent positioning so we can own the full layout.
+// Strategy: overlay is full viewport → inner flex column centres the panel →
+// panel itself is max-h constrained with a scrollable body slot.
+// This avoids fighting translate-y centering which causes top/bottom clipping.
+// ---------------------------------------------------------------------------
+interface ResponsiveDialogContentProps {
+  children: React.ReactNode;
+  className?: string;
+  maxWidth?: string; // e.g. "sm:max-w-2xl"
+  onClose?: () => void;
+}
+
+function ResponsiveDialogContent({
+  children,
+  maxWidth = "sm:max-w-lg",
+  onClose,
+}: ResponsiveDialogContentProps) {
+  return (
+    <DialogPortal>
+      {/* Dim overlay — same as shadcn default */}
+      <DialogOverlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+
+      {/*
+        Full-viewport flex container:
+        - Centers the panel with flex (not translate-y) so it can't overflow
+        - py-4 / px-4 gives breathing room from all screen edges
+        - overscroll-contain stops background scrolling on mobile
+      */}
+      <DialogPrimitive.Content
+        className={[
+          // Positioning: covers the full viewport, centres with flex
+          "fixed inset-0 z-50 flex items-center justify-center p-4",
+          // Pointer events on the backdrop area should close the dialog
+          "focus:outline-none",
+          // Radix animation classes
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        ].join(" ")}
+        onPointerDownOutside={onClose ? () => onClose() : undefined}
+      >
+        {/*
+          The actual panel:
+          - w-full + maxWidth cap → full-width on mobile, capped on desktop
+          - max-h uses dvh (dynamic viewport height, accounts for mobile browser chrome)
+            with a fallback to vh for older browsers
+          - flex flex-col so header/footer pin and only the body scrolls
+          - overflow-hidden on the panel itself clips the border-radius correctly
+        */}
+        <div
+          className={[
+            "relative flex flex-col w-full",
+            maxWidth,
+            // Height: leave 2rem gap top+bottom on mobile, 4rem on desktop
+            "max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)]",
+            // Appearance
+            "bg-background border border-border rounded-lg shadow-xl",
+            "overflow-hidden",
+          ].join(" ")}
+        >
+          {children}
+        </div>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+}
 
 interface CustomDomain {
   domain: string;
@@ -94,7 +166,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// DNS Records Table
+// DNS Records Table — horizontally scrollable on mobile
 // ---------------------------------------------------------------------------
 function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRecord: string; txtRecord: string }) {
   const records: DnsRecord[] = [
@@ -115,45 +187,48 @@ function DnsRecordsTable({ domain, mxRecord, txtRecord }: { domain: string; mxRe
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/20 hover:bg-muted/20">
-            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-16">Type</TableHead>
-            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-20">Host</TableHead>
-            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground">Value</TableHead>
-            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-20 text-center">Priority</TableHead>
-            <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-16 text-center">TTL</TableHead>
-            <TableHead className="w-10" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {records.map((rec, i) => (
-            <TableRow key={i} className="border-t border-border">
-              <TableCell>
-                <span className="font-mono text-xs font-semibold text-foreground">{rec.type}</span>
-              </TableCell>
-              <TableCell>
-                <code className="text-xs font-mono text-muted-foreground">{rec.hostname}</code>
-              </TableCell>
-              <TableCell>
-                <code className="text-xs font-mono break-all leading-relaxed">{rec.value}</code>
-              </TableCell>
-              <TableCell className="text-center">
-                {rec.priority
-                  ? <span className="text-xs text-muted-foreground font-mono">{rec.priority}</span>
-                  : <span className="text-xs text-muted-foreground/40">—</span>
-                }
-              </TableCell>
-              <TableCell className="text-center">
-                <span className="text-xs text-muted-foreground font-mono">{rec.ttl}</span>
-              </TableCell>
-              <TableCell className="text-center">
-                <CopyButton text={rec.value} label={`${rec.type} record`} />
-              </TableCell>
+      {/* Horizontal scroll on narrow viewports */}
+      <div className="overflow-x-auto">
+        <Table className="min-w-[480px]">
+          <TableHeader>
+            <TableRow className="bg-muted/20 hover:bg-muted/20">
+              <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-16">Type</TableHead>
+              <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-20">Host</TableHead>
+              <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground">Value</TableHead>
+              <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-20 text-center">Priority</TableHead>
+              <TableHead className="text-xs font-mono font-medium uppercase tracking-widest text-muted-foreground w-16 text-center">TTL</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {records.map((rec, i) => (
+              <TableRow key={i} className="border-t border-border">
+                <TableCell>
+                  <span className="font-mono text-xs font-semibold text-foreground">{rec.type}</span>
+                </TableCell>
+                <TableCell>
+                  <code className="text-xs font-mono text-muted-foreground">{rec.hostname}</code>
+                </TableCell>
+                <TableCell>
+                  <code className="text-xs font-mono break-all leading-relaxed">{rec.value}</code>
+                </TableCell>
+                <TableCell className="text-center">
+                  {rec.priority
+                    ? <span className="text-xs text-muted-foreground font-mono">{rec.priority}</span>
+                    : <span className="text-xs text-muted-foreground/40">—</span>
+                  }
+                </TableCell>
+                <TableCell className="text-center">
+                  <span className="text-xs text-muted-foreground font-mono">{rec.ttl}</span>
+                </TableCell>
+                <TableCell className="text-center">
+                  <CopyButton text={rec.value} label={`${rec.type} record`} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
@@ -201,16 +276,32 @@ function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxR
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t("guide_title", { domain })}</DialogTitle>
-            <DialogDescription>{t("guide_desc")}</DialogDescription>
-          </DialogHeader>
+        <ResponsiveDialogContent maxWidth="sm:max-w-2xl" onClose={() => setOpen(false)}>
 
-          <div className="mt-2 space-y-6 text-sm">
+          {/* ── Pinned header ── */}
+          <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-border">
+            {/* Close button — top-right, consistent with shadcn convention */}
+            <DialogPrimitive.Close
+              onClick={() => setOpen(false)}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
 
-            {/* Provider info */}
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-4 py-2.5">
+            <DialogTitle className="text-base font-semibold tracking-tight leading-snug pr-6">
+              {t("guide_title", { domain })}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              {t("guide_desc")}
+            </DialogDescription>
+          </div>
+
+          {/* ── Scrollable body — only this region scrolls ── */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 space-y-6 text-sm">
+
+            {/* Provider pill */}
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 px-4 py-2.5">
               {loading ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
@@ -223,15 +314,19 @@ function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxR
                   <span className="text-xs text-muted-foreground">{t("guide_provider")}</span>
                   <span className="text-xs font-medium text-foreground">{provider ?? "Not detected"}</span>
                   {nameservers && (
-                    <span className="text-xs text-muted-foreground font-mono">({nameservers.join(", ")})</span>
+                    <span className="text-xs text-muted-foreground font-mono break-all">
+                      ({nameservers.join(", ")})
+                    </span>
                   )}
                 </>
               )}
             </div>
 
             {/* Steps */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-4">Setup Steps</p>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-4">
+                Setup Steps
+              </p>
               <ol className="space-y-0">
                 {[
                   t("guide_step_1"),
@@ -250,21 +345,27 @@ function DomainSetupGuide({ domain, mxRecord, txtRecord }: { domain: string; mxR
               </ol>
             </div>
 
-            {/* DNS Records */}
+            {/* DNS records */}
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">DNS Records</p>
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                DNS Records
+              </p>
               <DnsRecordsTable domain={domain} mxRecord={mxRecord} txtRecord={txtRecord} />
             </div>
 
-            <p className="text-xs text-muted-foreground border-t border-border pt-4">{t("guide_tip")}</p>
+            <p className="text-xs text-muted-foreground border-t border-border pt-4">
+              {t("guide_tip")}
+            </p>
           </div>
 
-          <div className="flex justify-end">
+          {/* ── Pinned footer ── */}
+          <div className="flex-shrink-0 px-5 py-4 border-t border-border flex justify-end">
             <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
               {t("guide_close")}
             </Button>
           </div>
-        </DialogContent>
+
+        </ResponsiveDialogContent>
       </Dialog>
     </>
   );
@@ -423,7 +524,7 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
   return (
     <>
       <div>
-        {/* Section header — matches profile page InfoRow label style */}
+        {/* Section header */}
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {t("domains_title")}
@@ -507,14 +608,13 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
           </div>
         </form>
 
-        {/* Domains list — InfoRow-style borders */}
+        {/* Domains list */}
         <div className="space-y-0">
           {domains && domains.length > 0 ? (
             domains.filter((d) => !!d && !!d.domain).map((d) => (
               <div key={d.domain} className="border-t border-border py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    {/* Status dot */}
                     <span
                       className={`flex-shrink-0 h-1.5 w-1.5 rounded-full ${
                         d.verified ? "bg-foreground" : "bg-muted-foreground/40"
@@ -572,53 +672,79 @@ export function CustomDomainManager({ initialDomains, isPro }: CustomDomainManag
         </div>
       </div>
 
-      {/* Delete confirmation dialog */}
+      {/* ── Delete confirmation dialog ── */}
       <Dialog
         open={!!domainToDelete}
         onOpenChange={(open) => { if (!open && !isLoading) setDomainToDelete(null); }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Domain</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone. This will permanently delete{" "}
-              <code className="font-mono text-xs bg-muted/60 px-1.5 py-0.5 rounded text-foreground">{domainToDelete}</code>{" "}
-              and remove all associated email addresses and data.
-            </DialogDescription>
-          </DialogHeader>
+        <ResponsiveDialogContent maxWidth="sm:max-w-md" onClose={() => { if (!isLoading) setDomainToDelete(null); }}>
 
-          <div className="flex flex-col gap-3 py-3">
-            <Label htmlFor="domain-confirm" className="text-sm font-medium text-muted-foreground">
-              Type{" "}
-              <code className="font-mono bg-muted/20 border border-border px-1.5 py-0.5 rounded text-xs text-foreground">
+          {/* Pinned header */}
+          <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-border">
+            <DialogPrimitive.Close
+              onClick={() => { if (!isLoading) setDomainToDelete(null); }}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+              disabled={isLoading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+
+            <DialogTitle className="text-base font-semibold tracking-tight pr-6">
+              Delete Domain
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              This action cannot be undone. This will permanently delete{" "}
+              <code className="font-mono text-xs bg-muted/60 px-1.5 py-0.5 rounded text-foreground">
                 {domainToDelete}
               </code>{" "}
-              to confirm:
-            </Label>
-            <Input
-              id="domain-confirm"
-              value={deleteConfirmation}
-              onChange={(e) => setDeleteConfirmation(e.target.value)}
-              placeholder={domainToDelete || ""}
-              autoComplete="off"
-              className="font-mono text-sm"
-            />
+              and remove all associated email addresses and data.
+            </DialogDescription>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDomainToDelete(null)} disabled={isLoading}>
+          {/* Scrollable body */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5">
+            <div className="flex flex-col gap-3">
+              <Label htmlFor="domain-confirm" className="text-sm font-medium text-muted-foreground">
+                Type{" "}
+                <code className="font-mono bg-muted/20 border border-border px-1.5 py-0.5 rounded text-xs text-foreground">
+                  {domainToDelete}
+                </code>{" "}
+                to confirm:
+              </Label>
+              <Input
+                id="domain-confirm"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder={domainToDelete || ""}
+                autoComplete="off"
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Pinned footer */}
+          <div className="flex-shrink-0 px-5 py-4 border-t border-border flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDomainToDelete(null)}
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDelete}
               disabled={deleteConfirmation !== domainToDelete || isLoading}
+              className="w-full sm:w-auto"
             >
               {isLoading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
               Delete Domain
             </Button>
-          </DialogFooter>
-        </DialogContent>
+          </div>
+
+        </ResponsiveDialogContent>
       </Dialog>
 
       <UpsellModal
