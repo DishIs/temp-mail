@@ -18,8 +18,8 @@ import {
 
 const PLANS = [
   { name: "Free",       price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",     otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Anonymous (10h)", recommended: false, planId: null as string | null },
-  { name: "Developer",  price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",   otp: true,  attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Free (24h)",      recommended: true,  planId: "developer" },
-  { name: "Startup",    price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",   otp: true,  attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",   customDomains: false, persistence: "Free (24h)",      recommended: false, planId: "startup" },
+  { name: "Developer",  price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",   otp: false,  attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Free (24h)",      recommended: true,  planId: "developer" },
+  { name: "Startup",    price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",   otp: false,  attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",   customDomains: false, persistence: "Free (24h)",      recommended: false, planId: "startup" },
   { name: "Growth",     price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000", otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",  customDomains: true,  persistence: "Pro (forever)",   recommended: false, planId: "growth" },
   { name: "Enterprise", price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000",otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100", customDomains: true,  persistence: "Pro (forever)",   recommended: false, planId: "enterprise" },
 ];
