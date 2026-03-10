@@ -100,8 +100,6 @@ function ApiDashboardContent() {
   const [newKeyNameInput, setNewKeyNameInput] = useState("");
   const [generateLoading, setGenerateLoading] = useState(false);
   const [revokePrefix, setRevokePrefix] = useState<string | null>(null);
-  const [registerInbox, setRegisterInbox] = useState("");
-  const [registerLoading, setRegisterLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const data = apiStatus?.data ?? (apiStatus as ApiStatusData);
@@ -175,18 +173,6 @@ function ApiDashboardContent() {
       fetchAll();
     } catch (e) { setError(e instanceof Error ? e.message : "Failed to revoke key."); }
     finally { setRevokePrefix(null); }
-  };
-
-  const handleRegisterInbox = async () => {
-    if (!registerInbox.trim()) return;
-    setRegisterLoading(true); setError(null);
-    try {
-      const res = await fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: registerInbox.trim() }) });
-      const dat = await res.json();
-      if (!res.ok) throw new Error(dat.message || "Failed to register inbox.");
-      setRegisterInbox(""); fetchAll();
-    } catch (e) { setError(e instanceof Error ? e.message : "Failed to register inbox."); }
-    finally { setRegisterLoading(false); }
   };
 
   if (status === "loading") return (
@@ -291,12 +277,12 @@ function ApiDashboardContent() {
                     <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">Registered Inboxes</p>
                     <p className="text-sm text-muted-foreground mb-5">Addresses you can use with the API</p>
                     <div className="border-t border-border" />
-                    <div className="flex flex-wrap gap-2 mt-5 mb-4">
-                      <Input placeholder="user@ditmail.info" value={registerInbox} onChange={e => setRegisterInbox(e.target.value)} className="max-w-xs" />
-                      <Button size="sm" onClick={handleRegisterInbox} disabled={registerLoading}>
-                        {registerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Register"}
-                      </Button>
-                    </div>
+                    <p className="text-sm text-muted-foreground mt-5 mb-4">
+                      To register inboxes, use the API endpoint. See{" "}
+                      <Link href="/api/docs/inboxes" className="underline underline-offset-2 text-foreground hover:text-muted-foreground transition-colors">
+                        API docs → Inboxes
+                      </Link>.
+                    </p>
                     {inboxes.length === 0
                       ? <p className="text-sm text-muted-foreground py-4 border-t border-border">No inboxes registered yet.</p>
                       : inboxes.map(addr => (
