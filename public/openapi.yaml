@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: FreeCustom.Email API
-  version: 2.1.0
+  version: 2.2.0
   description: |
     **Last updated:** March 2026
 
@@ -25,7 +25,7 @@ paths:
       summary: Get current user (account info)
       operationId: getMe
       tags: [Public v1 - Account]
-      description: Returns the authenticated developer's account info — plan, rate limits, feature flags, inbox count, and credit balance.
+      description: Returns the authenticated developer's account info — plan, rate limits, feature flags, inbox count, credit balance, and custom domain count.
       security:
         - BearerAuth: []
       responses:
@@ -93,15 +93,16 @@ paths:
                 $ref: "#/components/schemas/PlansResponse"
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Public v1 — Domains
+  # Public v1 — Platform Domains (read-only, plan-gated)
   # ─────────────────────────────────────────────────────────────────────────
   /v1/domains:
     get:
-      summary: List available domains
+      summary: List available platform domains
       operationId: listDomains
-      tags: [Public v1 - Domains]
+      tags: [Public v1 - Platform Domains]
       description: |
-        Returns the domains available for inbox creation, filtered by your plan:
+        Returns the **platform-managed** domains available for inbox creation,
+        filtered by your plan:
 
         - **Free / Developer / Startup** — free-tier domains only.
         - **Growth / Enterprise** — free-tier + pro-tier domains.
@@ -113,9 +114,12 @@ paths:
         - `new` — recently added domain, shown for ~30 days.
         - `popular` — high-traffic domain.
 
-        Domains that are expiring within 30 days include `expires_at` and
+        Domains expiring within 30 days include `expires_at` and
         `expires_in_days` as a heads-up to migrate inboxes. Healthy domains
         omit these fields entirely to keep the payload lean.
+
+        > **Custom domains** (domains you own and verified) are managed via
+        > `GET /v1/custom-domains` — this endpoint only returns platform domains.
       security:
         - BearerAuth: []
       responses:
@@ -158,9 +162,12 @@ paths:
                       - domain: "ditube.info"
                         tier: "free"
                         tags: ["popular"]
-                      - domain: "inboxrelay.net"
+                      - domain: "ditmail.pro"
                         tier: "pro"
-                        tags: ["new"]
+                        tags: ["new", "featured"]
+                      - domain: "mock-api.pro"
+                        tier: "pro"
+                        tags: ["new", "featured"]
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
@@ -168,9 +175,9 @@ paths:
 
   /v1/domains/all:
     get:
-      summary: List all domains with full metadata
+      summary: List all platform domains with full metadata
       operationId: listDomainsAll
-      tags: [Public v1 - Domains]
+      tags: [Public v1 - Platform Domains]
       description: |
         Same domain list as `GET /v1/domains` but always includes full expiry
         metadata for every domain — useful for dashboard integrations that
@@ -179,6 +186,9 @@ paths:
 
         Plan gating is identical: Growth / Enterprise see pro-tier domains,
         all other plans see free-tier only.
+
+        > This endpoint covers **platform domains** only. For your own verified
+        > custom domains use `GET /v1/custom-domains`.
       security:
         - BearerAuth: []
       responses:
@@ -199,13 +209,351 @@ paths:
                     expires_in_days: 147
                     expiring_soon: false
                     expired: false
-                  - domain: "getnotify.io"
-                    tier: "free"
-                    tags: ["new"]
-                    expires_at: "2026-04-01"
-                    expires_in_days: 25
-                    expiring_soon: true
+                  - domain: "ditmail.pro"
+                    tier: "pro"
+                    tags: ["new", "featured"]
+                    expires_at: "2026-09-05"
+                    expires_in_days: 178
+                    expiring_soon: false
                     expired: false
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — Custom Domains  (Growth / Enterprise only)
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/custom-domains:
+    get:
+      summary: List your custom domains
+      operationId: listCustomDomains
+      tags: [Public v1 - Custom Domains]
+      description: |
+        Returns all custom domains you have added to your account, along with
+        their verification status and the DNS records needed to verify them.
+
+        **Plan required:** Growth ($49/mo) or Enterprise ($149/mo).
+
+        Custom domains are **shared** between the API and the webapp dashboard —
+        a domain added here appears in the dashboard immediately and vice-versa.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomDomainsListResponse"
+              example:
+                success: true
+                count: 2
+                data:
+                  - domain: "mail.acme.com"
+                    verified: true
+                    mx_record: "mx.freecustom.email"
+                    txt_record: "freecustomemail-verification=a1b2c3d4e5f6..."
+                    added_at: "2026-01-15T10:00:00.000Z"
+                  - domain: "staging.acme.com"
+                    verified: false
+                    mx_record: "mx.freecustom.email"
+                    txt_record: "freecustomemail-verification=9z8y7x6w5v4u..."
+                    added_at: "2026-03-10T08:30:00.000Z"
+        "403":
+          description: Plan too low — Growth or Enterprise required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+    post:
+      summary: Add a custom domain
+      operationId: addCustomDomain
+      tags: [Public v1 - Custom Domains]
+      description: |
+        Adds a new custom domain to your account and returns the DNS records
+        you must configure at your registrar before verifying.
+
+        **Plan required:** Growth ($49/mo) or Enterprise ($149/mo).
+
+        **Workflow:**
+        1. `POST /v1/custom-domains` — add the domain, get DNS records.
+        2. Add the two DNS records (MX + TXT) at your registrar.
+        3. `POST /v1/custom-domains/{domain}/verify` — confirm propagation.
+        4. `POST /v1/inboxes` with any address `@yourdomain` — start receiving mail.
+
+        This call is **idempotent** — if the domain is already added it returns
+        the existing entry with `200` instead of `201`.
+
+        **Limits:** Maximum 10 custom domains per account.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain:
+                  type: string
+                  description: The bare domain name to add (no leading `@`, no protocol).
+                  example: "mail.acme.com"
+            example:
+              domain: "mail.acme.com"
+      responses:
+        "201":
+          description: Domain added — configure the DNS records and then call the verify endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomDomainAddedResponse"
+              example:
+                success: true
+                message: "Domain added. Configure the DNS records below, then call the verify endpoint."
+                data:
+                  domain: "mail.acme.com"
+                  verified: false
+                  mx_record: "mx.freecustom.email"
+                  txt_record: "freecustomemail-verification=a1b2c3d4e5f6..."
+                  added_at: "2026-03-11T12:00:00.000Z"
+                  dns_records:
+                    - type: "MX"
+                      hostname: "@"
+                      value: "mx.freecustom.email"
+                      priority: "10"
+                      ttl: "Auto"
+                    - type: "TXT"
+                      hostname: "@"
+                      value: "freecustomemail-verification=a1b2c3d4e5f6..."
+                      ttl: "Auto"
+                  next_step: "POST /v1/custom-domains/mail.acme.com/verify"
+        "200":
+          description: Domain was already added (idempotent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Domain already added." }
+                  data:
+                    $ref: "#/components/schemas/CustomDomainEntry"
+        "400":
+          description: Missing or invalid domain name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  error:
+                    type: string
+                    enum: [missing_field, invalid_domain, limit_reached]
+                  message: { type: string }
+              examples:
+                missing_field:
+                  value:
+                    success: false
+                    error: "missing_field"
+                    message: "`domain` is required (e.g. \"mail.yourdomain.com\")."
+                invalid_domain:
+                  value:
+                    success: false
+                    error: "invalid_domain"
+                    message: "Must be a valid domain name (e.g. \"mail.yourdomain.com\")."
+                limit_reached:
+                  value:
+                    success: false
+                    error: "limit_reached"
+                    message: "Maximum of 10 custom domains reached."
+        "403":
+          description: Plan too low — Growth or Enterprise required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/custom-domains/{domain}:
+    delete:
+      summary: Remove a custom domain
+      operationId: deleteCustomDomain
+      tags: [Public v1 - Custom Domains]
+      description: |
+        Permanently removes a custom domain from your account.
+
+        **Side effects:**
+        - All API inboxes registered at `@{domain}` are automatically unregistered.
+        - The domain is also removed from the webapp dashboard.
+
+        **Plan required:** Growth ($49/mo) or Enterprise ($149/mo).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          description: The bare domain name to remove (e.g. `mail.acme.com`).
+          schema:
+            type: string
+            example: "mail.acme.com"
+      responses:
+        "200":
+          description: Domain removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomDomainDeletedResponse"
+              example:
+                success: true
+                message: "\"mail.acme.com\" removed."
+                inboxes_removed:
+                  - "support@mail.acme.com"
+                  - "noreply@mail.acme.com"
+        "404":
+          description: Domain not found in your account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  error: { type: string, example: "domain_not_found" }
+                  message: { type: string }
+        "403":
+          description: Plan too low
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/custom-domains/{domain}/verify:
+    post:
+      summary: Verify a custom domain
+      operationId: verifyCustomDomain
+      tags: [Public v1 - Custom Domains]
+      description: |
+        Triggers a live DNS check for the domain's MX and TXT records.
+        Call this after you have added the two records at your registrar.
+
+        **DNS records required:**
+
+        | Type | Host | Value | Priority |
+        |------|------|-------|----------|
+        | MX   | @    | `mx.freecustom.email` | 10 |
+        | TXT  | @    | `freecustomemail-verification=<token>` | — |
+
+        The `<token>` is the value returned in `txt_record` when you added the
+        domain. It is unique per domain + account.
+
+        DNS propagation can take up to 48 hours. If verification fails, wait a
+        few minutes and retry — the response includes the specific record that
+        is missing.
+
+        Once verified, you can immediately register inboxes at `@{domain}` via
+        `POST /v1/inboxes`.
+
+        **Plan required:** Growth ($49/mo) or Enterprise ($149/mo).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          description: The bare domain name to verify (e.g. `mail.acme.com`).
+          schema:
+            type: string
+            example: "mail.acme.com"
+      responses:
+        "200":
+          description: Verification succeeded (or domain was already verified)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomDomainVerifyResponse"
+              examples:
+                verified:
+                  summary: Verification succeeded
+                  value:
+                    success: true
+                    verified: true
+                    message: "Domain \"mail.acme.com\" verified successfully. You can now register inboxes at @mail.acme.com."
+                    data:
+                      domain: "mail.acme.com"
+                      verified: true
+                      mx_record: "mx.freecustom.email"
+                      txt_record: "freecustomemail-verification=a1b2c3d4e5f6..."
+                already_verified:
+                  summary: Already verified
+                  value:
+                    success: true
+                    verified: true
+                    message: "Domain is already verified."
+        "422":
+          description: Verification failed — DNS records not yet found or not propagated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomDomainVerifyFailedResponse"
+              examples:
+                missing_txt:
+                  summary: TXT record not found
+                  value:
+                    success: false
+                    verified: false
+                    error: "verification_failed"
+                    message: "TXT record \"freecustomemail-verification=a1b2c3d4e5f6...\" not found."
+                    hint: "DNS propagation can take up to 48 hours."
+                    dns_records_needed:
+                      - type: "MX"
+                        hostname: "@"
+                        value: "mx.freecustom.email"
+                        priority: "10"
+                      - type: "TXT"
+                        hostname: "@"
+                        value: "freecustomemail-verification=a1b2c3d4e5f6..."
+                missing_both:
+                  summary: Both records not found
+                  value:
+                    success: false
+                    verified: false
+                    error: "verification_failed"
+                    message: "MX \"mx.freecustom.email\" and TXT \"freecustomemail-verification=a1b2c3d4e5f6...\" not found."
+                    hint: "DNS propagation can take up to 48 hours."
+                    dns_records_needed:
+                      - type: "MX"
+                        hostname: "@"
+                        value: "mx.freecustom.email"
+                        priority: "10"
+                      - type: "TXT"
+                        hostname: "@"
+                        value: "freecustomemail-verification=a1b2c3d4e5f6..."
+        "404":
+          description: Domain not found — add it first via POST /v1/custom-domains
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  error: { type: string, example: "domain_not_found" }
+                  message: { type: string, example: "\"mail.acme.com\" not found. Add it first via POST /v1/custom-domains." }
+        "403":
+          description: Plan too low
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
@@ -237,9 +585,13 @@ paths:
       operationId: createInbox
       tags: [Public v1 - Inboxes]
       description: |
-        Registers an inbox for API use. The domain must appear in `GET /v1/domains`
-        for your plan. Custom domain inboxes require Growth+ and prior domain
-        verification in the dashboard.
+        Registers an inbox for API use.
+
+        **Platform domain inbox:** The domain must appear in `GET /v1/domains` for your plan.
+
+        **Custom domain inbox:** The domain must be added and verified via
+        `POST /v1/custom-domains` + `POST /v1/custom-domains/{domain}/verify`
+        before registering inboxes at it. Requires Growth+ plan.
       security:
         - BearerAuth: []
       requestBody:
@@ -277,7 +629,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error400Inbox" }
         "403":
-          description: Domain not allowed for your plan, or domain not verified
+          description: Domain not allowed for your plan, or custom domain not yet verified
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error403Plan" }
@@ -441,10 +793,10 @@ paths:
       tags: [Public v1 - OTP]
       description: |
         Returns the OTP and/or verification link from the most recent message
-        that contains one. Requires Developer plan or higher.
+        that contains one. Requires Growth plan or higher.
 
-        On Free plan, message list endpoints return `otp: "__DETECTED__"` as a
-        hint that an OTP exists — use this endpoint (Developer+) to read the
+        On lower plans, message list endpoints return `otp: "__DETECTED__"` as a
+        hint that an OTP exists — use this endpoint (Growth+) to read the
         actual value.
       parameters:
         - name: inbox
@@ -461,7 +813,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/OtpResponse"
         "403":
-          description: Plan too low — requires Developer plan ($7/mo) or above
+          description: Plan too low — requires Growth plan ($49/mo) or above
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error403Plan" }
@@ -504,7 +856,7 @@ components:
           schema: { $ref: "#/components/schemas/Error429" }
 
   schemas:
-    # ── Domains ─────────────────────────────────────────────────────────────
+    # ── Platform Domains ─────────────────────────────────────────────────────
     DomainEntry:
       type: object
       required: [domain, tier, tags]
@@ -523,10 +875,11 @@ components:
           type: array
           items:
             type: string
-            enum: [new, popular]
+            enum: [new, popular, featured]
           description: |
             `new` — recently added, shown for ~30 days.
             `popular` — high-traffic domain.
+            `featured` — pinned at top of domain picker.
           example: ["popular"]
         expires_at:
           type: string
@@ -607,6 +960,161 @@ components:
           items:
             $ref: "#/components/schemas/DomainEntryFull"
 
+    # ── Custom Domains ────────────────────────────────────────────────────────
+    CustomDomainEntry:
+      type: object
+      required: [domain, verified, mx_record, txt_record]
+      description: A custom domain added to your account.
+      properties:
+        domain:
+          type: string
+          description: Bare domain name (no leading @).
+          example: "mail.acme.com"
+        verified:
+          type: boolean
+          description: |
+            `true` — MX and TXT records confirmed. Inboxes can be registered.
+            `false` — DNS records not yet verified. Call the verify endpoint.
+          example: true
+        mx_record:
+          type: string
+          description: The MX record value to add at your registrar.
+          example: "mx.freecustom.email"
+        txt_record:
+          type: string
+          description: The full TXT record value (including the `freecustomemail-verification=` prefix) to add at your registrar. Unique per domain + account.
+          example: "freecustomemail-verification=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+        added_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO 8601 timestamp when the domain was added.
+          example: "2026-01-15T10:00:00.000Z"
+
+    DnsRecord:
+      type: object
+      required: [type, hostname, value, ttl]
+      description: A DNS record to add at your registrar.
+      properties:
+        type:
+          type: string
+          enum: [MX, TXT]
+          example: "MX"
+        hostname:
+          type: string
+          description: The DNS hostname / host field. `@` means the root of the domain.
+          example: "@"
+        value:
+          type: string
+          description: The record value to enter in your DNS panel.
+          example: "mx.freecustom.email"
+        priority:
+          type: string
+          description: MX priority. Only present for MX records.
+          example: "10"
+          nullable: true
+        ttl:
+          type: string
+          description: Recommended TTL setting.
+          example: "Auto"
+
+    CustomDomainsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        count:
+          type: integer
+          description: Number of custom domains in your account.
+          example: 2
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomDomainEntry"
+
+    CustomDomainAddedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Domain added. Configure the DNS records below, then call the verify endpoint."
+        data:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/CustomDomainEntry"
+          properties:
+            dns_records:
+              type: array
+              description: The two DNS records to add at your registrar (MX + TXT).
+              items:
+                $ref: "#/components/schemas/DnsRecord"
+            next_step:
+              type: string
+              description: The API path to call once DNS records are live.
+              example: "POST /v1/custom-domains/mail.acme.com/verify"
+
+    CustomDomainVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        verified:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Domain \"mail.acme.com\" verified successfully. You can now register inboxes at @mail.acme.com."
+        data:
+          $ref: "#/components/schemas/CustomDomainEntry"
+
+    CustomDomainVerifyFailedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        verified:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "verification_failed"
+        message:
+          type: string
+          description: Which specific record was not found.
+          example: "TXT record \"freecustomemail-verification=...\" not found."
+        hint:
+          type: string
+          example: "DNS propagation can take up to 48 hours."
+        dns_records_needed:
+          type: array
+          description: The records that must be present for verification to pass.
+          items:
+            $ref: "#/components/schemas/DnsRecord"
+
+    CustomDomainDeletedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "\"mail.acme.com\" removed."
+        inboxes_removed:
+          type: array
+          description: |
+            API inboxes that were automatically unregistered because they used
+            this domain. May be an empty array.
+          items:
+            type: string
+          example: ["support@mail.acme.com", "noreply@mail.acme.com"]
+
     # ── Account ──────────────────────────────────────────────────────────────
     MeResponse:
       type: object
@@ -631,7 +1139,15 @@ components:
               properties:
                 requests_per_second: { type: integer }
                 requests_per_month: { type: integer }
-            inboxes_registered: { type: integer }
+            api_inboxes: { type: array, items: { type: string } }
+            api_inbox_count: { type: integer }
+            app_inboxes: { type: array, items: { type: string } }
+            app_inbox_count: { type: integer }
+            custom_domains:
+              type: array
+              items:
+                $ref: "#/components/schemas/CustomDomainEntry"
+            custom_domain_count: { type: integer }
 
     UsageResponse:
       type: object
@@ -734,8 +1250,8 @@ components:
           type: string
           nullable: true
           description: |
-            The extracted OTP code, or `__DETECTED__` on Free plan (upgrade to
-            Developer+ or use `GET /v1/inboxes/{inbox}/otp` to read the value).
+            The extracted OTP code, or `__DETECTED__` on plans below Growth
+            (upgrade or use `GET /v1/inboxes/{inbox}/otp` to read the value).
         verification_link: { type: string, nullable: true }
 
     MessagesListResponse:
@@ -810,7 +1326,9 @@ components:
       type: object
       properties:
         success: { type: boolean, example: false }
-        error: { type: string, enum: [plan_restriction, domain_not_verified] }
+        error:
+          type: string
+          enum: [plan_required, plan_restriction, domain_not_verified, domain_not_found]
         message: { type: string }
         upgrade_url: { type: string, format: uri, nullable: true }
     Error400Inbox:
@@ -838,17 +1356,36 @@ components:
 tags:
   - name: Public v1 - Account
     description: Account info, usage, and plans
-  - name: Public v1 - Domains
+  - name: Public v1 - Platform Domains
     description: |
-      List domains available for inbox creation.
-      Results are plan-gated and Redis-cached (5-min TTL).
-      New domains appear automatically without a code change.
+      List **platform-managed** domains available for inbox creation.
+      Results are plan-gated (Growth/Enterprise see pro-tier domains) and
+      Redis-cached with a 5-minute TTL. New domains surface automatically
+      without a code change. Does **not** include your own custom domains —
+      see the Custom Domains tag for that.
+  - name: Public v1 - Custom Domains
+    description: |
+      Add, verify, and remove **your own domains** so you can receive mail
+      at any address `@yourdomain`.
+
+      **Requires Growth ($49/mo) or Enterprise ($149/mo) plan.**
+
+      Custom domains are **shared** between the API and the webapp dashboard —
+      changes on either surface are immediately reflected on the other.
+
+      **Typical workflow:**
+      1. `POST /v1/custom-domains` — add domain, receive DNS records.
+      2. Add MX + TXT records at your registrar.
+      3. `POST /v1/custom-domains/{domain}/verify` — confirm propagation.
+      4. `POST /v1/inboxes` with `user@yourdomain` — start receiving mail.
+
+      DNS propagation can take up to 48 hours; most providers update within minutes.
   - name: Public v1 - Inboxes
-    description: Register and manage inboxes
+    description: Register and manage inboxes (platform domains and verified custom domains)
   - name: Public v1 - Messages
     description: List, get, and delete messages
   - name: Public v1 - OTP
-    description: OTP and verification link extraction
+    description: OTP and verification link extraction (Growth+ only)
 
 x-websocket:
   url: "wss://api2.freecustom.email/v1/ws"
