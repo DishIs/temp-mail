@@ -1,20 +1,17 @@
 // app/api/pricing/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, Globe, ShieldCheck, ChevronDown, AlertTriangle } from "lucide-react";
+import { Check, Loader2, Globe, ShieldCheck, AlertTriangle, Info, RefreshCw, ExternalLink, X } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
 import toast from "react-hot-toast";
 import {
   SiVisa, SiMastercard, SiAmericanexpress,
@@ -26,11 +23,11 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free"      , label: "Free",       price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", planId: null as string | null },
-  { name: "developer" , label: "Developer",  price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Free (24h)",      planId: "developer" },
-  { name: "startup"   , label: "Startup",    price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "Free (24h)",      planId: "startup" },
-  { name: "growth"    , label: "Growth",     price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   planId: "growth" },
-  { name: "enterprise", label: "Enterprise", price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   planId: "enterprise" },
+  { name: "free"      , label: "Free",       price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false, planId: null as string | null },
+  { name: "developer" , label: "Developer",  price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, planId: "developer" },
+  { name: "startup"   , label: "Startup",    price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, planId: "startup" },
+  { name: "growth"    , label: "Growth",     price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  planId: "growth" },
+  { name: "enterprise", label: "Enterprise", price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  planId: "enterprise" },
 ] as const;
 
 const CREDITS = [
@@ -50,15 +47,58 @@ const DOWNGRADE_REASONS = [
 ];
 
 const FAQ_ITEMS = [
-  { q: "Can we use pro features by just buying credits with no plans (free)?", a: "No. Features (OTP extraction, attachments, WebSocket, custom domains) are determined by your API plan only. Credits only add request capacity; they don't change your plan or unlock paid features." },
-  { q: "What's the difference between credits and API plans?", a: "Your API plan sets which features you get and your base rate limits. Credits only add extra request capacity on top of your monthly quota; they never expire and are consumed when you exceed your plan limit." },
-  { q: "Do credits expire?", a: "No. Credits never expire. Top up once and use them whenever you need." },
-  { q: "What happens when I hit my monthly limit?", a: "If you have credits, they are consumed automatically. If you have no credits, you'll receive HTTP 429 until the next reset or until you add credits." },
-  { q: "Can I use my own domain?", a: "Yes, on Growth and Enterprise. Add and verify your domain in the dashboard; then register inboxes like user@yourdomain.com via the API." },
-  { q: "Is there a free trial?", a: "The Free plan is always available. Paid API plans do not include a separate trial period; you can upgrade or add credits at any time." },
-  { q: "How does WebSocket billing work?", a: "Each push event counts as one request toward your monthly quota. Connection limits apply per plan." },
-  { q: "Can I switch plans mid-cycle?", a: "Yes. Upgrades take effect immediately; you're charged a prorated amount. Downgrades take effect at the end of the current billing period." },
-  { q: "What is the difference between API plan and Pro plan?", a: "The Pro plan is for the main FreeCustom.Email web app. The API plan is for programmatic access. They are separate subscriptions; you can have one or both." },
+  {
+    q: "Can we use pro features by just buying credits with no plans (free)?",
+    a: "No. Features (OTP extraction, attachments, WebSocket, custom domains) are determined by your API plan only. Credits only add request capacity; they don't change your plan or unlock paid features.",
+  },
+  {
+    q: "What's the difference between credits and API plans?",
+    a: "Your API plan sets which features you get and your base rate limits. Credits only add extra request capacity on top of your monthly quota; they never expire and are consumed when you exceed your plan limit.",
+  },
+  {
+    q: "Do credits expire?",
+    a: "No. Credits never expire. Top up once and use them whenever you need.",
+  },
+  {
+    q: "What happens when I hit my monthly limit?",
+    a: "If you have credits, they are consumed automatically. If you have no credits, you'll receive HTTP 429 until the next reset or until you add credits.",
+  },
+  {
+    q: "Can I use my own domain?",
+    a: "Yes, on Growth and Enterprise. Add and verify your domain in the dashboard; then register inboxes like user@yourdomain.com via the API.",
+  },
+  {
+    q: "Is there a free trial?",
+    a: "The Free plan is always available. Paid API plans do not include a separate trial period; you can upgrade or add credits at any time.",
+  },
+  {
+    q: "How does WebSocket billing work?",
+    a: "Each push event counts as one request toward your monthly quota. Connection limits apply per plan.",
+  },
+  {
+    q: "Can I switch plans mid-cycle?",
+    a: "Yes. Upgrades take effect immediately; you're charged a prorated amount. Downgrades take effect at the end of the current billing period.",
+  },
+  {
+    q: "What is the difference between API plan and Pro plan?",
+    a: "The Pro plan is for the main FreeCustom.Email web app — it unlocks client-side features like the ad-free interface, OTP extraction UI, verification link chips, inbox layouts, and keyboard shortcuts. The API plan is for programmatic access to inboxes via our API. They are separate subscriptions; you can have one, both, or neither.",
+  },
+  {
+    q: 'What does "Pro inbox" mean on Growth / Enterprise API plans?',
+    a: 'When your API plan includes "Pro (forever)" persistence, inboxes you create are treated as Pro inboxes at the backend level. This means: emails are stored permanently (no 24-hour deletion), you get access to freshly rotated domain lists, and inboxes are private (not publicly searchable). It does NOT grant a webapp Pro account — you won\'t get the ad-free interface, OTP extraction UI, verification link detection chips, or inbox layout options in the web client. Those are exclusive to a webapp Pro subscription.',
+  },
+  {
+    q: "What are fresh domain updates and why do they matter?",
+    a: "Most disposable email services reuse the same small set of domains for years — those domains end up on every spam blocklist and registration service rejects them immediately. On Growth and Enterprise API plans, your inboxes are provisioned on recently added, unblocked domains that have no spam history. We rotate new domains in regularly so that emails from services like GitHub, Google, or Stripe actually land instead of being silently rejected.",
+  },
+  {
+    q: "Do my API-created inboxes share the fresh domain pool with webapp Pro users?",
+    a: "Yes. Growth and Enterprise API inboxes draw from the same regularly updated domain pool as webapp Pro subscribers. Both tiers get fresh, low-history domains. The difference is that webapp Pro users also get the visual OTP and verification-link UI in their browser, while API plans expose those capabilities programmatically.",
+  },
+  {
+    q: "Can I get both an API plan and a webapp Pro plan?",
+    a: "Absolutely. They are independent subscriptions. If you want to use the API programmatically AND use the polished web client with all Pro UI features, subscribe to both. Each subscription is billed separately.",
+  },
 ];
 
 const PAYMENT_METHODS = [
@@ -69,6 +109,108 @@ const PAYMENT_METHODS = [
   { icon: SiApplepay,        label: "Apple Pay"  },
   { icon: SiGooglepay,       label: "Google Pay" },
 ];
+
+// ─── Pro-inbox info popover ───────────────────────────────────────────────────
+function ProInboxBadge() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-flex items-center gap-1">
+      {/* Link to pricing page */}
+      <Link
+        href="/pricing"
+        className="text-xs font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors whitespace-nowrap"
+        title="See webapp Pro plan"
+      >
+        Pro (forever)
+      </Link>
+
+      {/* Info toggle */}
+      <button
+        type="button"
+        aria-label="What is Pro inbox?"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-border"
+      >
+        <Info className="h-3 w-3" />
+      </button>
+
+      {/* Popover */}
+      {open && (
+        <div className="absolute bottom-full right-0 mb-2 w-72 z-50 rounded-lg border border-border bg-background shadow-lg text-left">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Pro inbox — what's included?</span>
+            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+
+          <div className="px-4 py-3 space-y-3">
+            {/* Included */}
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Backend inbox benefits ✓</p>
+              <ul className="space-y-1">
+                {[
+                  "Emails stored permanently (no expiry)",
+                  "Access to fresh, regularly rotated domain list",
+                  "Private inboxes — not publicly searchable",
+                  "Large attachment support",
+                ].map(item => (
+                  <li key={item} className="flex items-start gap-1.5 text-xs text-foreground">
+                    <Check className="h-3 w-3 text-foreground shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Not included */}
+            <div className="border-t border-border pt-3">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Not included (webapp Pro only)</p>
+              <ul className="space-y-1">
+                {[
+                  "Ad-free web interface",
+                  "OTP extraction UI in browser",
+                  "Verification link detection chips",
+                  "Inbox layout options & keyboard shortcuts",
+                ].map(item => (
+                  <li key={item} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <span className="h-3 w-3 rounded-full border border-border shrink-0 mt-0.5 block" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* CTA */}
+            <div className="border-t border-border pt-3">
+              <Link
+                href="/pricing"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setOpen(false)}
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                See webapp Pro plan features →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 function PaddleTrustStrip() {
@@ -138,7 +280,6 @@ function DowngradeModal({ open, fromPlan, toPlan, onConfirm, onClose }: Downgrad
   const [comment, setComment] = useState("");
   const [busy,    setBusy]    = useState(false);
 
-  // Reset on open
   useEffect(() => {
     if (open) { setReason(""); setComment(""); }
   }, [open]);
@@ -164,7 +305,6 @@ function DowngradeModal({ open, fromPlan, toPlan, onConfirm, onClose }: Downgrad
           </DialogDescription>
         </DialogHeader>
 
-        {/* Reason selector */}
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Why are you downgrading?</p>
           <div className="space-y-1.5">
@@ -184,7 +324,6 @@ function DowngradeModal({ open, fromPlan, toPlan, onConfirm, onClose }: Downgrad
           </div>
         </div>
 
-        {/* Optional comment */}
         <div className="space-y-1.5">
           <p className="text-sm font-medium text-foreground">
             Anything else? <span className="text-muted-foreground font-normal">(optional)</span>
@@ -200,11 +339,7 @@ function DowngradeModal({ open, fromPlan, toPlan, onConfirm, onClose }: Downgrad
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>Keep current plan</Button>
-          <Button
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={busy || !reason}
-          >
+          <Button variant="destructive" onClick={handleConfirm} disabled={busy || !reason}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm downgrade"}
           </Button>
         </DialogFooter>
@@ -231,7 +366,6 @@ function PlanCta({
 }: PlanCtaProps) {
   const planName = plan.name as ApiPlanName;
 
-  // User not logged in or current plan unknown
   if (!isLoggedIn || !currentPlan) {
     if (planName === "free") {
       return (
@@ -250,7 +384,6 @@ function PlanCta({
   const currentIdx = PLAN_ORDER.indexOf(currentPlan);
   const planIdx    = PLAN_ORDER.indexOf(planName);
 
-  // ── Current plan ──────────────────────────────────────────────────────────
   if (planName === currentPlan) {
     const isScheduledDown = scheduledDowngradePlan != null;
     return (
@@ -260,7 +393,6 @@ function PlanCta({
     );
   }
 
-  // ── Upgrade ───────────────────────────────────────────────────────────────
   if (planIdx > currentIdx) {
     return (
       <Button size="sm" className="w-full" disabled={busy} onClick={() => onUpgrade(plan)}>
@@ -269,8 +401,6 @@ function PlanCta({
     );
   }
 
-  // ── Downgrade ─────────────────────────────────────────────────────────────
-  // Free is a cancel flow, not a normal downgrade
   if (planName === "free") {
     return (
       <Button asChild size="sm" variant="ghost" className="w-full text-muted-foreground">
@@ -294,21 +424,17 @@ export default function ApiPricingPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Current plan from the API
   const [currentPlan, setCurrentPlan]                 = useState<ApiPlanName | null>(null);
   const [scheduledDowngradePlan, setScheduledDnPlan]  = useState<string | null>(null);
   const [planLoading, setPlanLoading]                 = useState(false);
 
-  // Action state
   const [busyPlanId,    setBusyPlanId]    = useState<string | null>(null);
   const [busyCredits,   setBusyCredits]   = useState<string | null>(null);
 
-  // Downgrade modal
   const [downgradeTarget, setDowngradeTarget] = useState<typeof PLANS[number] | null>(null);
 
   const isLoggedIn = status === "authenticated" && !!session?.user;
 
-  // ── Fetch current API plan ─────────────────────────────────────────────────
   useEffect(() => {
     if (!isLoggedIn) return;
     setPlanLoading(true);
@@ -326,7 +452,6 @@ export default function ApiPricingPage() {
       .finally(() => setPlanLoading(false));
   }, [isLoggedIn]);
 
-  // ── New checkout (no existing subscription) ────────────────────────────────
   const openCheckout = async (payload: {
     productType: "api" | "credits";
     apiPlan?:    string;
@@ -359,7 +484,7 @@ export default function ApiPricingPage() {
         userId: session.user.id,
         productType: d.productType ?? payload.productType,
       };
-      if (d.apiPlan)          customData.apiPlan      = d.apiPlan;
+      if (d.apiPlan)              customData.apiPlan      = d.apiPlan;
       if (d.creditsToAdd != null) customData.creditsToAdd = d.creditsToAdd;
 
       Paddle.Checkout.open({
@@ -384,7 +509,6 @@ export default function ApiPricingPage() {
     }
   };
 
-  // ── Change existing subscription ───────────────────────────────────────────
   const changePlan = async (
     targetPlan: typeof PLANS[number],
     reason?:    string,
@@ -413,7 +537,6 @@ export default function ApiPricingPage() {
       }
 
       toast.success(d.message ?? "Plan updated.", { id: tid });
-      // Update local state immediately
       if (d.changeType === "upgrade") {
         setCurrentPlan(targetPlan.name as ApiPlanName);
         setScheduledDnPlan(null);
@@ -428,39 +551,51 @@ export default function ApiPricingPage() {
     }
   };
 
-  // ── CTA handlers ───────────────────────────────────────────────────────────
   const handleUpgrade = (plan: typeof PLANS[number]) => {
     if (!plan.planId) return;
     setBusyPlanId(plan.planId);
-    // Has an active subscription → change in-place
     if (currentPlan && currentPlan !== "free") {
       changePlan(plan);
     } else {
-      // No subscription yet → new checkout
       openCheckout({ productType: "api", apiPlan: plan.planId });
     }
   };
 
-  const handleDowngrade = (plan: typeof PLANS[number]) => {
-    // Always show modal to capture reason
-    setDowngradeTarget(plan);
-  };
-
+  const handleDowngrade  = (plan: typeof PLANS[number]) => { setDowngradeTarget(plan); };
   const handleGetStarted = (plan: typeof PLANS[number]) => {
     if (!plan.planId) return;
     setBusyPlanId(plan.planId);
     openCheckout({ productType: "api", apiPlan: plan.planId });
   };
-
   const handleCreditsClick = (pkg: typeof CREDITS[number]) => {
     setBusyCredits(pkg.package);
     openCheckout({ productType: "credits", package: pkg.package });
   };
-
   const confirmDowngrade = async (reason: string, comment: string) => {
     if (!downgradeTarget) return;
     setBusyPlanId(downgradeTarget.planId ?? null);
     await changePlan(downgradeTarget, reason, comment);
+  };
+
+  // ─── Persistence cell renderer ────────────────────────────────────────────
+  const renderPersistence = (plan: typeof PLANS[number]) => {
+    if (plan.persistence === "Pro (forever)") {
+      return <ProInboxBadge />;
+    }
+    return <span className="text-xs text-right leading-tight">{plan.persistence}</span>;
+  };
+
+  // ─── Fresh domains cell renderer ─────────────────────────────────────────
+  const renderFreshDomains = (plan: typeof PLANS[number]) => {
+    if (!plan.freshDomains) return <Cross />;
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <Check className="h-4 w-4 mx-auto" />
+        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground border border-border rounded-sm px-1 py-px leading-none">
+          Regular
+        </span>
+      </div>
+    );
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -493,7 +628,6 @@ export default function ApiPricingPage() {
             </h1>
             <p className="text-sm text-muted-foreground">Pay per plan or top up with credits. Credits never expire.</p>
 
-            {/* Scheduled downgrade banner */}
             {scheduledDowngradePlan && (
               <div className="mt-6 flex items-start gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
                 <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -518,7 +652,6 @@ export default function ApiPricingPage() {
                   key={plan.name}
                   className={`bg-background flex flex-col p-6 relative ${isCurrent ? "ring-1 ring-inset ring-foreground/20" : ""}`}
                 >
-                  {/* Badges */}
                   {isCurrent && !isScheduledTarget && (
                     <span className="absolute top-0 right-0 text-[10px] font-semibold font-mono uppercase tracking-widest text-foreground bg-muted/60 px-2 py-1 rounded-bl-lg">
                       Current
@@ -538,17 +671,30 @@ export default function ApiPricingPage() {
 
                   <div className="space-y-3 text-sm flex-1">
                     {[
-                      { label: "Req/sec",       value: plan.reqSec },
-                      { label: "Req/month",     value: plan.reqMonth },
-                      { label: "OTP",           value: plan.otp ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
-                      { label: "Attachments",   value: plan.attachments ? <span className="text-xs">{plan.maxAttachment}</span> : <Cross /> },
-                      { label: "WebSocket",     value: plan.ws ? <span className="text-xs">{plan.maxWs} conn</span> : <Cross /> },
-                      { label: "Custom domain", value: plan.customDomains ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
-                      { label: "Persistence",   value: <span className="text-xs text-right leading-tight">{plan.persistence}</span> },
+                      { label: "Req/sec",        value: plan.reqSec },
+                      { label: "Req/month",      value: plan.reqMonth },
+                      { label: "OTP",            value: plan.otp ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
+                      { label: "Attachments",    value: plan.attachments ? <span className="text-xs">{plan.maxAttachment}</span> : <Cross /> },
+                      { label: "WebSocket",      value: plan.ws ? <span className="text-xs">{plan.maxWs} conn</span> : <Cross /> },
+                      { label: "Custom domain",  value: plan.customDomains ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
+                      {
+                        label: "Fresh domains",
+                        value: renderFreshDomains(plan),
+                        hint: plan.freshDomains ? "Inboxes provisioned on newly added, unblocked domains" : undefined,
+                      },
+                      {
+                        label: "Persistence",
+                        value: renderPersistence(plan),
+                      },
                     ].map(row => (
-                      <div key={row.label} className="border-t border-border pt-3 flex items-center justify-between gap-2 first:border-t-0 first:pt-0">
-                        <span className="text-muted-foreground text-xs">{row.label}</span>
-                        <span className="font-medium">{row.value}</span>
+                      <div key={row.label} className="border-t border-border pt-3 flex items-start justify-between gap-2 first:border-t-0 first:pt-0">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground text-xs">{row.label}</span>
+                          {(row as any).hint && (
+                            <span className="text-[10px] text-muted-foreground/60 leading-tight">{(row as any).hint}</span>
+                          )}
+                        </div>
+                        <span className="font-medium shrink-0">{row.value}</span>
                       </div>
                     ))}
                   </div>
@@ -574,6 +720,27 @@ export default function ApiPricingPage() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Pro inbox callout banner */}
+          <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/10 px-4 py-3 text-sm mb-2">
+            <RefreshCw className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-foreground mb-0.5">
+                Growth &amp; Enterprise: Pro inbox features included
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Inboxes are treated as{" "}
+                <Link href="/pricing" className="underline underline-offset-4 decoration-border hover:text-foreground transition-colors">
+                  webapp Pro
+                </Link>{" "}
+                at the backend level — permanent retention, fresh domain rotation, and private inboxes.
+                Client-side features (ad-free UI, OTP chips, inbox layouts) require a separate{" "}
+                <Link href="/pricing" className="underline underline-offset-4 decoration-border hover:text-foreground transition-colors">
+                  webapp Pro subscription →
+                </Link>
+              </p>
+            </div>
           </div>
 
           <PaddleTrustStrip />
@@ -629,7 +796,7 @@ export default function ApiPricingPage() {
         </div>
       </div>
 
-      {/* ── Downgrade confirmation modal ─────────────────────────────────────── */}
+      {/* Downgrade modal */}
       <DowngradeModal
         open={downgradeTarget != null}
         fromPlan={currentPlan ? (currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)) : ""}
