@@ -1,10 +1,9 @@
-// app/api/dashboard/page.tsx  (updated — "domains" tab added)
+// app/api/dashboard/page.tsx
 // ─────────────────────────────────────────────────────────────────────────────
-//  Changes from previous version:
-//    • Import ApiCustomDomainManager
-//    • "domains" tab added to the tab strip (visible for all plans but shows
-//      an upsell card for plans without custom domain support)
-//    • Tab list updated from ["overview","keys","usage","billing"] to include "domains"
+//  FIX: properly render cancelled / cancelling subscription states
+//    • statusBadge "cancelled"  → red badge + "Your plan has ended" banner
+//    • statusBadge "cancelling" → amber badge + "Cancels on <date>" notice
+//    • Plan header always shows effective plan (free if period elapsed)
 // ─────────────────────────────────────────────────────────────────────────────
 "use client";
 
@@ -23,16 +22,26 @@ import {
   DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { ApiCustomDomainManager } from "@/components/dashboard/ApiCustomDomainManager";
-import { CUSTOM_DOMAIN_PLANS } from "@/lib/api-plans-client"; // re-export of ['growth','enterprise']
+import { CUSTOM_DOMAIN_PLANS } from "@/lib/api-plans-client";
 
-// ─── types (unchanged from previous version) ─────────────────────────────────
+// ─── types ────────────────────────────────────────────────────────────────────
 interface PlanInfo { name?: string; label?: string; price?: string; status_badge?: string; }
 interface UsageInfo {
   requests_this_month?: number; requests_limit?: number; requests_remaining?: number;
   percent_used?: string; credits_remaining?: number; resets_approx?: string;
 }
+interface SubscriptionInfo {
+  subscription_id?: string;
+  status?: string;
+  cancel_at_period_end?: boolean;
+  period_end?: string | null;
+  canceled_at?: string | null;
+  next_billed_at?: string | null;
+  payer_email?: string | null;
+}
 interface ApiStatusData {
   plan?: PlanInfo & { name?: string };
+  subscription?: SubscriptionInfo | null;
   usage?: UsageInfo;
   rate_limits?: { requests_per_second?: number; requests_per_month?: number };
   features?: Record<string, boolean | number | string>;
@@ -82,6 +91,73 @@ function StatTile({ label, value, sub, children }: { label: string; value?: stri
   );
 }
 
+// ── Status badge renderer ─────────────────────────────────────────────────────
+function StatusBadge({ badge }: { badge: string }) {
+  const cfg: Record<string, { label: string; cls: string }> = {
+    active:        { label: "active",      cls: "text-foreground bg-muted/30" },
+    trialing:      { label: "trialing",    cls: "text-foreground bg-muted/30" },
+    cancelling:    { label: "cancelling",  cls: "text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-800" },
+    cancelled:     { label: "cancelled",   cls: "text-destructive bg-destructive/5 border-destructive/30" },
+    payment_failed:{ label: "payment failed", cls: "text-destructive bg-destructive/5 border-destructive/30" },
+    free:          { label: "free",        cls: "text-muted-foreground bg-muted/20" },
+  };
+  const { label, cls } = cfg[badge] ?? { label: badge, cls: "text-muted-foreground bg-muted/20" };
+  return (
+    <span className={`text-xs font-mono px-2 py-1 rounded-md border border-border ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+// ── Subscription notice banner ────────────────────────────────────────────────
+function SubscriptionNotice({ badge, periodEnd }: { badge: string; periodEnd?: string | null }) {
+  const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : null;
+
+  if (badge === "cancelled") {
+    return (
+      <div className="mb-6 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium">Your plan has ended</p>
+          <p className="text-destructive/80 mt-0.5">
+            You're now on the Free plan.{" "}
+            <Link href="/api/pricing" className="underline underline-offset-2">Upgrade to restore access.</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (badge === "cancelling" && periodEnd) {
+    return (
+      <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium">Subscription cancels {fmtDate(periodEnd)}</p>
+          <p className="opacity-80 mt-0.5">
+            You have full access until then.{" "}
+            <Link href="/api/pricing" className="underline underline-offset-2">Resubscribe to keep your plan.</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (badge === "payment_failed") {
+    return (
+      <div className="mb-6 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium">Payment failed — access suspended</p>
+          <p className="text-destructive/80 mt-0.5">Please update your payment method to restore access.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Dashboard Content
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,6 +183,11 @@ function ApiDashboardContent() {
   const planLabel = typeof data?.plan === "object" ? (data.plan as PlanInfo).label : null;
   const planPrice = typeof data?.plan === "object" ? (data.plan as PlanInfo).price : null;
   const statusBadge = (typeof data?.plan === "object" ? (data.plan as PlanInfo).status_badge : null) ?? "free";
+
+  // Subscription detail (for cancelling date, etc.)
+  const subInfo: SubscriptionInfo | null = data?.subscription ?? null;
+  const periodEnd = subInfo?.period_end ?? null;
+
   type UsageLike = UsageInfo & { used?: number; limit?: number; resetsAt?: string; credits?: number; rateLimitPerSec?: number };
   const usage = (data?.usage ?? apiStatus?.usage) as UsageLike | undefined;
   const used = usage?.requests_this_month ?? usage?.used ?? 0;
@@ -120,6 +201,9 @@ function ApiDashboardContent() {
 
   // Whether the current API plan supports custom domains
   const canUseCustomDomains = CUSTOM_DOMAIN_PLANS.includes(planName as string);
+
+  // Show upsell for free / cancelled / low-tier plans
+  const showUpsell = planName === "free" || planName === "developer" || statusBadge === "cancelled";
 
   const fetchAll = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -181,10 +265,7 @@ function ApiDashboardContent() {
     </div>
   );
 
-  const showUpsell = planName === "free" || planName === "developer";
   const dataReady = !loading && apiStatus != null;
-
-  // Tab definitions — domains tab always shown
   const TABS = ["overview", "keys", "domains", "usage", "billing"] as const;
 
   return (
@@ -222,13 +303,18 @@ function ApiDashboardContent() {
             <div className="flex flex-wrap items-end gap-4">
               <h1 className="text-3xl font-bold tracking-tight text-foreground">
                 {planLabel ?? planName ?? "Free"}
-                {planPrice && planPrice !== 'free' && <span className="ml-2 text-lg font-normal text-muted-foreground">{planPrice}</span>}
+                {planPrice && planPrice !== "Free" && planPrice !== "free" && (
+                  <span className="ml-2 text-lg font-normal text-muted-foreground">{planPrice}</span>
+                )}
               </h1>
-              <span className={`text-xs font-mono px-2 py-1 rounded-md border border-border ${statusBadge === "active" ? "text-foreground bg-muted/30" : "text-muted-foreground bg-muted/20"}`}>
-                {statusBadge}
-              </span>
+              <StatusBadge badge={statusBadge} />
             </div>
           </div>
+
+          {/* Subscription state notice */}
+          {dataReady && (
+            <SubscriptionNotice badge={statusBadge} periodEnd={periodEnd} />
+          )}
 
           {error && (
             <div className="mb-6 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -294,7 +380,7 @@ function ApiDashboardContent() {
                   {/* Feature flags */}
                   <div className="mb-8">
                     <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">Feature flags</p>
-                    <p className="text-sm text-muted-foreground mb-5">Based on your plan</p>
+                    <p className="text-sm text-muted-foreground mb-5">Based on your current plan</p>
                     <div className="border-t border-border" />
                     {["OTP Extraction", "WebSocket", "Attachments", "Custom Domains"].map(f => {
                       const key = f.toLowerCase().replace(" ", "_");
@@ -388,6 +474,33 @@ function ApiDashboardContent() {
 
                 {/* ── BILLING ──────────────────────────────────────────── */}
                 <TabsContent value="billing" className="mt-0">
+                  {/* Show subscription detail row if sub exists */}
+                  {subInfo && (
+                    <div className="mb-6 rounded-lg border border-border bg-muted/10 px-5 py-4 text-sm">
+                      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Subscription</p>
+                      <div className="grid grid-cols-2 gap-y-2 text-sm sm:grid-cols-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Status</p>
+                          <StatusBadge badge={statusBadge} />
+                        </div>
+                        {subInfo.period_end && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {statusBadge === "cancelling" ? "Access until" : "Period ended"}
+                            </p>
+                            <p className="font-medium">{new Date(subInfo.period_end).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</p>
+                          </div>
+                        )}
+                        {subInfo.next_billed_at && statusBadge === "active" && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Next billing</p>
+                            <p className="font-medium">{new Date(subInfo.next_billed_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between mb-1">
                     <div>
                       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Billing history</p>
