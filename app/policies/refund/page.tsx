@@ -96,10 +96,30 @@ export default function RefundPolicyPage() {
 
             <div className="border-t border-border" />
 
+            {/* Policy Limits */}
+            <section>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
+                04 — Policy Limits
+              </h2>
+              <div className="rounded-lg bg-muted/20 border border-border px-5 py-4 mb-6">
+                <p className="text-sm font-medium text-foreground mb-1">Fair Use</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This policy exists to protect genuine customers. Attempts to exploit it will result in refund eligibility being revoked.
+                </p>
+              </div>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="border-t border-border pt-3">Refunds are available within 14 days of the initial purchase.</div>
+                <div className="border-t border-border pt-3">Refunds apply only to first-time purchases and not to renewals.</div>
+                <div className="border-t border-border pt-3">Accounts found abusing the refund policy may be denied refunds.</div>
+              </div>
+            </section>
+
+            <div className="border-t border-border" />
+
             {/* Payment Provider */}
             <section>
               <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-5">
-                04 — Payment Provider
+                05 — Payment Provider
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-5">
                 We use Paddle as our secure payment processor for both Pro subscriptions and API plans. Refund processing times depend on their policies and your bank.
@@ -117,7 +137,7 @@ export default function RefundPolicyPage() {
             {/* FAQ */}
             <section>
               <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-8">
-                05 — Common Questions
+                06 — Common Questions
               </h2>
               <div className="space-y-0">
                 {[
