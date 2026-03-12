@@ -362,7 +362,14 @@ export default async function Page({ params }: Props) {
                   </div>
                 </div>
 
-                <PopularArticles />
+                {/* ZERO LATENCY FIX: Wrap the slow component in Suspense */}
+                <Suspense fallback={
+                  <div className="w-full h-48 border border-border border-dashed rounded-lg flex items-center justify-center bg-background/50">
+                    <span className="font-mono text-xs text-muted-foreground animate-pulse">Loading articles...</span>
+                  </div>
+                }>
+                  <PopularArticles />
+                </Suspense>
               </div>
             </section>
 

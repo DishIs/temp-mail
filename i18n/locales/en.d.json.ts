@@ -3,13 +3,13 @@
 
 declare const messages: {
   "Metadata": {
-    "title": "Free Temporary Email — No Signup, No Ads | FreeCustom.Email",
+    "title": "Free Temporary Email — No Signup, No Ads | Temp Mail",
     "description": "Get a disposable email address instantly. No signup, forever free, zero ads. Protect your inbox with custom domains and real-time delivery. Try it now.",
     "keywords": "temp mail, disposable email, temporary email, custom email domain, fake email address, email privacy, OTP email, no signup email, free temp mail API",
     "openGraph": {
-      "title": "Free Temporary Email — No Signup, No Ads | FreeCustom.Email",
+      "title": "Free Temporary Email — No Signup, No Ads | Temp Mail",
       "description": "Get a disposable email address instantly. No signup, forever free, zero ads. Protect your inbox with custom domains and real-time delivery.",
-      "alt": "FreeCustom.Email — Free Temporary Email Service"
+      "alt": "Temp Mail — Free Temporary Email Service"
     }
   },
   "JsonLd": {

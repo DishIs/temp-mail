@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { blogClient } from '@/lib/blog-client';
 import { Calendar, ArrowRight, Tag } from 'lucide-react';
+import { unstable_cache } from 'next/cache';
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -9,8 +10,27 @@ function formatDate(dateString: string) {
   });
 }
 
+// CACHE LAYER: 0 Latency. Caches the API response for 1 hour.
+// If the blog API is slow, it won't affect users.
+const getCachedPosts = unstable_cache(
+  async () => {
+    try {
+      const { posts } = await blogClient.getPosts({ page: 1, limit: 4 });
+      return posts || [];
+    } catch (error) {
+      console.error("Failed to fetch blogs for Popular Articles:", error);
+      return []; // Fallback so page never crashes
+    }
+  },
+  ['popular-articles-cache'],
+  { revalidate: 3600 } // Revalidate every 60 minutes
+);
+
 export async function PopularArticles() {
-  const { posts } = await blogClient.getPosts({ page: 1, limit: 4 });
+  const posts = await getCachedPosts();
+
+  // Graceful degradation if blogs are completely down
+  if (!posts || posts.length === 0) return null;
 
   return (
     <div>

@@ -17,6 +17,7 @@ declare module 'next-auth' {
   }
   interface User { plan?: 'free' | 'pro' }
 }
+
 declare module 'next-auth/jwt' {
   interface JWT {
     id: string;
@@ -24,24 +25,22 @@ declare module 'next-auth/jwt' {
     deletion_status?: 'none' | 'scheduled' | 'permanent';
     deletion_scheduled_at?: string | null;
     can_restore_until?: string | null;
+    last_synced_at?: number; // Add this timestamp
   }
 }
 
-async function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
+function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
   const resolvedName = user.name?.trim() || user.email?.split('@')[0] || user.id;
   const resolvedEmail = user.email?.trim() || `${user.id}@provider.noemail`;
-  try {
-    await fetchFromServiceAPI('/auth/upsert-user', {
-      method: 'POST',
-      body: JSON.stringify({ wyiUserId: user.id, email: resolvedEmail, name: resolvedName, plan: 'free' }),
-    });
-  } catch (e) {
-    console.error('Upsert failed:', e);
-  }
+  
+  // HIT AND FORGET: Does not block sign-in
+  fetchFromServiceAPI('/auth/upsert-user', {
+    method: 'POST',
+    body: JSON.stringify({ wyiUserId: user.id, email: resolvedEmail, name: resolvedName, plan: 'free' }),
+  }).catch(e => console.error('Upsert failed:', e));
 }
 
 const config: NextAuthConfig = {
-  // ✅ No adapter — JWT only, no KV recursion
   session: { strategy: 'jwt' },
 
   providers: [
@@ -62,27 +61,14 @@ const config: NextAuthConfig = {
         };
       },
     }),
-
-    // ✅ Magic link sign-in — token already verified by /api/auth/magic/verify
-    //    This provider is ONLY called from that route, never directly by users
     Credentials({
       id: 'magic-link',
       name: 'Magic Link',
-      credentials: {
-        email: { type: 'text' },
-        magicVerified: { type: 'text' },
-      },
+      credentials: { email: { type: 'text' }, magicVerified: { type: 'text' } },
       async authorize(credentials) {
-        // Extra guard: only accept if our verify route set the flag
-        if (credentials?.magicVerified !== 'true' || !credentials?.email) {
-          return null;
-        }
+        if (credentials?.magicVerified !== 'true' || !credentials?.email) return null;
         const email = credentials.email as string;
-        return {
-          id: email, // use email as stable ID for magic-link users
-          email,
-          name: email.split('@')[0],
-        };
+        return { id: email, email, name: email.split('@')[0] };
       },
     }),
   ],
@@ -92,29 +78,47 @@ const config: NextAuthConfig = {
 
   callbacks: {
     async signIn({ user }) {
-      await upsertUser({ id: user.id!, email: user.email, name: user.name });
+      upsertUser({ id: user.id!, email: user.email, name: user.name });
       return true;
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      // 1. Map initial user data to token
       if (user) {
         token.id = user.id!;
         token.plan = (user as any).plan ?? 'free';
       }
-      if (token.id) {
+
+      const now = Date.now();
+      const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 Minutes
+      
+      // 2. Decide if we should block and fetch. 
+      // If none of these are true, we return the cached token INSTANTLY (0 Latency).
+      const needsSync = 
+        trigger === 'signIn' ||           // Always sync on first login
+        trigger === 'update' ||           // Always sync when manually triggered
+        !token.last_synced_at ||          // First time check
+        (now - token.last_synced_at > CACHE_DURATION_MS); // Cache expired
+
+      if (token.id && needsSync) {
         try {
           const updatedUser = await fetchFromServiceAPI('/user/status', {
             method: 'POST',
             body: JSON.stringify({ userId: token.id }),
           });
+          
           if (updatedUser?.plan) token.plan = updatedUser.plan;
           token.deletion_status = updatedUser?.deletion_status ?? 'none';
           token.deletion_scheduled_at = updatedUser?.deletion_scheduled_at ?? null;
           token.can_restore_until = updatedUser?.can_restore_until ?? null;
+          
+          // Mark the token as fresh
+          token.last_synced_at = now; 
         } catch (e) {
           console.error('JWT sync failed:', e);
         }
       }
+
       return token;
     },
 
