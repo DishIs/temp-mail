@@ -36,19 +36,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <head>
-        {/* ── Consent Mode v2 ── */}
-        <Script id="consent-default" strategy="beforeInteractive" dangerouslySetInnerHTML={{
-          __html: `
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){ dataLayer.push(arguments); }
-  gtag('consent', 'default', {
-    analytics_storage:  'denied',
-    ad_storage:         'denied',
-    ad_user_data:       'denied',
-    ad_personalization: 'denied',
-    wait_for_update: 500
-  });
-`}} />
+        {/* ── Consent Mode v2: deny by default BEFORE gtag loads ── */}
+        <Script id="consent-default" strategy="beforeInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){ dataLayer.push(arguments); }
+          gtag('consent', 'default', {
+            analytics_storage:  'denied',
+            ad_storage:         'denied',
+            ad_user_data:       'denied',
+            ad_personalization: 'denied',
+            wait_for_update: 500
+          });
+        `}</Script>
 
         {/* ── Google Analytics ── */}
         <GoogleAnalytics gaId="G-RXTEEVC8C4" />
@@ -68,19 +67,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           speed={200}
           shadow="0 0 10px #2299DD,0 0 5px #2299DD"
         />
-
+        
         <Providers>{children}</Providers>
 
         {/* ── Cookie banner script (Moved to body bottom & lazyOnload) ── */}
-        <Script
-          src="/cookie-banner/silktide-consent-manager.js"
-          strategy="lazyOnload"
+        <Script 
+          src="/cookie-banner/silktide-consent-manager.js" 
+          strategy="lazyOnload" 
         />
 
         {/* ── Cookie banner config & Async CSS Loader ── */}
         {/* Using lazyOnload means we don't need window.addEventListener('load') anymore */}
-        <Script id="silktide-config" strategy="lazyOnload" dangerouslySetInnerHTML={{
-          __html: `
+        <Script id="silktide-config" strategy="lazyOnload">{`
           // 1. Asynchronously load the CSS so it NEVER blocks rendering
           var link = document.createElement('link');
           link.rel = 'stylesheet';
@@ -133,7 +131,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               onRejectAll: function () {}
             });
           }
-        `}} />
+        `}</Script>
       </body>
     </html>
   );
