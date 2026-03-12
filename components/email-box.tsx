@@ -400,6 +400,16 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const hasNewDomain = useMemo(() => fetchedDomains.some(d => d.tags.includes('new')), [fetchedDomains]);
 
+  // Security Helper: Synchronously verifies if the user is authorized for a specific domain
+  const checkDomainAllowed = useCallback((domain: string, domainsList: FetchedDomain[]) => {
+    if (isPro) return true;
+    const fd = domainsList.find(d => d.domain === domain);
+    if (fd?.tier === "pro") return false;
+    const freeSet = new Set(domainsList.filter(d => d.tier === "free").map(d => d.domain));
+    if (!fd && !freeSet.has(domain) && !DOMAIN_SEED.some(d => d.domain === domain)) return false;
+    return true;
+  }, [isPro]);
+
   const isSplit = userSettings.layout === "split" && isPro;
   const isCompact = userSettings.layout === "compact";
   const isZen = userSettings.layout === "zen";
@@ -472,19 +482,22 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     const init = async () => {
       await fetchToken();
 
-      // Fetch domain list from server — not from the bundle.
-      // sessionStorage cache means repeat page loads are instant.
       const cacheKey = `domains_v2_${isPro ? "pro" : isAuthenticated ? "free" : "anon"}`;
       const cached = sessionStorage.getItem(cacheKey);
+      
+      let currentFetchedDomains = DOMAIN_SEED;
       if (cached) {
         try {
           const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < 5 * 60 * 1000) setFetchedDomains(data);
-          else throw new Error("stale");
+          if (Date.now() - ts < 5 * 60 * 1000) {
+            setFetchedDomains(data);
+            currentFetchedDomains = data;
+          } else throw new Error("stale");
         } catch {
           sessionStorage.removeItem(cacheKey);
         }
       }
+      
       fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
         .then(r => r.json())
         .then(d => {
@@ -494,6 +507,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           }
         })
         .catch(() => { /* seed fallback stays in state */ });
+
+      const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
 
       const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
       const lastDomain = localStorage.getItem("lastUsedDomain");
@@ -506,20 +521,30 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
       setIsStorageLoaded(true);
 
+      // Secure the initial load: Don't load Pro domains for Free users from Cache
       if (initialInboxes.length > 0) {
         const merged = [...new Set([...initialInboxes, ...localHistory])];
-        hist = userPlan === "free"
-          ? merged.slice(0, 7)
-          : !isAuthenticated
-            ? merged.slice(0, 5)
-            : merged;
+        hist = userPlan === "free" ? merged.slice(0, 7) : !isAuthenticated ? merged.slice(0, 5) : merged;
         initEmail = initialCurrentInbox || initialInboxes[0];
+        
+        // If the backend fed us an unauthorized inbox on initial boot (e.g. race condition plan downgrade)
+        if (!checkDomainAllowed(initEmail.split("@")[1], currentFetchedDomains)) {
+          const d = getPreferredDomain(currentFetchedDomains.map(d => d.domain), lastDomain, currentFreeSet);
+          initEmail = generateRandomEmail(d);
+        }
       } else if (localHistory.length > 0) {
-        hist = localHistory; initEmail = localHistory[0];
+        hist = localHistory;
+        const firstAllowed = localHistory.find(he => checkDomainAllowed(he.split("@")[1], currentFetchedDomains));
+        if (firstAllowed) {
+          initEmail = firstAllowed;
+        } else {
+          // All history is locked. Give them a fresh allowed domain but keep history visible
+          const d = getPreferredDomain(currentFetchedDomains.map(d => d.domain), lastDomain, currentFreeSet);
+          initEmail = generateRandomEmail(d);
+          hist = [initEmail, ...localHistory];
+        }
       } else {
-        // Use seed domains for initial generation; fetchedDomains will update after
-        const seedFreeSet = new Set(DOMAIN_SEED.map(d => d.domain));
-        const d = getPreferredDomain(DOMAIN_SEED.map(d => d.domain), lastDomain, seedFreeSet);
+        const d = getPreferredDomain(currentFetchedDomains.map(d => d.domain), lastDomain, currentFreeSet);
         initEmail = generateRandomEmail(d); hist = [initEmail];
       }
 
@@ -675,9 +700,32 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (!isAuthenticated) { setIsAuthNeedOpen(true); setAuthNeedFeature("Update Email"); return; }
     if (isEditing) {
       const [p] = email.split("@");
-      if (p?.length > 0) { setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null); }
+      if (p?.length > 0) {
+        // Prevent console hacking by explicitly verifying the selectedDomain right before commit
+        if (!checkDomainAllowed(selectedDomain, fetchedDomains)) {
+           openUpsell(!fetchedDomains.some(d => d.domain === selectedDomain) ? "Custom Domains" : "Pro Domains");
+           return;
+        }
+        setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null); 
+      }
       else setError("Enter a valid email prefix.");
     } else setIsEditing(true);
+  };
+
+  const handleUseHistoryEmail = (he: string) => {
+    const domain = he.split("@")[1];
+    if (!domain) return;
+    
+    // Prevent usage of expired Pro / Custom domains if they are on Free plan
+    if (!checkDomainAllowed(domain, fetchedDomains)) {
+      openUpsell(!fetchedDomains.some(d => d.domain === domain) ? "Custom Domains" : "Pro Domains");
+      return;
+    }
+
+    setEmail(he);
+    setSelectedDomain(domain);
+    setOldEmailUsed(!oldEmailUsed);
+    setDomainExpiry(null);
   };
 
   const handleProShortcut = (fn: () => void, name: string) => { if (isPro) fn(); else openUpsell(`Keyboard Shortcut: ${name}`); };
@@ -1133,7 +1181,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   {emailHistory.map((he, i) => (
                     <li key={i} className="flex items-center justify-between gap-2 group">
                       <span className="font-mono text-[11px] text-muted-foreground/80 truncate group-hover:text-muted-foreground transition-colors">{he}</span>
-                      <button onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); setDomainExpiry(null); }}
+                      <button onClick={() => handleUseHistoryEmail(he)}
                         className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground">
                         {t("history_use")}
                       </button>
