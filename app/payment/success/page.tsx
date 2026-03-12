@@ -12,16 +12,16 @@ export default function PaymentSuccessPage() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
-    // Wait until session is loaded before we start doing anything
+    // Wait until the session is fully hydrated on the client
     if (status !== "authenticated" || hasStarted.current) return;
     hasStarted.current = true;
 
     const verifyProStatus = async () => {
       let attempts = 0;
-      const maxAttempts = 5; // Up to ~10 seconds of waiting for the webhook
+      const maxAttempts = 6; // Will try for ~12 seconds
       let isPro = session?.user?.plan === "pro";
 
-      // Keep asking the server for an updated session until we see "pro"
+      // Loop until the database reflects the Webhook's update
       while (!isPro && attempts < maxAttempts) {
         setLoadingText(
           attempts === 0 
@@ -29,24 +29,24 @@ export default function PaymentSuccessPage() {
             : "Waiting for payment provider confirmation..."
         );
 
-        // Forces the NextAuth JWT callback to run (trigger === 'update')
-        const newSession = await update();
+        // 1. Passing an object forces NextAuth to trigger the 'update' event
+        // 2. Awaiting ensures we have the newly rewritten session
+        const newSession = await update({ forceSync: Date.now() });
         
         if (newSession?.user?.plan === "pro") {
           isPro = true;
           break;
         }
 
-        // If still not Pro, wait 2 seconds and try again (giving the webhook time)
+        // Wait 2 seconds before asking the database again
         await new Promise((resolve) => setTimeout(resolve, 2000));
         attempts++;
       }
 
-      // Success achieved or timeout reached.
       setIsSuccess(true);
       setLoadingText("Success! Taking you to your dashboard...");
 
-      // Final redirect
+      // Final redirect only AFTER the loop successfully confirmed the Pro status
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 800);

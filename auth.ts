@@ -25,7 +25,7 @@ declare module 'next-auth/jwt' {
     deletion_status?: 'none' | 'scheduled' | 'permanent';
     deletion_scheduled_at?: string | null;
     can_restore_until?: string | null;
-    last_synced_at?: number; // Add this timestamp
+    last_synced_at?: number;
   }
 }
 
@@ -33,7 +33,6 @@ function upsertUser(user: { id: string; email?: string | null; name?: string | n
   const resolvedName = user.name?.trim() || user.email?.split('@')[0] || user.id;
   const resolvedEmail = user.email?.trim() || `${user.id}@provider.noemail`;
   
-  // HIT AND FORGET: Does not block sign-in
   fetchFromServiceAPI('/auth/upsert-user', {
     method: 'POST',
     body: JSON.stringify({ wyiUserId: user.id, email: resolvedEmail, name: resolvedName, plan: 'free' }),
@@ -42,22 +41,15 @@ function upsertUser(user: { id: string; email?: string | null; name?: string | n
 
 const config: NextAuthConfig = {
   session: { strategy: 'jwt' },
-
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    Google({ clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET! }),
     GitHub({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
       authorization: { params: { scope: 'read:user user:email' } },
       profile(profile) {
         return {
-          id: String(profile.id),
-          name: profile.name ?? profile.login,
-          email: profile.email,
-          image: profile.avatar_url,
+          id: String(profile.id), name: profile.name ?? profile.login, email: profile.email, image: profile.avatar_url,
         };
       },
     }),
@@ -72,7 +64,6 @@ const config: NextAuthConfig = {
       },
     }),
   ],
-
   secret: process.env.AUTH_SECRET,
   trustHost: true,
 
@@ -83,28 +74,26 @@ const config: NextAuthConfig = {
     },
 
     async jwt({ token, user, trigger }) {
-      // 1. Map initial user data to token
       if (user) {
         token.id = user.id!;
         token.plan = (user as any).plan ?? 'free';
       }
 
       const now = Date.now();
-      const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 Minutes
+      const CACHE_DURATION_MS = 5 * 60 * 1000; 
       
-      // 2. Decide if we should block and fetch. 
-      // If none of these are true, we return the cached token INSTANTLY (0 Latency).
       const needsSync = 
-        trigger === 'signIn' ||           // Always sync on first login
-        trigger === 'update' ||           // Always sync when manually triggered
-        !token.last_synced_at ||          // First time check
-        (now - token.last_synced_at > CACHE_DURATION_MS); // Cache expired
+        trigger === 'signIn' ||           
+        trigger === 'update' ||           
+        !token.last_synced_at ||          
+        (now - token.last_synced_at > CACHE_DURATION_MS); 
 
       if (token.id && needsSync) {
         try {
           const updatedUser = await fetchFromServiceAPI('/user/status', {
             method: 'POST',
             body: JSON.stringify({ userId: token.id }),
+            cache: 'no-store' // <--- CRITICAL FIX: Disables Next.js fetch caching
           });
           
           if (updatedUser?.plan) token.plan = updatedUser.plan;
@@ -112,7 +101,6 @@ const config: NextAuthConfig = {
           token.deletion_scheduled_at = updatedUser?.deletion_scheduled_at ?? null;
           token.can_restore_until = updatedUser?.can_restore_until ?? null;
           
-          // Mark the token as fresh
           token.last_synced_at = now; 
         } catch (e) {
           console.error('JWT sync failed:', e);
