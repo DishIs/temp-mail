@@ -31,8 +31,6 @@ import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal"
 
 const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
 
-// Seed fallback — safe, generic domain. Never shipped as the authoritative list;
-// the server response always overwrites this to prevent bot scraping.
 const DOMAIN_SEED: FetchedDomain[] = [
   { domain: "ditube.info", tier: "free", tags: [] }
 ];
@@ -93,10 +91,6 @@ const getExpiry = (dateStr: string, hours: number) => {
   if (d.getDate() !== now.getDate()) return `Tomorrow ${timeStr}`;
   return `Today ${timeStr}`;
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
 
 function NewEmailFlash({ from, subject, onDone }: { from: string; subject: string; onDone: () => void }) {
   useEffect(() => {
@@ -300,10 +294,6 @@ const SplitPaneMessageView = ({
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Main component
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface EmailBoxProps {
   initialSession: Session | null;
   initialCustomDomains: any[];
@@ -320,9 +310,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const isPro = userPlan === "pro";
   const API_ENDPOINT = isAuthenticated ? "/api/private-mailbox" : "/api/public-mailbox";
 
-  // Domain list — seeded with fallback, overwritten by /api/domains response
   const [fetchedDomains, setFetchedDomains] = useState<FetchedDomain[]>(DOMAIN_SEED);
-
   const [domainExpiry, setDomainExpiry] = useState<DomainExpiry | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [email, setEmail] = useState(initialCurrentInbox || initialInboxes[0] || "");
@@ -371,7 +359,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const openUpsell = (feature: string) => { setUpsellFeature(feature); setIsUpsellOpen(true); };
 
-  // ── Derived domain sets ───────────────────────────────────────────────────
   const freeDomainSet = useMemo(
     () => new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)),
     [fetchedDomains],
@@ -380,7 +367,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const availableDomains = useMemo(() => {
     const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
     
-    // Sort fetched domains: Featured > Popular > New > Pro > Rest > Alphabetical
     const sortedFetched = [...fetchedDomains].sort((a, b) => {
       const score = (d: FetchedDomain) => {
         let s = 0;
@@ -509,6 +495,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         .catch(() => { /* seed fallback stays in state */ });
 
       const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
+      const allowedDomainsList = currentFetchedDomains.filter(d => checkDomainAllowed(d.domain, currentFetchedDomains)).map(d => d.domain);
 
       const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
       const lastDomain = localStorage.getItem("lastUsedDomain");
@@ -521,36 +508,39 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
       setIsStorageLoaded(true);
 
-      // Secure the initial load: Don't load Pro domains for Free users from Cache
+      // Secure the initial load: Don't load Pro domains for Free/Logged Out users from Cache
       if (initialInboxes.length > 0) {
         const merged = [...new Set([...initialInboxes, ...localHistory])];
-        hist = userPlan === "free" ? merged.slice(0, 7) : !isAuthenticated ? merged.slice(0, 5) : merged;
+        hist = userPlan === "free" ? merged.slice(0, 7) : merged;
         initEmail = initialCurrentInbox || initialInboxes[0];
         
         // If the backend fed us an unauthorized inbox on initial boot (e.g. race condition plan downgrade)
         if (!checkDomainAllowed(initEmail.split("@")[1], currentFetchedDomains)) {
-          const d = getPreferredDomain(currentFetchedDomains.map(d => d.domain), lastDomain, currentFreeSet);
+          const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
           initEmail = generateRandomEmail(d);
+          hist = [initEmail, ...hist.filter(e => e !== initEmail)];
         }
       } else if (localHistory.length > 0) {
-        hist = localHistory;
-        const firstAllowed = localHistory.find(he => checkDomainAllowed(he.split("@")[1], currentFetchedDomains));
-        if (firstAllowed) {
-          initEmail = firstAllowed;
-        } else {
-          // All history is locked. Give them a fresh allowed domain but keep history visible
-          const d = getPreferredDomain(currentFetchedDomains.map(d => d.domain), lastDomain, currentFreeSet);
+        hist = localHistory.slice(0, 5);
+        const topDomain = hist[0].split("@")[1];
+        
+        // Randomize email if the top history item is no longer allowed (e.g. user just logged out from Pro)
+        if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
+          const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
           initEmail = generateRandomEmail(d);
-          hist = [initEmail, ...localHistory];
+          hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
+        } else {
+          initEmail = hist[0];
         }
       } else {
-        const d = getPreferredDomain(currentFetchedDomains.map(d => d.domain), lastDomain, currentFreeSet);
-        initEmail = generateRandomEmail(d); hist = [initEmail];
+        const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
+        initEmail = generateRandomEmail(d);
+        hist = [initEmail];
       }
 
-      if (!email) setEmail(initEmail!);
-      setEmailHistory(hist!);
-      setSelectedDomain(initEmail!.split("@")[1] || "");
+      if (!email) setEmail(initEmail);
+      setEmailHistory(hist);
+      setSelectedDomain(initEmail.split("@")[1] || "");
     };
     init();
   }, []); // eslint-disable-line
@@ -669,7 +659,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   };
 
   const deleteEmail = () => {
-    const d = getPreferredDomain(availableDomains, localStorage.getItem("lastUsedDomain"), freeDomainSet);
+    const allowedDomainsList = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains)).map(d => d.domain);
+    const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("lastUsedDomain"), freeDomainSet);
     const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
   };
 
@@ -681,7 +672,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const handleDeleteConfirmation = async () => {
     if (itemToDelete?.type === "email") {
-      const d = getPreferredDomain(availableDomains, localStorage.getItem("primaryDomain"), freeDomainSet);
+      const allowedDomainsList = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains)).map(d => d.domain);
+      const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("primaryDomain"), freeDomainSet);
       const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
     } else if (itemToDelete?.type === "message" && itemToDelete.id) {
       try {
@@ -716,7 +708,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     const domain = he.split("@")[1];
     if (!domain) return;
     
-    // Prevent usage of expired Pro / Custom domains if they are on Free plan
+    // Prevent usage of expired Pro / Custom domains if they are on Free plan / logged out
     if (!checkDomainAllowed(domain, fetchedDomains)) {
       openUpsell(!fetchedDomains.some(d => d.domain === domain) ? "Custom Domains" : "Pro Domains");
       return;
