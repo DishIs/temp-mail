@@ -104,11 +104,13 @@ function CancelPeriodEndBanner({ periodEnd, onManage, loading }: { periodEnd?: s
         ))}
       </div>
       <div className="pl-7 flex flex-wrap gap-2">
-        <Button size="sm" onClick={onManage} disabled={loading}>
-          {loading ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Opening…</> : <><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Reactivate subscription</>}
+        <Button size="sm" asChild>
+          <Link href="/pricing">
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />Reactivate subscription
+          </Link>
         </Button>
         <Button size="sm" variant="outline" onClick={onManage} disabled={loading}>
-          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />Manage on Paddle
+          {loading ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Opening…</> : <><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Manage on Paddle</>}
         </Button>
       </div>
     </div>
