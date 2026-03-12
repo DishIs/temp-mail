@@ -36,87 +36,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <head>
-        {/* ── Consent Mode v2: deny by default BEFORE gtag loads ── */}
-        <Script id="consent-default" strategy="beforeInteractive">{`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){ dataLayer.push(arguments); }
-          gtag('consent', 'default', {
-            analytics_storage:  'denied',
-            ad_storage:         'denied',
-            ad_user_data:       'denied',
-            ad_personalization: 'denied',
-            wait_for_update: 500
-          });
-        `}</Script>
-
-        {/* ── Google Analytics (respects consent state above) ── */}
-        <GoogleAnalytics gaId="G-RXTEEVC8C4" />
-
-        {/* ── Cookie banner styles ── */}
-        <link rel="stylesheet" href="/cookie-banner/silktide-consent-manager.css" />
-
-        {/* ── Cookie banner script ── */}
-        <Script src="/cookie-banner/silktide-consent-manager.js" strategy="afterInteractive" />
-
-        {/* ── Cookie banner config ── */}
-        <Script id="silktide-config" strategy="afterInteractive">{`
-window.addEventListener('load', function () {
-  if (!window.silktideCookieBannerManager) return;
-
-  silktideCookieBannerManager.updateCookieBannerConfig({
-
-    // No backdrop — banner sits at the bottom without blocking the page
-    background: { showBackground: false },
-
-    // Cookie icon position (bottom-left is hardcoded in JS too)
-    cookieIcon: { position: 'bottomLeft' },
-
-    // Banner position — bottom-right corner, unobtrusive
-    position: { banner: 'bottomRight' },
-
-    cookieTypes: [
-      {
-        id: 'necessary',
-        name: 'Necessary',
-        description: '<p>Essential for core functionality like security and saving preferences. Always active.</p>',
-        required: true
-      },
-      {
-        id: 'analytics',
-        name: 'Analytics',
-        description: '<p>Help us understand how visitors use the site so we can improve it.</p>',
-        required: false,
-        defaultValue: false,
-        onAccept: function () {
-          gtag('consent', 'update', { analytics_storage: 'granted' });
-        },
-        onReject: function () {
-          gtag('consent', 'update', { analytics_storage: 'denied' });
-        }
-      }
-    ],
-
-    text: {
-      banner: {
-        description: "<p>We use cookies to analyze traffic and improve your experience. See our <a href='/policies/cookie' target='_blank'>Cookie Policy</a>.</p>",
-        acceptAllButtonText:                   'Accept all',
-        acceptAllButtonAccessibleLabel:        'Accept all cookies',
-        rejectNonEssentialButtonText:          'Reject',
-        rejectNonEssentialButtonAccessibleLabel: 'Reject non-essential cookies',
-        preferencesButtonText:                 'Manage',
-        preferencesButtonAccessibleLabel:      'Open cookie preferences'
-      },
-      preferences: {
-        title:       'Cookie preferences',
-        description: '<p>Choose which optional cookies to allow. Preferences are saved locally and can be changed any time.</p>'
-      }
-    },
-
-    onAcceptAll: function () {},
-    onRejectAll: function () {}
+        {/* ── Consent Mode v2 ── */}
+        <Script id="consent-default" strategy="beforeInteractive" dangerouslySetInnerHTML={{
+          __html: `
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('consent', 'default', {
+    analytics_storage:  'denied',
+    ad_storage:         'denied',
+    ad_user_data:       'denied',
+    ad_personalization: 'denied',
+    wait_for_update: 500
   });
-});
-        `}</Script>
+`}} />
+
+        {/* ── Google Analytics ── */}
+        <GoogleAnalytics gaId="G-RXTEEVC8C4" />
 
         <meta name="impact-site-verification" content="7df37ce6-8617-4606-8ba2-9a78bf367429" />
       </head>
@@ -133,7 +68,72 @@ window.addEventListener('load', function () {
           speed={200}
           shadow="0 0 10px #2299DD,0 0 5px #2299DD"
         />
+
         <Providers>{children}</Providers>
+
+        {/* ── Cookie banner script (Moved to body bottom & lazyOnload) ── */}
+        <Script
+          src="/cookie-banner/silktide-consent-manager.js"
+          strategy="lazyOnload"
+        />
+
+        {/* ── Cookie banner config & Async CSS Loader ── */}
+        {/* Using lazyOnload means we don't need window.addEventListener('load') anymore */}
+        <Script id="silktide-config" strategy="lazyOnload" dangerouslySetInnerHTML={{
+          __html: `
+          // 1. Asynchronously load the CSS so it NEVER blocks rendering
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = '/cookie-banner/silktide-consent-manager.css';
+          document.head.appendChild(link);
+
+          // 2. Initialize the Banner
+          if (window.silktideCookieBannerManager) {
+            silktideCookieBannerManager.updateCookieBannerConfig({
+              background: { showBackground: false },
+              cookieIcon: { position: 'bottomLeft' },
+              position: { banner: 'bottomRight' },
+              cookieTypes: [
+                {
+                  id: 'necessary',
+                  name: 'Necessary',
+                  description: '<p>Essential for core functionality like security and saving preferences. Always active.</p>',
+                  required: true
+                },
+                {
+                  id: 'analytics',
+                  name: 'Analytics',
+                  description: '<p>Help us understand how visitors use the site so we can improve it.</p>',
+                  required: false,
+                  defaultValue: false,
+                  onAccept: function () {
+                    gtag('consent', 'update', { analytics_storage: 'granted' });
+                  },
+                  onReject: function () {
+                    gtag('consent', 'update', { analytics_storage: 'denied' });
+                  }
+                }
+              ],
+              text: {
+                banner: {
+                  description: "<p>We use cookies to analyze traffic and improve your experience. See our <a href='/policies/cookie' target='_blank'>Cookie Policy</a>.</p>",
+                  acceptAllButtonText: 'Accept all',
+                  acceptAllButtonAccessibleLabel: 'Accept all cookies',
+                  rejectNonEssentialButtonText: 'Reject',
+                  rejectNonEssentialButtonAccessibleLabel: 'Reject non-essential cookies',
+                  preferencesButtonText: 'Manage',
+                  preferencesButtonAccessibleLabel: 'Open cookie preferences'
+                },
+                preferences: {
+                  title: 'Cookie preferences',
+                  description: '<p>Choose which optional cookies to allow. Preferences are saved locally and can be changed any time.</p>'
+                }
+              },
+              onAcceptAll: function () {},
+              onRejectAll: function () {}
+            });
+          }
+        `}} />
       </body>
     </html>
   );

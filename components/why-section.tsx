@@ -122,9 +122,9 @@ export async function WhySection() {
         <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t('domain_list_p')}
         </p>
-        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-muted-foreground">
+        <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           Select above, and new domains gets listed regularly.
-        </ul>
+        </p>
       </div>
 
       {/*
@@ -153,10 +153,10 @@ export async function WhySection() {
               <span className="text-sm sm:text-base text-muted-foreground leading-relaxed">
                 {item.rich
                   ? t.rich(item.key as WhySectionKeys, {
-                      strong: (chunks) => (
-                        <strong className="text-foreground">{chunks}</strong>
-                      ),
-                    })
+                    strong: (chunks) => (
+                      <strong className="text-foreground">{chunks}</strong>
+                    ),
+                  })
                   : t(item.key as WhySectionKeys)}
               </span>
             </li>
@@ -173,10 +173,10 @@ export async function WhySection() {
               <span className="text-sm sm:text-base text-muted-foreground leading-relaxed">
                 {item.rich
                   ? t.rich(item.key as WhySectionKeys, {
-                      strong: (chunks) => (
-                        <strong className="text-foreground">{chunks}</strong>
-                      ),
-                    })
+                    strong: (chunks) => (
+                      <strong className="text-foreground">{chunks}</strong>
+                    ),
+                  })
                   : t(item.key as WhySectionKeys)}
               </span>
             </li>

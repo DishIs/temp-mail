@@ -48,7 +48,7 @@ function DigitRoller({
   }, [digit]);
 
   const enterFrom = direction === "up" ? "translateY(100%)" : "translateY(-100%)";
-  const exitTo    = direction === "up" ? "translateY(-100%)" : "translateY(100%)";
+  const exitTo = direction === "up" ? "translateY(-100%)" : "translateY(100%)";
 
   return (
     <span
@@ -74,9 +74,9 @@ function DigitRoller({
         style={
           animating
             ? {
-                animation: `digitEnter 0.32s cubic-bezier(0.22,1,0.36,1) ${delay}ms both`,
-                ["--enter-from" as string]: enterFrom,
-              }
+              animation: `digitEnter 0.32s cubic-bezier(0.22,1,0.36,1) ${delay}ms both`,
+              ["--enter-from" as string]: enterFrom,
+            }
             : undefined
         }
       >
@@ -89,12 +89,12 @@ function DigitRoller({
 // ── Odometer ──────────────────────────────────────────────────────────────
 function Odometer({ value }: { value: number }) {
   const prevRef = useRef(value);
-  const formatted     = value.toLocaleString("en-US");
+  const formatted = value.toLocaleString("en-US");
   const prevFormatted = prevRef.current.toLocaleString("en-US");
 
   // Pad both to same length so indices align
   const maxLen = Math.max(formatted.length, prevFormatted.length);
-  const padded     = formatted.padStart(maxLen, " ");
+  const padded = formatted.padStart(maxLen, " ");
   const prevPadded = prevFormatted.padStart(maxLen, " ");
 
   useEffect(() => {
@@ -141,12 +141,12 @@ function SparkBar({ value, max }: { value: number; max: number }) {
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function Status() {
-  const [status, setStatus]   = useState({ queued: 0, denied: 0 });
-  const [error, setError]     = useState<string | null>(null);
-  const [tick, setTick]       = useState(false);       // flashes on update
-  const wsRef                 = useRef<WebSocket | null>(null);
-  const reconnectTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const reconnectAttemptsRef  = useRef(0);
+  const [status, setStatus] = useState({ queued: 0, denied: 0 });
+  const [error, setError] = useState<string | null>(null);
+  const [tick, setTick] = useState(false);       // flashes on update
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
 
   // flash the card border on each update
   const flashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -161,7 +161,7 @@ export default function Status() {
       const r = await fetch("/api/auth", { method: "POST" });
       const d = await r.json() as { token?: string };
       if (d.token) { setCookie("authToken", d.token, { maxAge: 3600 }); return d.token; }
-    } catch {}
+    } catch { }
     return null;
   };
 
@@ -190,10 +190,10 @@ export default function Status() {
 
     let wsToken = "";
     try {
-      const res  = await fetch("/api/ws-ticket", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mailbox: "stats" }) });
+      const res = await fetch("/api/ws-ticket", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mailbox: "stats" }) });
       const data = await res.json();
-      wsToken    = data.token ?? "";
-    } catch {}
+      wsToken = data.token ?? "";
+    } catch { }
 
     const ws = new WebSocket(`wss://api2.freecustom.email/?mailbox=stats&token=${encodeURIComponent(wsToken)}`);
     wsRef.current = ws;
@@ -215,7 +215,7 @@ export default function Status() {
       }
     };
 
-    ws.onerror = () => {};
+    ws.onerror = () => { };
 
     ws.onclose = (ev) => {
       if (ev.code === 1000) return;
@@ -229,8 +229,8 @@ export default function Status() {
     fetchStats();
     connectWebSocket();
     return () => {
-      if (reconnectTimerRef.current)  clearTimeout(reconnectTimerRef.current);
-      if (flashRef.current)           clearTimeout(flashRef.current);
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (flashRef.current) clearTimeout(flashRef.current);
       const ws = wsRef.current;
       if (ws) { ws.onclose = null; ws.close(1000, "unmount"); }
     };
@@ -295,12 +295,13 @@ export default function Status() {
               </p>
               {/* micro up-arrow */}
               <svg className="h-3 w-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M6 9V3M3 6l3-3 3 3" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M6 9V3M3 6l3-3 3 3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <div className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground leading-none overflow-hidden">
+            <div className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground leading-none overflow-hidden whitespace-nowrap truncate">
               <Odometer value={status.queued} />
             </div>
+
             <SparkBar value={status.queued} max={total} />
           </div>
 
@@ -312,7 +313,7 @@ export default function Status() {
               </p>
               {/* micro x */}
               <svg className="h-3 w-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3 3l6 6M9 3l-6 6" strokeLinecap="round"/>
+                <path d="M3 3l6 6M9 3l-6 6" strokeLinecap="round" />
               </svg>
             </div>
             <div className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground leading-none overflow-hidden">

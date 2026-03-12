@@ -27,6 +27,10 @@ const config: NextConfig = {
       {
         protocol: 'https',
         hostname: 'i.api.dishis.tech'
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.buymeacoffee.com',
       }
     ]
   },

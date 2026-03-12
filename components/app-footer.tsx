@@ -11,77 +11,79 @@ import {
 } from "react-icons/si";
 import { LATEST_CHANGELOG_VERSION } from "@/lib/changelog";
 import { WhatsNewModal } from "./WhatsNewModal";
+import Image from "next/image"; // Add this import
+
 
 // ── link data ─────────────────────────────────────────────────────────────
 const FOOTER_COLS = [
   {
     heading: "Products",
     links: [
-      { label: "Pricing",    href: "/pricing",    external: false },
-      { label: "FAQ",        href: "/faq",         external: false },
-      { label: "API",        href: "/api",         external: false },
-      { label: "Updates",    href: null,           external: false, action: "changelog" },
-      { label: "Feedback",   href: "/feedback",   external: false },
-      { label: "Blog",       href: "/blog",        external: false },
+      { label: "Pricing", href: "/pricing", external: false },
+      { label: "FAQ", href: "/faq", external: false },
+      { label: "API", href: "/api", external: false },
+      { label: "Updates", href: null, external: false, action: "changelog" },
+      { label: "Feedback", href: "/feedback", external: false },
+      { label: "Blog", href: "/blog", external: false },
     ],
   },
   {
     heading: "Developers",
     links: [
-      { label: "API Overview",   href: "/api",                 external: false },
-      { label: "Documentation",  href: "/api/docs",            external: false },
-      { label: "API Pricing",    href: "/api/pricing",         external: false },
-      { label: "Status",         href: "https://status.freecustom.email", external: true },
-      { label: "Changelog",      href: "/api/docs/changelog",  external: false },
-      { label: "Open Source",    href: "/open-source",         external: false },
+      { label: "API Overview", href: "/api", external: false },
+      { label: "Documentation", href: "/api/docs", external: false },
+      { label: "API Pricing", href: "/api/pricing", external: false },
+      { label: "Status", href: "https://status.freecustom.email", external: true },
+      { label: "Changelog", href: "/api/docs/changelog", external: false },
+      { label: "Open Source", href: "/open-source", external: false },
     ],
   },
   {
     heading: "Legal",
     links: [
-      { label: "Privacy Policy",      href: "/policies/privacy",    external: false },
+      { label: "Privacy Policy", href: "/policies/privacy", external: false },
       { label: "Do Not Sell My Info", href: "/policies/do-not-sell", external: false },
-      { label: "Cookie Policy",       href: "/policies/cookie",     external: false },
-      { label: "Terms of Service",    href: "/policies/terms",      external: false },
-      { label: "Refund Policy",       href: "/policies/refund",     external: false },
+      { label: "Cookie Policy", href: "/policies/cookie", external: false },
+      { label: "Terms of Service", href: "/policies/terms", external: false },
+      { label: "Refund Policy", href: "/policies/refund", external: false },
     ],
   },
   {
     heading: "Company",
     links: [
-      { label: "Contact",  href: "/contact",                                          external: false },
-      { label: "Discord",  href: "https://discord.com/invite/Ztp7kT2QBz",             external: true  },
-      { label: "Reddit",   href: "https://www.reddit.com/r/FreeCustomEmail/",         external: true  },
-      { label: "GitHub",   href: "https://github.com/DishIs",                         external: true  },
+      { label: "Contact", href: "/contact", external: false },
+      { label: "Discord", href: "https://discord.com/invite/Ztp7kT2QBz", external: true },
+      { label: "Reddit", href: "https://www.reddit.com/r/FreeCustomEmail/", external: true },
+      { label: "GitHub", href: "https://github.com/DishIs", external: true },
     ],
   },
 ];
 
 const PAYMENT_METHODS = [
-  { icon: SiVisa,            label: "Visa"       },
-  { icon: SiMastercard,      label: "Mastercard" },
-  { icon: SiAmericanexpress, label: "Amex"       },
-  { icon: SiPaypal,          label: "PayPal"     },
-  { icon: SiApplepay,        label: "Apple Pay"  },
-  { icon: SiGooglepay,       label: "Google Pay" },
+  { icon: SiVisa, label: "Visa" },
+  { icon: SiMastercard, label: "Mastercard" },
+  { icon: SiAmericanexpress, label: "Amex" },
+  { icon: SiPaypal, label: "PayPal" },
+  { icon: SiApplepay, label: "Apple Pay" },
+  { icon: SiGooglepay, label: "Google Pay" },
 ];
 
 const SOCIAL_LINKS = [
-  { icon: SiGithub,  href: "https://github.com/DishIs/temp-mail",             label: "GitHub"  },
-  { icon: SiReddit,  href: "https://www.reddit.com/r/FreeCustomEmail/",        label: "Reddit"  },
-  { icon: SiDiscord, href: "https://discord.com/invite/Ztp7kT2QBz",            label: "Discord" },
+  { icon: SiGithub, href: "https://github.com/DishIs/temp-mail", label: "GitHub" },
+  { icon: SiReddit, href: "https://www.reddit.com/r/FreeCustomEmail/", label: "Reddit" },
+  { icon: SiDiscord, href: "https://discord.com/invite/Ztp7kT2QBz", label: "Discord" },
 ];
 
 const BOTTOM_LINKS = [
-  { label: "Terms of Service", href: "/policies/terms"    },
-  { label: "Privacy Policy",   href: "/policies/privacy"  },
-  { label: "Report Abuse",     href: "/contact"           },
+  { label: "Terms of Service", href: "/policies/terms" },
+  { label: "Privacy Policy", href: "/policies/privacy" },
+  { label: "Report Abuse", href: "/contact" },
 ];
 
 export function AppFooter() {
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
-  const [hasSeenLatest,  setHasSeenLatest]  = useState(true);
-  const [theme, setThemeState]              = useState("light");
+  const [hasSeenLatest, setHasSeenLatest] = useState(true);
+  const [theme, setThemeState] = useState("light");
 
   useEffect(() => {
     const seen = localStorage.getItem("seenChangelogVersion");
@@ -250,9 +252,11 @@ export function AppFooter() {
         {/* ── buy me a coffee ─────────────────────────────────────────── */}
         <div className="max-w-[90rem] mx-auto px-8 py-5">
           <a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank" rel="noopener noreferrer">
-            <img
+            <Image
               src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
               alt="Buy Me A Coffee"
+              width={175}
+              height={49}
               className="h-7 w-auto"
             />
           </a>

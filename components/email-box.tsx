@@ -133,7 +133,7 @@ function NewEmailFlash({ from, subject, onDone }: { from: string; subject: strin
           <span className="font-mono text-xs text-foreground font-semibold truncate">{from}</span>
           <span className="text-border shrink-0">·</span>
           <span className="font-mono text-xs text-muted-foreground truncate">{subject || "(no subject)"}</span>
-          <span className="ml-auto font-mono text-[10px] text-muted-foreground/40 shrink-0 tabular-nums">
+          <span className="ml-auto font-mono text-[10px] text-muted-foreground/70 shrink-0 tabular-nums">
             {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
           </span>
         </div>
@@ -212,7 +212,7 @@ function DomainExpiryBanner({
           <span className="ml-1 underline underline-offset-2">Get your own domain →</span>
         )}
         {isPro && (
-          <span className="ml-1 text-muted-foreground/60">Transfer to a custom domain in Settings.</span>
+          <span className="ml-1 text-muted-foreground/80">Transfer to a custom domain in Settings.</span>
         )}
       </span>
     </div>
@@ -709,20 +709,20 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const renderEmptyState = () => (
     <div className="py-14 flex flex-col items-center text-center px-6">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground/40">
+      <div className="mb-5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground/70">
         <span>$</span>
         <span>LISTEN {email.split("@")[1] || "…"}</span>
         <span className="inline-block w-1.5 h-3.5 bg-muted-foreground/30 animate-pulse" />
       </div>
-      <p className="font-mono text-xs text-muted-foreground/60 mb-1">
+      <p className="font-mono text-xs text-muted-foreground/80 mb-1">
         {activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}
       </p>
-      <p className="font-mono text-[11px] text-muted-foreground/40 max-w-xs">
+      <p className="font-mono text-[11px] text-muted-foreground/70 max-w-xs">
         {activeTab === "all" ? t("inbox_empty_subtitle") : "Dismissed emails appear here."}
       </p>
       {activeTab === "all" && !isPro && (
         <div className="mt-6 border border-dashed border-border rounded-lg px-5 py-3 max-w-xs space-y-1.5">
-          <p className="font-mono text-[10px] text-muted-foreground/60">Stop losing emails when this address expires.</p>
+          <p className="font-mono text-[10px] text-muted-foreground/80">Stop losing emails when this address expires.</p>
           <a rel="sponsored" href={DOMAIN_AFFILIATE_URL} target="_blank"
             className="inline-flex items-center gap-1 font-mono text-[10px] text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground">
             <Globe className="h-3 w-3" />Get your own domain →
@@ -746,9 +746,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       `}</style>
       <div className="grid items-center border-b border-border bg-muted/20 px-3 py-1.5"
         style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4rem" }}>
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">#</span>
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50 pl-2">From · Subject</span>
-        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50 text-right">Time</span>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70">#</span>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70 pl-2">From · Subject</span>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70 text-right">Time</span>
         <span />
       </div>
       {filteredMessages.length === 0 ? renderEmptyState() : (
@@ -775,7 +775,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   <div className="flex items-center gap-2 min-w-0">
                     {!isCompact && (
                       <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded text-[10px] font-bold font-mono shrink-0",
-                        isRead ? "bg-muted/40 text-muted-foreground/50" : "bg-foreground/8 text-foreground/70")}>
+                        isRead ? "bg-muted/40 text-muted-foreground/70" : "bg-foreground/8 text-foreground/70")}>
                         {msg.from.charAt(0).toUpperCase()}
                       </span>
                     )}
@@ -785,7 +785,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     {!isRead && <span className="h-1 w-1 rounded-full bg-foreground shrink-0" />}
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap pl-0 sm:pl-7">
-                    <span className={cn("font-mono text-[11px] truncate flex-1", isRead ? "text-muted-foreground/50" : "text-muted-foreground")}>
+                    <span className={cn("font-mono text-[11px] truncate flex-1", isRead ? "text-muted-foreground/70" : "text-muted-foreground")}>
                       {msg.subject || "(no subject)"}
                     </span>
                     {renderBadges(msg)}
@@ -797,7 +797,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     </span>
                   )}
                 </div>
-                <span className="font-mono text-[10px] text-muted-foreground/50 text-right tabular-nums">
+                <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">
                   {fmtDateShort(msg.date)}
                 </span>
                 <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
@@ -832,9 +832,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <span className="font-mono text-[11px] text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>
               {renderBadges(msg)}
             </div>
-            <span className="font-mono text-[10px] text-muted-foreground/50">{fmtDate(msg.date)}</span>
+            <span className="font-mono text-[10px] text-muted-foreground/70">{fmtDate(msg.date)}</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground/70 shrink-0" />
         </div>
       ))}
       {filteredMessages.length === 0 && renderEmptyState()}
@@ -918,7 +918,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               SMTP · {email.split("@")[1] || "…"}
             </span>
             <div className="flex-1" />
-            <span className="font-mono text-[10px] text-muted-foreground/40 tabular-nums">
+            <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">
               {messages.length} msg{messages.length !== 1 ? "s" : ""}
             </span>
           </div>
@@ -1016,7 +1016,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 group hover:border-foreground/30 transition-colors cursor-text"
                   onClick={isAuthenticated ? () => { setIsEditing(true); setDiscoveredUpdates({ newDomains: true }); } : undefined}
                 >
-                  <span className="font-mono text-[10px] text-muted-foreground/40 shrink-0 select-none">TO</span>
+                  <span className="font-mono text-[10px] text-muted-foreground/70 shrink-0 select-none">TO</span>
                   <span className="font-mono text-sm text-foreground flex-1 truncate">{email || t("loading")}</span>
                   {isAuthenticated && (
                     <div className="relative flex items-center justify-center">
@@ -1028,7 +1028,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   )}
                 </div>
                 {!isPro && (
-                  <p className="font-mono text-[10px] text-muted-foreground/50 mt-1 pl-1">
+                  <p className="font-mono text-[10px] text-muted-foreground/70 mt-1 pl-1">
                     Own domain?{" "}
                     <a rel="sponsored" href={DOMAIN_AFFILIATE_URL} target="_blank"
                       className="text-foreground/60 hover:text-foreground underline underline-offset-2 transition-colors">
@@ -1043,17 +1043,17 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <div className="flex gap-1.5 shrink-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-9 w-9 relative" onClick={copyEmail} disabled={blockButtons}>
+                    <Button aria-label="Copy email address" variant="outline" size="icon" className="h-9 w-9 relative" onClick={copyEmail} disabled={blockButtons}>
                       <Copy className={cn("h-3.5 w-3.5 absolute transition-all", copied && "opacity-0 scale-75")} />
                       <Check className={cn("h-3.5 w-3.5 absolute transition-all", !copied && "opacity-0 scale-75")} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent><p className="font-mono text-[10px]">Copy · C</p></TooltipContent>
                 </Tooltip>
-                <Button variant="outline" size="icon" className="h-9 w-9 hidden sm:flex" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons}>
+                <Button aria-label="Show QR Code" variant="outline" size="icon" className="h-9 w-9 hidden sm:flex" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons}>
                   <QrCode className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setIsSettingsOpen(true)} disabled={blockButtons}>
+                <Button aria-label="Open settings" variant="outline" size="icon" className="h-9 w-9" onClick={() => setIsSettingsOpen(true)} disabled={blockButtons}>
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
                 <ShareDropdown />
@@ -1075,7 +1075,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     {icon}
                     {hasBadge && <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                   </div>
-                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sr-only sm:not-sr-only sm:inline">{label}</span>
                   {hint && <span className="hidden sm:inline font-mono text-[9px] text-muted-foreground/35 normal-case tracking-normal">{hint}</span>}
                 </button>
               ))}
@@ -1114,7 +1114,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             <div className="overflow-hidden flex flex-col bg-muted/5">
               {selectedMessage
                 ? <SplitPaneMessageView message={selectedMessage} token={token} apiEndpoint={API_ENDPOINT} isPro={isPro} onUpsell={openUpsell} />
-                : <div className="flex flex-col items-center justify-center h-full gap-2"><Mail className="w-8 h-8 opacity-15" /><span className="font-mono text-[11px] text-muted-foreground/40">select a message</span></div>
+                : <div className="flex flex-col items-center justify-center h-full gap-2"><Mail className="w-8 h-8 opacity-15" /><span className="font-mono text-[11px] text-muted-foreground/70">select a message</span></div>
               }
             </div>
           </div>
@@ -1132,7 +1132,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 <ul className="space-y-1.5">
                   {emailHistory.map((he, i) => (
                     <li key={i} className="flex items-center justify-between gap-2 group">
-                      <span className="font-mono text-[11px] text-muted-foreground/60 truncate group-hover:text-muted-foreground transition-colors">{he}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground/80 truncate group-hover:text-muted-foreground transition-colors">{he}</span>
                       <button onClick={() => { setEmail(he); setOldEmailUsed(!oldEmailUsed); setDomainExpiry(null); }}
                         className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground">
                         {t("history_use")}
@@ -1154,7 +1154,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           <div className="border-t border-border px-4 py-3 bg-muted/5">
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Inbox</p>
             <h2 className="text-sm font-semibold text-foreground">{t("card_header_title")}</h2>
-            <p className="font-mono text-[11px] text-muted-foreground/60 mt-0.5 leading-relaxed">{t("card_header_p")}</p>
+            <p className="font-mono text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{t("card_header_p")}</p>
           </div>
         )}
 
