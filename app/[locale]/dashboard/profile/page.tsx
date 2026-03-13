@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { UpsellModal } from "@/components/upsell-modal";
 import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -191,9 +192,10 @@ export default function ProfilePage() {
   const [paymentLogsType, setPaymentLogsType]       = useState<"app" | "api" | "credits" | "">("");
   const [paymentLogsOffset, setPaymentLogsOffset]   = useState(0);
   const PAYMENT_LOGS_LIMIT = 20;
-  const [apiPlan, setApiPlan]         = useState<string | null>(null);
+  const [apiPlan, setApiPlan]               = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading]       = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
 
   useEffect(() => { if (status === "unauthenticated") router.push("/auth"); }, [status, router]);
   useEffect(() => {
@@ -209,6 +211,7 @@ export default function ProfilePage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(data.message || t("toasts.fetch_error")); return; }
       setDeleteDialogOpen(false);
+      setDeleteEmailInput("");
       toast.success("Account deletion scheduled. Check your email to cancel.");
       router.replace("/account-deletion-scheduled");
     } catch { toast.error(t("toasts.fetch_error")); }
@@ -291,6 +294,12 @@ export default function ProfilePage() {
   const providerDetails         = session ? getProviderDetails(session) : { label: "Unknown", icon: null };
   const percentUsed             = storageData ? parseFloat(storageData.percentUsed) : 0;
   const usageText               = storageData ? `${storageData.storageUsedFormatted || storageData.message} / ${storageData.storageLimitFormatted || storageData.message}` : "Loading...";
+
+  // Determine active subscriptions for deletion warning
+  const hasActiveAppSub = isPro && sub && (sub.status === "ACTIVE" || sub.status === "TRIALING");
+  const hasActiveApiSub = apiPlan && apiPlan !== "free";
+  const hasAnyActiveSub = hasActiveAppSub || hasActiveApiSub;
+  const emailConfirmed  = deleteEmailInput.trim().toLowerCase() === (userData?.email ?? "").trim().toLowerCase();
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -546,7 +555,7 @@ export default function ProfilePage() {
                   <p className="text-sm font-medium text-foreground">{t("settings.del_title")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{t("settings.del_desc")}</p>
                 </div>
-                <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>{t("settings.del_btn")}</Button>
+                <Button variant="destructive" size="sm" onClick={() => { setDeleteEmailInput(""); setDeleteDialogOpen(true); }}>{t("settings.del_btn")}</Button>
               </div>
             </TabsContent>
           </Tabs>
@@ -565,7 +574,7 @@ export default function ProfilePage() {
 
         <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />
 
-        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <Dialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteEmailInput(""); }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{t("settings.del_title")}</DialogTitle>
@@ -573,9 +582,54 @@ export default function ProfilePage() {
                 Your account will be scheduled for deletion. You have 7 days to cancel from your email or by logging in. After 7 days, all data will be permanently removed.
               </DialogDescription>
             </DialogHeader>
+
+            <div className="space-y-4 py-1">
+              {/* Active subscription warning */}
+              {hasAnyActiveSub && (
+                <div className="rounded-md border border-border bg-muted/20 p-3 space-y-1.5">
+                  <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+                    You have an active subscription
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Deleting your account will <strong className="text-foreground">not</strong> automatically cancel your{" "}
+                    {[hasActiveAppSub && "Pro", hasActiveApiSub && "API"].filter(Boolean).join(" and ")} subscription
+                    {hasActiveAppSub && hasActiveApiSub ? "s" : ""}. You will continue to be billed.
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Please cancel first:{" "}
+                    {hasActiveAppSub && (
+                      <>go to <strong className="text-foreground">Profile → Billing → Manage Subscription</strong> and cancel from Paddle&apos;s customer portal</>
+                    )}
+                    {hasActiveAppSub && hasActiveApiSub && ", and "}
+                    {hasActiveApiSub && (
+                      <>cancel your API subscription from the <strong className="text-foreground">same Paddle portal</strong></>
+                    )}
+                    {". "}
+                    Or <Link href="/contact" className="underline underline-offset-2 text-foreground hover:opacity-80" onClick={() => setDeleteDialogOpen(false)}>contact us</Link> for help.
+                  </p>
+                </div>
+              )}
+
+              {/* Email confirmation */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">
+                  Type <strong className="text-foreground select-all">{userData?.email}</strong> to confirm
+                </p>
+                <Input
+                  type="email"
+                  placeholder={userData?.email ?? "your@email.com"}
+                  value={deleteEmailInput}
+                  onChange={e => setDeleteEmailInput(e.target.value)}
+                  className="h-9 text-sm"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleteLoading}>
+              <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setDeleteEmailInput(""); }} disabled={deleteLoading}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleteLoading || !emailConfirmed}>
                 {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.del_btn")}
               </Button>
             </DialogFooter>
