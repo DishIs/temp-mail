@@ -1,9 +1,16 @@
 # *
 User-agent: *
 Allow: /
+Disallow: /dashboard/*
+Disallow: /auth/*
+Disallow: /*/dashboard/*
+Disallow: /*/auth/*
+Disallow: /account-deleted
+Disallow: /account-deletion-scheduled
+Disallow: /payment/*
 
-# Host
-Host: https://www.freecustom.email
+# GPTBot
+User-agent: GPTBot
+Allow: /
 
-# Sitemaps
 Sitemap: https://www.freecustom.email/sitemap.xml
