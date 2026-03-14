@@ -10,9 +10,11 @@ interface CodeBlockProps {
   className?: string;
   /** Show a thin left accent bar (default true) */
   accent?: boolean;
+  /** Render code as raw HTML (e.g. for pre-colored output) */
+  isHtml?: boolean;
 }
 
-export function CodeBlock({ code, language, className = "", accent = true }: CodeBlockProps) {
+export function CodeBlock({ code, language, className = "", accent = true, isHtml = false }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
@@ -55,7 +57,11 @@ export function CodeBlock({ code, language, className = "", accent = true }: Cod
       <pre
         className={`text-xs sm:text-sm font-mono text-foreground leading-[1.7] whitespace-pre-wrap break-words overflow-x-hidden ${language ? "p-5" : "p-5 pr-14"}`}
       >
-        <code>{code}</code>
+        {isHtml ? (
+          <code dangerouslySetInnerHTML={{ __html: code }} />
+        ) : (
+          <code>{code}</code>
+        )}
       </pre>
 
       {/* Floating copy button when no header */}
