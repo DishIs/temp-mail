@@ -29,7 +29,7 @@ import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { AuthNeed, UpsellModal } from "./upsell-modal";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 
-const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
+const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
 
 const DOMAIN_SEED: FetchedDomain[] = [
   { domain: "ditube.info", tier: "free", tags: [] }
@@ -213,19 +213,19 @@ function DomainExpiryBanner({
   );
 }
 
-function DomainPromoCard() {
+function PhonePromoCard() {
   return (
     <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-2">
       <div className="flex items-center gap-2">
-        <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Permanent inbox</p>
+        <Zap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">OTP Verification</p>
       </div>
       <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
-        Get a custom domain + private email in 2 min. Stop losing access when temp addresses expire.
+        Need a real phone number for OTP verification? Get one instantly from our partner.
       </p>
-      <a rel="sponsored" href={DOMAIN_AFFILIATE_URL} target="_blank"
+      <a rel="sponsored" href={PHONE_AFFILIATE_URL} target="_blank"
         className="inline-flex items-center gap-1 font-mono text-[11px] text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground transition-colors">
-        Get .COM from Namecheap →
+        Get phone number →
       </a>
     </div>
   );
@@ -762,10 +762,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       </p>
       {activeTab === "all" && !isPro && (
         <div className="mt-6 border border-dashed border-border rounded-lg px-5 py-3 max-w-xs space-y-1.5">
-          <p className="font-mono text-[10px] text-muted-foreground/80">Stop losing emails when this address expires.</p>
-          <a rel="sponsored" href={DOMAIN_AFFILIATE_URL} target="_blank"
+          <p className="font-mono text-[10px] text-muted-foreground/80">Need a real phone number for OTP verification?</p>
+          <a rel="sponsored" href={PHONE_AFFILIATE_URL} target="_blank"
             className="inline-flex items-center gap-1 font-mono text-[10px] text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground">
-            <Globe className="h-3 w-3" />Get your own domain →
+            <Zap className="h-3 w-3" />Get one instantly →
           </a>
         </div>
       )}
@@ -1069,10 +1069,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 </div>
                 {!isPro && (
                   <p className="font-mono text-[10px] text-muted-foreground/70 mt-1 pl-1">
-                    Own domain?{" "}
-                    <a rel="sponsored" href={DOMAIN_AFFILIATE_URL} target="_blank"
+                    Need OTP phone?{" "}
+                    <a rel="sponsored" href={PHONE_AFFILIATE_URL} target="_blank"
                       className="text-foreground/60 hover:text-foreground underline underline-offset-2 transition-colors">
-                      Get from Namecheap →
+                      Get one instantly →
                     </a>
                   </p>
                 )}
@@ -1183,7 +1183,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               </div>
               {!isPro && (
                 <div className="md:w-72 shrink-0 px-4 py-4">
-                  <DomainPromoCard />
+                  <PhonePromoCard />
                 </div>
               )}
             </div>
