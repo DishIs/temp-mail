@@ -1,6 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // components/docs-sidebar.tsx
-// ─────────────────────────────────────────────────────────────────────────────
 "use client";
 
 import { useState } from "react";
@@ -14,6 +12,14 @@ const SIDEBAR_GROUPS: { label: string; links: { href: string; label: string }[] 
     label: "Getting Started",
     links: [
       { href: "/api/docs/quickstart",     label: "Quickstart"     },
+    ],
+  },
+  {
+    label: "SDKs",
+    links: [
+      { href: "/api/docs/sdk",            label: "Overview"            },
+      { href: "/api/docs/sdk/npm",        label: "JavaScript / TypeScript" },
+      { href: "/api/docs/sdk/python",     label: "Python"              },
     ],
   },
   {
@@ -101,7 +107,6 @@ export function DocsSidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
       <button
         type="button"
         className="lg:hidden fixed top-[4.5rem] left-4 z-40 flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
@@ -111,7 +116,6 @@ export function DocsSidebar() {
         <Menu className="h-3.5 w-3.5" /> Menu
       </button>
 
-      {/* Mobile overlay */}
       {open && (
         <div
           className="lg:hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
@@ -120,7 +124,6 @@ export function DocsSidebar() {
         />
       )}
 
-      {/* Mobile drawer */}
       <aside
         className={cn(
           "lg:hidden fixed left-0 top-0 bottom-0 z-[60] w-[240px]",
@@ -128,11 +131,8 @@ export function DocsSidebar() {
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        {/* Drawer header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border sticky top-0 bg-background z-10">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            Docs
-          </span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Docs</span>
           <button
             onClick={() => setOpen(false)}
             className="h-7 w-7 flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
@@ -143,7 +143,6 @@ export function DocsSidebar() {
         <NavContent onNav={() => setOpen(false)} />
       </aside>
 
-      {/* Desktop sidebar */}
       <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-[240px] border-r border-border bg-background overflow-y-auto">
         <NavContent />
       </aside>
