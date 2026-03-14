@@ -3,22 +3,24 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Trash2, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 function CliAuthContent() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const callbackURL = searchParams.get("callback") ?? "";
 
-  const [phase, setPhase] = useState<"loading" | "redirecting" | "creating" | "done" | "error">("loading");
+  const [phase, setPhase] = useState<"loading" | "redirecting" | "creating" | "done" | "error" | "limit-reached">("loading");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
 
   useEffect(() => {
     if (status === "loading") return;
 
     if (status === "unauthenticated") {
       setPhase("redirecting");
-      // Redirect to the MAIN auth page, passing this page as the callbackUrl
       const currentUrl = new URL(window.location.href);
       const authUrl = new URL("/auth", window.location.origin);
       authUrl.searchParams.set("callbackUrl", currentUrl.pathname + currentUrl.search);
@@ -31,23 +33,29 @@ function CliAuthContent() {
     }
   }, [status]);
 
-  async function createKeyAndRedirect() {
+  async function createKeyAndRedirect(forceCleanup = false) {
+    if (forceCleanup) setIsCleaningUp(true);
     setPhase("creating");
+    
     try {
       const res = await fetch("/api/internal/cli-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "CLI key" }),
+        body: JSON.stringify({ name: "CLI key", forceCleanup }),
       });
       
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        if (data.error === "max_keys") {
+          setPhase("limit-reached");
+          return;
+        }
         throw new Error(data.message || "Failed to create API key");
       }
       
-      const { key } = await res.json();
+      const { key } = data;
 
-      // Redirect back to CLI local server
       if (callbackURL) {
         try {
           const target = new URL(callbackURL);
@@ -66,6 +74,8 @@ function CliAuthContent() {
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Something went wrong");
       setPhase("error");
+    } finally {
+      setIsCleaningUp(false);
     }
   }
 
@@ -80,8 +90,43 @@ function CliAuthContent() {
 
         {phase === "loading" && <p className="font-mono text-xs text-muted-foreground">Checking session…</p>}
         {phase === "redirecting" && <p className="font-mono text-xs text-muted-foreground">Redirecting to login…</p>}
-        {phase === "creating" && <p className="font-mono text-xs text-muted-foreground">Creating your CLI access key…</p>}
+        {phase === "creating" && <p className="font-mono text-xs text-muted-foreground">{isCleaningUp ? "Cleaning up and creating key…" : "Creating your CLI access key…"}</p>}
         
+        {phase === "limit-reached" && (
+          <div className="space-y-4">
+            <div className="flex justify-center mb-2">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h3 className="text-lg font-semibold">API Key Limit Reached</h3>
+            <p className="text-xs text-muted-foreground px-2 leading-relaxed">
+              You've reached the limit of 5 API keys. To continue, you can delete your previous CLI keys or manage them in the dashboard.
+            </p>
+            <div className="grid gap-2 pt-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="font-mono text-xs h-9 gap-2"
+                onClick={() => createKeyAndRedirect(true)}
+                disabled={isCleaningUp}
+              >
+                {isCleaningUp ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                Overwrite Existing "CLI key"s
+              </Button>
+              <Button 
+                asChild
+                variant="ghost" 
+                size="sm" 
+                className="font-mono text-xs h-9 gap-2"
+              >
+                <Link href="/dashboard/api" target="_blank">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Manage in Dashboard
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         {phase === "done" && (
           <>
             <div className="flex justify-center mb-4">

@@ -13,8 +13,27 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const name = body?.name ?? "CLI key";
+  const forceCleanup = body?.forceCleanup === true;
 
-  // 2. Call internal service API
+  // If forceCleanup is requested, we first look for existing keys with the same name and delete them
+  if (forceCleanup) {
+    try {
+      const { status: listStatus, data: listData } = await fetchFromServiceAPIWithStatus(`/user/api-keys/${userId}`);
+      const keys = (listData as any)?.data || [];
+      const keysToCleanup = keys.filter((k: any) => k.name === name);
+      
+      for (const k of keysToCleanup) {
+        await fetchFromServiceAPIWithStatus("/user/api-keys", {
+          method: "DELETE",
+          body: JSON.stringify({ keyId: k.id, wyiUserId: userId }),
+        });
+      }
+    } catch (e) {
+      console.error("Cleanup failed:", e);
+    }
+  }
+
+  // 2. Call internal service API to create the key
   const { status, data } = await fetchFromServiceAPIWithStatus("/user/api-keys", {
     method: "POST",
     body: JSON.stringify({
@@ -23,10 +42,10 @@ export async function POST(req: NextRequest) {
     }),
   });
 
-  // Since data is unknown, we cast it to handle the response safely
   const responseData = data as any;
 
   if (status !== 200 && status !== 201) {
+    // If at max keys, return a specific error that the frontend can handle
     if (responseData?.message?.includes("Maximum")) {
       return NextResponse.json(
         { error: "max_keys", message: responseData.message },
