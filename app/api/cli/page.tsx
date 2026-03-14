@@ -191,7 +191,7 @@ export default function CliOverviewPage() {
           <SectionMarker index={4} total={T} label="Reference" />
           <h2 className="text-3xl font-bold mb-12 tracking-tight">Commands</h2>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-hidden rounded-lg border border-border divide-x divide-y divide-border bg-card/50">
+          <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4 rounded-lg overflow-hidden">
             {[
               { c: "fce login",   d: "Authenticate via browser" },
               { c: "fce watch",   d: "Stream emails via WebSocket" },
@@ -201,11 +201,14 @@ export default function CliOverviewPage() {
               { c: "fce usage",   d: "Check credit consumption" },
               { c: "fce domains", d: "List available domains" },
               { c: "fce help",    d: "Full command reference" },
-            ].map(cmd => (
-              <div key={cmd.c} className="p-6 hover:bg-muted/10 transition-colors">
-                <code className="text-foreground font-bold text-sm block mb-2">{cmd.c}</code>
-                <p className="text-xs text-muted-foreground leading-relaxed">{cmd.d}</p>
-              </div>
+            ].map((cmd, i) => (
+              <FadeIn key={cmd.c} delay={i * 0.06}>
+                <div className="bg-background px-6 py-8 h-full hover:bg-muted/10 transition-colors duration-200">
+                  <p className="font-mono text-xs text-muted-foreground mb-3">{String(i + 1).padStart(2, "0")}</p>
+                  <p className="text-sm font-semibold text-foreground mb-2">{cmd.c}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{cmd.d}</p>
+                </div>
+              </FadeIn>
             ))}
           </div>
 
