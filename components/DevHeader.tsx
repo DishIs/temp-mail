@@ -16,6 +16,7 @@ import { useTheme } from "next-themes";
 const NAV_LINKS =[
   { href: "/api",                label: "Overview"  },
   { href: "/api/docs",           label: "Docs"      },
+  { href: "/api/cli",            label: "CLI"       },
   { href: "/api/playground",     label: "Playground"},
   { href: "/api/pricing",        label: "Pricing"   },
   { href: "/api/docs/changelog", label: "Changelog" },
