@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, Sun, Moon, Laptop, ChevronDown, X } from "lucide-react";
+import { Menu as MenuIcon, Sun, Moon, Laptop, MoreVertical, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -79,7 +79,7 @@ export function DevHeader() {
   const { theme, toggle, btnRef } = useThemeRipple();
   const[menuOpen, setMenuOpen] = useState(false);
   const[mounted,  setMounted]  = useState(false);
-  const [apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
+  const[apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
 
   useEffect(() => setMounted(true),[]);
 
@@ -96,7 +96,7 @@ export function DevHeader() {
         setApiStatus(data || null);
       })
       .catch(() => setApiStatus(null));
-  }, [status, session?.user?.id]);
+  },[status, session?.user?.id]);
 
   const isSessionLoading = !mounted || status === "loading";
   const isApiStatusLoading = status === "authenticated" && apiStatus === undefined;
@@ -129,36 +129,40 @@ export function DevHeader() {
             </div>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-0.5">
-            {NAV_LINKS.map(({ href, label }) => (
+          {/* Desktop & Medium Responsive Nav */}
+          <nav className="hidden md:flex items-center gap-0.5">
+            {NAV_LINKS.map(({ href, label }, index) => (
               <Link key={href} href={href}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  index >= 3 ? "hidden lg:flex" : "flex"
+                } ${
                   isActive(href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {label}
               </Link>
             ))}
-          </nav>
 
-          {/* Mid: collapsed dropdown */}
-          <div className="hidden md:flex lg:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                  Nav <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[10rem]">
-                {NAV_LINKS.map(({ href, label }) => (
-                  <DropdownMenuItem key={href} asChild>
-                    <Link href={href} className={isActive(href) ? "font-medium" : ""}>{label}</Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+            {/* Overflow dots dropdown exclusively for md devices */}
+            <div className="flex lg:hidden items-center ml-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[10rem]">
+                  {NAV_LINKS.slice(3).map(({ href, label }) => (
+                    <DropdownMenuItem key={href} asChild>
+                      <Link href={href} className={isActive(href) ? "font-medium" : ""}>
+                        {label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </nav>
 
           {/* Right */}
           <div className="hidden md:flex items-center gap-2">

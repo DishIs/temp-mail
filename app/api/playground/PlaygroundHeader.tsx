@@ -2,10 +2,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, Sun, Moon, Laptop, ChevronDown, X } from "lucide-react";
+import { Menu as MenuIcon, Sun, Moon, Laptop, MoreVertical, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -78,7 +77,7 @@ export function PlaygroundHeader() {
   const { data: session, status } = useSession();
   const { theme, toggle, btnRef } = useThemeRipple();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted,  setMounted]  = useState(false);
+  const[mounted,  setMounted]  = useState(false);
   const[apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
 
   useEffect(() => setMounted(true),[]);
@@ -124,44 +123,49 @@ export function PlaygroundHeader() {
         <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-[90rem]">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="API Home">
+          <a href="/api" className="flex items-center gap-2 shrink-0" aria-label="API Home">
             <Image src="/logo.webp" alt="FreeCustom.Email" width={28} height={28} className="h-7 w-7" priority />
             <div className="flex flex-col leading-none">
               <span className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</span>
               <span className="text-[10px] font-normal text-muted-foreground tracking-widest uppercase -mt-0.5">for developers</span>
             </div>
-          </Link>
+          </a>
 
-          {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-0.5">
-            {NAV_LINKS.map(({ href, label }) => (
-              <Link key={href} href={href}
+          {/* Desktop & Medium Responsive Nav */}
+          <nav className="hidden md:flex items-center gap-0.5">
+            {NAV_LINKS.map(({ href, label }, index) => (
+              <a key={href} href={href}
+                // First 3 links visible on md, rest hidden until lg
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  index >= 3 ? "hidden lg:flex" : "flex"
+                } ${
                   isActive(href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {label}
-              </Link>
+              </a>
             ))}
-          </nav>
 
-          {/* Mid: collapsed dropdown */}
-          <div className="hidden md:flex lg:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                  Nav <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[10rem]">
-                {NAV_LINKS.map(({ href, label }) => (
-                  <DropdownMenuItem key={href} asChild>
-                    <Link href={href} className={isActive(href) ? "font-medium" : ""}>{label}</Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+            {/* Overflow dots dropdown exclusively for md devices */}
+            <div className="flex lg:hidden items-center ml-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[10rem]">
+                  {NAV_LINKS.slice(3).map(({ href, label }) => (
+                    <DropdownMenuItem key={href} asChild>
+                      <a href={href} className={isActive(href) ? "font-medium" : ""}>
+                        {label}
+                      </a>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </nav>
 
           {/* Right */}
           <div className="hidden md:flex items-center gap-2">
@@ -199,18 +203,18 @@ export function PlaygroundHeader() {
                     </div>
                   )}
                   <Button asChild size="sm" className="shrink-0">
-                    <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
+                    <a href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
                       {isFreeUser ? "Upgrade" : "Dashboard"}
-                    </Link>
+                    </a>
                   </Button>
                 </>
               ) : (
                 <>
                   <Button asChild size="sm" variant="ghost" className="shrink-0 px-3">
-                    <Link href="/auth?callbackUrl=/api/playground">Sign in</Link>
+                    <a href="/auth?callbackUrl=/api/playground">Sign in</a>
                   </Button>
                   <Button asChild size="sm" className="shrink-0 px-3">
-                    <Link href="/auth?callbackUrl=/api/dashboard">Get API key</Link>
+                    <a href="/auth?callbackUrl=/api/dashboard">Get API key</a>
                   </Button>
                 </>
               )}
@@ -232,7 +236,7 @@ export function PlaygroundHeader() {
           <div className="md:hidden border-t border-border bg-background px-4 pb-5 pt-3">
             <nav className="flex flex-col gap-0.5 mb-4">
               {NAV_LINKS.map(({ href, label }) => (
-                <Link key={href} href={href} onClick={() => setMenuOpen(false)}
+                <a key={href} href={href} onClick={() => setMenuOpen(false)}
                   className={`px-3 py-2 rounded-md text-sm transition-colors ${
                     isActive(href)
                       ? "text-foreground font-medium bg-muted/30"
@@ -240,7 +244,7 @@ export function PlaygroundHeader() {
                   }`}
                 >
                   {label}
-                </Link>
+                </a>
               ))}
             </nav>
             <div className="border-t border-border pt-4 flex items-center gap-3 flex-wrap">
@@ -272,18 +276,18 @@ export function PlaygroundHeader() {
                       </span>
                     )}
                     <Button asChild size="sm" className="shrink-0">
-                      <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"} onClick={() => setMenuOpen(false)}>
+                      <a href={isFreeUser ? "/api/pricing" : "/api/dashboard"} onClick={() => setMenuOpen(false)}>
                         {isFreeUser ? "Upgrade" : "Dashboard"}
-                      </Link>
+                      </a>
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button asChild size="sm" variant="ghost" className="shrink-0 px-3">
-                      <Link href="/auth?callbackUrl=/api/playground" onClick={() => setMenuOpen(false)}>Sign in</Link>
+                      <a href="/auth?callbackUrl=/api/playground" onClick={() => setMenuOpen(false)}>Sign in</a>
                     </Button>
                     <Button asChild size="sm" className="shrink-0 px-3">
-                      <Link href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)}>Get API key</Link>
+                      <a href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)}>Get API key</a>
                     </Button>
                   </>
                 )}
