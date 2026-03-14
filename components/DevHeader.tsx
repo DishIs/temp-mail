@@ -13,7 +13,7 @@ import {
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 
-const NAV_LINKS = [
+const NAV_LINKS =[
   { href: "/api",                label: "Overview"  },
   { href: "/api/docs",           label: "Docs"      },
   { href: "/api/playground",     label: "Playground"},
@@ -53,7 +53,7 @@ function useThemeRipple() {
       setTheme(next);
     }).ready.then(() => {
       document.documentElement.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
+        { clipPath:[`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
         { duration: 420, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }
       );
     });
@@ -77,24 +77,30 @@ export function DevHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { theme, toggle, btnRef } = useThemeRipple();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const[menuOpen, setMenuOpen] = useState(false);
   const [mounted,  setMounted]  = useState(false);
-  const [apiStatus, setApiStatus] = useState<ApiStatusData | null>(null);
+  const [apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => setMounted(true),[]);
 
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.id) { setApiStatus(null); return; }
+    if (status === "loading") return;
+    if (status !== "authenticated" || !session?.user?.id) { 
+      setApiStatus(null); 
+      return; 
+    }
     fetch("/api/user/api-status")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         const data = d?.data ?? d;
-        if (data?.plan || data?.usage) setApiStatus(data);
+        setApiStatus(data || null);
       })
-      .catch(() => {});
+      .catch(() => setApiStatus(null));
   }, [status, session?.user?.id]);
 
+  const isLoadingStatus = !mounted || status === "loading" || (status === "authenticated" && apiStatus === undefined);
   const isLoggedIn = status === "authenticated" && !!session?.user;
+  
   const planLabel  = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
   const credits    = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
   const isFreeUser = (!planLabel || String(planLabel).toLowerCase() === "free") && credits <= 0;
@@ -162,7 +168,12 @@ export function DevHeader() {
               <ThemeIcon theme={theme} mounted={mounted} />
             </button>
 
-            {isLoggedIn ? (
+            {isLoadingStatus ? (
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-24 bg-muted/60 animate-pulse rounded-full" />
+                <div className="h-9 w-24 bg-muted/60 animate-pulse rounded-md" />
+              </div>
+            ) : isLoggedIn ? (
               <>
                 {(planLabel || credits > 0) && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -227,7 +238,13 @@ export function DevHeader() {
               >
                 <ThemeIcon theme={theme} mounted={mounted} />
               </button>
-              {isLoggedIn ? (
+              
+              {isLoadingStatus ? (
+                <div className="ml-auto flex items-center gap-2">
+                  <div className="h-4 w-20 bg-muted/60 animate-pulse rounded-md" />
+                  <div className="h-9 w-24 bg-muted/60 animate-pulse rounded-md" />
+                </div>
+              ) : isLoggedIn ? (
                 <>
                   {(planLabel || credits > 0) && (
                     <span className="text-xs text-muted-foreground">
@@ -243,14 +260,14 @@ export function DevHeader() {
                   </Button>
                 </>
               ) : (
-                <>
+                <div className="ml-auto flex items-center gap-2">
                   <Button asChild size="sm" variant="ghost">
                     <Link href="/auth?callbackUrl=/api" onClick={() => setMenuOpen(false)}>Sign in</Link>
                   </Button>
                   <Button asChild size="sm">
                     <Link href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)}>Get API key</Link>
                   </Button>
-                </>
+                </div>
               )}
             </div>
           </div>
