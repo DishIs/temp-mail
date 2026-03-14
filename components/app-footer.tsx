@@ -32,6 +32,7 @@ const FOOTER_COLS = [
     links: [
       { label: "API Overview", href: "/api", external: false },
       { label: "Documentation", href: "/api/docs", external: false },
+      { label: "CLI Tool", href: "/api/cli", external: false },
       { label: "API Pricing", href: "/api/pricing", external: false },
       { label: "Status", href: "https://status.freecustom.email", external: true },
       { label: "Changelog", href: "/api/docs/changelog", external: false },

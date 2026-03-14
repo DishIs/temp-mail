@@ -6,12 +6,13 @@ import {
   Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck,
   Star, ListOrdered, Clock, Archive, ArchiveRestore,
   Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck,
-  Lock, ExternalLink, Globe, Zap, Link2, ChevronDown,
+  Lock, ExternalLink, Globe, Zap, Link2, ChevronDown, Terminal, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableRow } from "@/components/ui/table";
 import { QRCodeModal } from "./qr-code-modal";
+import { CliModal } from "./cli-modal";
 import { cn } from "@/lib/utils";
 import { MessageModal } from "./message-modal";
 import { ErrorPopup } from "./error-popup";
@@ -321,6 +322,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const [primaryDomain, setPrimaryDomain] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [isCliModalOpen, setIsCliModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [otpCopied, setOTPCopied] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -749,11 +751,14 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const renderEmptyState = () => (
     <div className="py-14 flex flex-col items-center text-center px-6">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground/70">
+      <button
+        onClick={() => setIsCliModalOpen(true)}
+        className="mb-5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors group"
+      >
         <span>$</span>
-        <span>LISTEN {email.split("@")[1] || "…"}</span>
-        <span className="inline-block w-1.5 h-3.5 bg-muted-foreground/30 animate-pulse" />
-      </div>
+        <span>fce watch {email || "random"}</span>
+        <span className="inline-block w-1.5 h-3.5 bg-muted-foreground/30 group-hover:bg-primary/50 animate-pulse" />
+      </button>
       <p className="font-mono text-xs text-muted-foreground/80 mb-1">
         {activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}
       </p>
@@ -1191,10 +1196,27 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
 
         {!isZen && (
-          <div className="border-t border-border px-4 py-3 bg-muted/5">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Inbox</p>
-            <h2 className="text-sm font-semibold text-foreground">{t("card_header_title")}</h2>
-            <p className="font-mono text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{t("card_header_p")}</p>
+          <div className="border-t border-border px-4 py-3 bg-muted/5 flex items-center justify-between gap-4 group">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded bg-foreground/5 flex items-center justify-center shrink-0">
+                <Terminal className="h-4 w-4 text-muted-foreground/60" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 leading-none mb-1.5">CLI Access</p>
+                <code className="font-mono text-[11px] text-foreground/70 truncate block">
+                  fce watch {email || "random"}
+                </code>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 font-mono text-[10px] text-muted-foreground hover:text-foreground shrink-0 gap-2 border border-transparent hover:border-border"
+              onClick={() => setIsCliModalOpen(true)}
+            >
+              <Download className="h-3 w-3" />
+              Install CLI
+            </Button>
           </div>
         )}
 
@@ -1209,6 +1231,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
       <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); setDomainExpiry(null); }} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
+      <CliModal email={email} isOpen={isCliModalOpen} onClose={() => setIsCliModalOpen(false)} />
       <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(f: string) => { setAuthNeedFeature(f); setIsAuthNeedOpen(true); }} />
       <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />
