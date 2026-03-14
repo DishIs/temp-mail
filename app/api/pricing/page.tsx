@@ -768,8 +768,6 @@ export default function ApiPricingPage() {
                 </div>
               ))}
             </div>
-            <PaddleTrustStrip />
-            <div className="mt-4"><MoneyBackBadge /></div>
           </div>
 
           {/* FAQ */}
