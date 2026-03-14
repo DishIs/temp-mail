@@ -1,29 +1,18 @@
 // components/ShareDropdown.tsx
-
 "use client";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Share, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner"; // Using sonner for notifications, see step 3
-
-// Recommended: using react-icons for brand logos
+import { toast } from "sonner";
 import { FaTwitter, FaFacebook, FaLinkedin, FaReddit, FaWhatsapp, FaTelegramPlane, FaEnvelope } from "react-icons/fa";
 import Image from "next/image";
 
 const shareUrl = "https://www.freecustom.email/en";
 const shareText = "Create your free temporary email address today! Check out FreeCustom.Email";
 
-// 1. Define your sharing platforms
-const sharePlatforms = [
+const sharePlatforms =[
   {
     name: "Twitter",
     Icon: FaTwitter,
@@ -61,98 +50,114 @@ const sharePlatforms = [
   },
 ];
 
-// 2. Define your review platforms
-const reviewPlatforms = [
-  {
-    name: "Product Hunt",
-    href: "https://www.producthunt.com/products/fce/reviews/new", // Replace with your actual Product Hunt page
-    logo: "/product-hunt.svg",
-  },
-  {
-    name: "Trustpilot",
-    href: "https://www.trustpilot.com/review/freecustom.email",
-    logo: "/trustpilot.svg",
-  },
-  {
-    name: "G2",
-    href: "https://www.g2.com/wizard/workflow-wiz-apr28-amzn10/products/freecustom-email/reviews/start?g2_campaign=it_auto_txn_snd_2025_07_19_wfl_169257_cmp_2671423_tpl_3658179_loc_&last_completed_step=4&product_id=freecustom-email&return_to=https%3A%2F%2Fwww.g2.com%2Fwizard%2Fworkflow-wiz-apr28-amzn10%2Fproducts%2Ffreecustom-email%2Ftake_survey%3Futm_source%3DIterable%26utm_medium%3Demail%26utm_campaign%3Dit_auto_txn_snd_2025_07_19_wfl_169257_cmp_2671423_tpl_3658179_loc_%26g2_campaign%3Dit_auto_txn_snd_2025_07_19_wfl_169257_cmp_2671423_tpl_3658179_loc_&utm_campaign=it_auto_txn_snd_2025_07_19_wfl_169257_cmp_2671423_tpl_3658179_loc_&utm_medium=email&utm_source=Iterable", // Replace with your actual G2 page
-    logo: "/g2.svg",
-  },
-  {
-    name: "AlternativeTo",
-    href: "https://alternativeto.net/software/freecustom-email/about", // Replace with your actual SaaSHub page
-    logo: "/alternative-to.svg",
-  },
+const reviewPlatforms =[
+  { name: "Product Hunt", href: "https://www.producthunt.com/products/fce/reviews/new", logo: "/product-hunt.svg" },
+  { name: "Trustpilot", href: "https://www.trustpilot.com/review/freecustom.email", logo: "/trustpilot.svg" },
+  { name: "G2", href: "https://www.g2.com/products/freecustom-email/reviews", logo: "/g2.svg" },
+  { name: "AlternativeTo", href: "https://alternativeto.net/software/freecustom-email/about", logo: "/alternative-to.svg" },
 ];
 
-
 export function ShareDropdown() {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shareUrl);
-    // You can add a toast notification here to inform the user
     toast.success("Link copied to clipboard!");
+    setIsOpen(false);
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="icon" title="Share this page" aria-label="Share this page">
-          <Share className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
-        <DropdownMenuLabel>Share via</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <div className="grid grid-cols-3 gap-3 p-2">
+    <div className="relative inline-block" ref={dropdownRef}>
+      <Button 
+        variant="secondary" 
+        size="icon" 
+        onClick={() => setIsOpen(!isOpen)}
+        title="Share this page" 
+        aria-label="Share this page"
+        aria-expanded={isOpen}
+      >
+        <Share className="h-4 w-4" />
+      </Button>
+
+      <div
+        className={`absolute right-0 top-full mt-2 w-64 origin-top-right rounded-lg border border-border bg-background p-1.5 shadow-xl transition-all duration-200 z-50 ${
+          isOpen ? "scale-100 opacity-100 visible" : "scale-95 opacity-0 invisible pointer-events-none"
+        }`}
+      >
+        <div className="px-2 py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+          Share via
+        </div>
+        
+        <div className="grid grid-cols-3 gap-1 mb-1">
           {sharePlatforms.map(({ name, Icon, createUrl }) => (
-            <DropdownMenuItem key={name} asChild className="p-0 cursor-pointer">
-              <Link
-                href={createUrl(shareUrl, shareText)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center gap-1 p-2 rounded-md hover:bg-muted"
-                title={`Share on ${name}`}
-              >
-                <Icon className="h-6 w-6" />
-                <span className="text-xs">{name}</span>
-              </Link>
-            </DropdownMenuItem>
-          ))}
-        </div>
-        <DropdownMenuItem onSelect={copyToClipboard} className="cursor-pointer">
-          <LinkIcon className="mr-2 h-4 w-4" />
-          <span>Copy Link</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>Review us on</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <div className="flex items-center justify-around p-2">
-          {reviewPlatforms.map((platform) => (
-            <Button
-              key={platform.name}
-              variant="ghost" // Use ghost for a cleaner look
-              size="icon"
-              asChild
-              title={`${platform.name} review`}
-              aria-label={`${platform.name} review`}
+            <Link
+              key={name}
+              href={createUrl(shareUrl, shareText)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setIsOpen(false)}
+              className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors group"
+              title={`Share on ${name}`}
             >
-              <Link
-                href={platform.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  src={platform.logo}
-                  alt={platform.name}
-                  width={24} // Slightly larger for better visibility
-                  height={24}
-                  className={platform.name === "AlternativeTo" ? "light:fill-black" : ""}
-                />
-              </Link>
-            </Button>
+              <Icon className="h-5 w-5 opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+              <span className="text-[9px] font-medium">{name}</span>
+            </Link>
           ))}
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+
+        <button
+          onClick={copyToClipboard}
+          className="w-full flex items-center px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+        >
+          <LinkIcon className="mr-2 h-4 w-4" />
+          Copy Link
+        </button>
+
+        <div className="my-1.5 h-px bg-border w-full" />
+        
+        <div className="px-2 py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+          Review us on
+        </div>
+        
+        <div className="flex items-center justify-around gap-1">
+          {reviewPlatforms.map((platform) => (
+            <Link
+              key={platform.name}
+              href={platform.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setIsOpen(false)}
+              className="p-2 rounded-md hover:bg-muted transition-colors flex items-center justify-center group"
+              title={`${platform.name} review`}
+            >
+              <Image
+                src={platform.logo}
+                alt={platform.name}
+                width={20}
+                height={20}
+                className="grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
+              />
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -10,16 +10,11 @@ import {
 import Link from "next/link";
 import { FaDiscord, FaGithub } from "react-icons/fa";
 import { SiReddit, SiBuymeacoffee, SiPatreon } from "react-icons/si";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import { Session } from "next-auth";
 import { usePathname } from "next/navigation";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuGroup,
-  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import LocaleSwitcher from "./LocaleSwitcher";
 
@@ -49,7 +44,7 @@ function useThemeRipple() {
       }).ready.then(() => {
         document.documentElement.animate(
           {
-            clipPath: [
+            clipPath:[
               `circle(0px at ${x}px ${y}px)`,
               `circle(${maxR}px at ${x}px ${y}px)`,
             ],
@@ -79,7 +74,7 @@ function ThemeIcon({ theme, mounted }: { theme: string | undefined; mounted: boo
   );
 }
 
-const NAV_LINKS = [
+const NAV_LINKS =[
   { href: "/dashboard", label: "Dashboard" },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },
@@ -89,11 +84,11 @@ const NAV_LINKS = [
 export function AppHeader({ initialSession }: { initialSession: Session | null; }) {
   const { data: session, status } = useSession();
   const { theme, toggle } = useThemeRipple();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const[menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setMounted(true); },[]);
 
   const isLoggedIn = status === "authenticated" || !!session?.user;
   // @ts-ignore
@@ -103,76 +98,110 @@ export function AppHeader({ initialSession }: { initialSession: Session | null; 
     pathname === href || (href !== "/" && pathname.startsWith(href));
 
   const AuthSection = () => {
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent | TouchEvent) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setDropdownOpen(false);
+        }
+      }
+      if (dropdownOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+      }
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("touchstart", handleClickOutside);
+      };
+    }, [dropdownOpen]);
+
     if (status === "loading")
       return <div className="h-8 w-8 rounded-full bg-muted animate-pulse shrink-0" />;
 
     if (isLoggedIn && session?.user) {
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            {/* Added aria-label for Screen Readers */}
-            <button className="relative outline-none shrink-0" aria-label="User profile menu">
-              <Avatar
-                className={`h-8 w-8 border transition-all ${
-                  isPro
-                    ? "border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]"
-                    : "border-border"
-                }`}
-              >
-                <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
-                <AvatarFallback className="text-xs font-bold bg-muted">
-                  {session.user.name?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <span
-                className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1 rounded-sm leading-none py-px border ${
-                  isPro ? "bg-amber-400 text-black border-amber-500" : "bg-muted text-muted-foreground border-border"
-                }`}
-              >
-                {isPro ? "PRO" : "FREE"}
-              </span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-60 p-2" align="end">
-            <DropdownMenuLabel className="font-normal px-2 py-2">
-              <p className="text-sm font-semibold truncate">{session.user.name}</p>
+        <div className="relative shrink-0" ref={dropdownRef}>
+          <button 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="relative outline-none shrink-0 block" 
+            aria-label="User profile menu"
+            aria-expanded={dropdownOpen}
+          >
+            <Avatar
+              className={`h-8 w-8 border transition-all ${
+                isPro
+                  ? "border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]"
+                  : "border-border"
+              }`}
+            >
+              <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
+              <AvatarFallback className="text-xs font-bold bg-muted">
+                {session.user.name?.charAt(0).toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <span
+              className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1 rounded-sm leading-none py-px border ${
+                isPro ? "bg-amber-400 text-black border-amber-500" : "bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              {isPro ? "PRO" : "FREE"}
+            </span>
+          </button>
+
+          <div 
+            className={`absolute right-0 top-full mt-3 w-56 origin-top-right rounded-lg border border-border bg-background p-1.5 shadow-xl transition-all duration-200 z-50 ${
+              dropdownOpen ? "scale-100 opacity-100 visible" : "scale-95 opacity-0 invisible pointer-events-none"
+            }`}
+          >
+            <div className="px-2 py-2">
+              <p className="text-sm font-semibold text-foreground truncate">{session.user.name}</p>
               <p className="text-xs text-muted-foreground truncate mt-0.5">{session.user.email}</p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard" className="cursor-pointer">
-                  <LayoutDashboard className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Dashboard
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/profile" className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Profile &amp; Billing
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            </div>
+            
+            <div className="h-px bg-border w-full my-1" />
+            
+            <Link 
+              href="/dashboard" 
+              onClick={() => setDropdownOpen(false)}
+              className="flex items-center px-2 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            >
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Dashboard
+            </Link>
+            
+            <Link 
+              href="/dashboard/profile" 
+              onClick={() => setDropdownOpen(false)}
+              className="flex items-center px-2 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            >
+              <User className="mr-2 h-4 w-4" />
+              Profile & Billing
+            </Link>
+            
+            <div className="h-px bg-border w-full my-1" />
+            
             {!isPro && (
-              <div className="p-1 mb-1">
-                <Button asChild size="sm" className="w-full h-8 text-xs">
-                  <Link href="/pricing">
+              <div className="mb-1">
+                <Button asChild size="sm" className="w-full h-8 text-xs bg-foreground text-background hover:bg-foreground/90">
+                  <Link href="/pricing" onClick={() => setDropdownOpen(false)}>
                     <CreditCard className="mr-1.5 h-3 w-3" />
                     Upgrade to Pro
                   </Link>
                 </Button>
               </div>
             )}
-            <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
+            
+            <button
+              onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: "/" }); }}
+              className="w-full flex items-center px-2 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-md transition-colors outline-none"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </button>
+          </div>
+        </div>
       );
     }
 
