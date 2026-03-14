@@ -79,7 +79,7 @@ export function PlaygroundHeader() {
   const { theme, toggle, btnRef } = useThemeRipple();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted,  setMounted]  = useState(false);
-  const [apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
+  const[apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
 
   useEffect(() => setMounted(true),[]);
 
@@ -98,10 +98,12 @@ export function PlaygroundHeader() {
       .catch(() => setApiStatus(null));
   }, [status, session?.user?.id]);
 
-  // Loading state checks both next-auth session and our custom API status fetch
-  const isLoadingStatus = !mounted || status === "loading" || (status === "authenticated" && apiStatus === undefined);
-  const isLoggedIn = status === "authenticated" && !!session?.user;
+  // Loading phase 1: Checking NextAuth session
+  const isSessionLoading = !mounted || status === "loading";
+  // Loading phase 2: User is logged in, fetching their specific plan/credits
+  const isApiStatusLoading = status === "authenticated" && apiStatus === undefined;
   
+  const isLoggedIn = status === "authenticated" && !!session?.user;
   const planLabel  = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
   const credits    = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
   const isFreeUser = (!planLabel || String(planLabel).toLowerCase() === "free") && credits <= 0;
@@ -170,41 +172,49 @@ export function PlaygroundHeader() {
               <ThemeIcon theme={theme} mounted={mounted} />
             </button>
 
-            {isLoadingStatus ? (
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-24 bg-muted/60 animate-pulse rounded-full" />
-                <div className="h-9 w-24 bg-muted/60 animate-pulse rounded-md" />
-              </div>
-            ) : isLoggedIn ? (
-              <>
-                {(planLabel || credits > 0) && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {planLabel && (
-                      <span className="capitalize border border-border rounded-full px-2 py-0.5 font-medium text-foreground">
-                        {planLabel}
-                      </span>
-                    )}
-                    {credits > 0 && (
-                      <span className="tabular-nums font-mono">{Number(credits).toLocaleString()} credits</span>
-                    )}
-                  </div>
-                )}
-                <Button asChild size="sm">
-                  <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
-                    {isFreeUser ? "Upgrade" : "Dashboard"}
-                  </Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button asChild size="sm" variant="ghost">
-                  <Link href="/auth?callbackUrl=/api/playground">Sign in</Link>
-                </Button>
-                <Button asChild size="sm">
-                  <Link href="/auth?callbackUrl=/api/dashboard">Get API key</Link>
-                </Button>
-              </>
-            )}
+            {/* min-w-[175px] prevents the right side from shrinking and jumping the centered nav */}
+            <div className="flex items-center justify-end gap-2 min-w-[175px]">
+              {isSessionLoading ? (
+                <>
+                  <div className="h-9 w-[64px] bg-muted/40 animate-pulse rounded-md" />
+                  <div className="h-9 w-[96px] bg-muted/40 animate-pulse rounded-md" />
+                </>
+              ) : isApiStatusLoading ? (
+                <>
+                  <div className="h-[22px] w-[46px] bg-muted/40 animate-pulse rounded-full" />
+                  <div className="h-9 w-[84px] bg-muted/40 animate-pulse rounded-md" />
+                </>
+              ) : isLoggedIn ? (
+                <>
+                  {(planLabel || credits > 0) && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+                      {planLabel && (
+                        <span className="capitalize border border-border rounded-full px-2 py-0.5 font-medium text-foreground">
+                          {planLabel}
+                        </span>
+                      )}
+                      {credits > 0 && (
+                        <span className="tabular-nums font-mono">{Number(credits).toLocaleString()} credits</span>
+                      )}
+                    </div>
+                  )}
+                  <Button asChild size="sm" className="shrink-0">
+                    <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
+                      {isFreeUser ? "Upgrade" : "Dashboard"}
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button asChild size="sm" variant="ghost" className="shrink-0 px-3">
+                    <Link href="/auth?callbackUrl=/api/playground">Sign in</Link>
+                  </Button>
+                  <Button asChild size="sm" className="shrink-0 px-3">
+                    <Link href="/auth?callbackUrl=/api/dashboard">Get API key</Link>
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Mobile hamburger */}
@@ -235,42 +245,49 @@ export function PlaygroundHeader() {
             </nav>
             <div className="border-t border-border pt-4 flex items-center gap-3 flex-wrap">
               <button ref={btnRef} onClick={toggle}
-                className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground shrink-0"
                 aria-label="Toggle theme"
               >
                 <ThemeIcon theme={theme} mounted={mounted} />
               </button>
 
-              {isLoadingStatus ? (
-                <div className="ml-auto flex items-center gap-2">
-                  <div className="h-4 w-20 bg-muted/60 animate-pulse rounded-md" />
-                  <div className="h-9 w-24 bg-muted/60 animate-pulse rounded-md" />
-                </div>
-              ) : isLoggedIn ? (
-                <>
-                  {(planLabel || credits > 0) && (
-                    <span className="text-xs text-muted-foreground">
-                      {planLabel && <span className="capitalize">{planLabel}</span>}
-                      {planLabel && credits > 0 && " · "}
-                      {credits > 0 && <span className="tabular-nums font-mono">{Number(credits).toLocaleString()} credits</span>}
-                    </span>
-                  )}
-                  <Button asChild size="sm" className="ml-auto">
-                    <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"} onClick={() => setMenuOpen(false)}>
-                      {isFreeUser ? "Upgrade" : "Dashboard"}
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <div className="ml-auto flex items-center gap-2">
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href="/auth?callbackUrl=/api/playground" onClick={() => setMenuOpen(false)}>Sign in</Link>
-                  </Button>
-                  <Button asChild size="sm">
-                    <Link href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)}>Get API key</Link>
-                  </Button>
-                </div>
-              )}
+              <div className="ml-auto flex items-center justify-end gap-2 min-w-[175px]">
+                {isSessionLoading ? (
+                  <>
+                    <div className="h-9 w-[64px] bg-muted/40 animate-pulse rounded-md" />
+                    <div className="h-9 w-[96px] bg-muted/40 animate-pulse rounded-md" />
+                  </>
+                ) : isApiStatusLoading ? (
+                  <>
+                    <div className="h-[22px] w-[46px] bg-muted/40 animate-pulse rounded-full" />
+                    <div className="h-9 w-[84px] bg-muted/40 animate-pulse rounded-md" />
+                  </>
+                ) : isLoggedIn ? (
+                  <>
+                    {(planLabel || credits > 0) && (
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {planLabel && <span className="capitalize">{planLabel}</span>}
+                        {planLabel && credits > 0 && " · "}
+                        {credits > 0 && <span className="tabular-nums font-mono">{Number(credits).toLocaleString()} credits</span>}
+                      </span>
+                    )}
+                    <Button asChild size="sm" className="shrink-0">
+                      <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"} onClick={() => setMenuOpen(false)}>
+                        {isFreeUser ? "Upgrade" : "Dashboard"}
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild size="sm" variant="ghost" className="shrink-0 px-3">
+                      <Link href="/auth?callbackUrl=/api/playground" onClick={() => setMenuOpen(false)}>Sign in</Link>
+                    </Button>
+                    <Button asChild size="sm" className="shrink-0 px-3">
+                      <Link href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)}>Get API key</Link>
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
