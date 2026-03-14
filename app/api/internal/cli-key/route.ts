@@ -19,10 +19,13 @@ export async function POST(req: NextRequest) {
   if (forceCleanup) {
     try {
       const { status: listStatus, data: listData } = await fetchFromServiceAPIWithStatus(`/user/api-keys/${userId}`);
+      
+      // Handle response structure correctly: data is usually the object { success, data: keys[] }
       const keys = (listData as any)?.data || [];
-      const keysToCleanup = keys.filter((k: any) => k.name === name);
+      const keysToCleanup = Array.isArray(keys) ? keys.filter((k: any) => k.name === name) : [];
       
       for (const k of keysToCleanup) {
+        // Use keyId as expected by the DELETE route in app/api/user/api-keys/route.ts
         await fetchFromServiceAPIWithStatus("/user/api-keys", {
           method: "DELETE",
           body: JSON.stringify({ keyId: k.id, wyiUserId: userId }),
