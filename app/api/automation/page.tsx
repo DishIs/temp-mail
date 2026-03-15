@@ -21,7 +21,7 @@ const AI_AGENTS = [
     badgeColor: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
     icon: "🤖",
     tagline: "AI agent meets disposable inboxes",
-    desc: "OpenClaw (formerly ClawdBot) can orchestrate fce CLI commands through natural language. Set your FCE_API_KEY, describe what you need, and let the agent handle the rest.",
+    desc: "OpenClaw (formerly ClawdBot) can orchestrate fce CLI commands through natural language. Run fce login once to authenticate, then just describe what you need.",
     cta: "Setup guide",
     href: "/api/automation/openclaw",
   },
@@ -53,8 +53,8 @@ const AI_AGENTS = [
     badge: "Works today",
     badgeColor: "bg-muted text-muted-foreground border-border",
     icon: "∞",
-    tagline: "FCE_API_KEY + fce CLI = done",
-    desc: "Any agent that can run shell commands or make HTTP requests can automate FreeCustom.Email. Set FCE_API_KEY and point the agent to the CLI or REST API.",
+    tagline: "fce login once, then automate anything",
+    desc: "Any agent that can run shell commands or make HTTP requests can automate FreeCustom.Email. Run fce login to authenticate — or set FCE_API_KEY for headless/CI environments.",
     cta: "API reference",
     href: "/api/docs/quickstart",
   },
@@ -86,7 +86,7 @@ const NOCODE_INTEGRATIONS = [
 const PROMPT_EXAMPLES = [
   {
     label: "CI/CD OTP test",
-    prompt: `Using the fce CLI with my FCE_API_KEY, write a GitHub Actions step that:
+    prompt: `Using the fce CLI (FCE_API_KEY is set as a CI secret), write a GitHub Actions step that:
 1. Creates a random disposable inbox
 2. Triggers our signup form to send a verification email to it
 3. Waits for the OTP using \`fce otp\`
@@ -100,7 +100,7 @@ const PROMPT_EXAMPLES = [
 - Send a test signup to each from our staging API
 - Extract all OTPs using \`fce otp\`
 - Return a JSON object mapping inbox → OTP
-Use FCE_API_KEY from the environment.`,
+Auth is handled — fce is already logged in via \`fce login\`.`,
   },
   {
     label: "Monitoring alert",
@@ -111,9 +111,9 @@ Use FCE_API_KEY from the environment.`,
 const HOW_IT_WORKS_STEPS = [
   {
     step: "01",
-    title: "Get your API key",
-    desc: "From the FCE dashboard. Store it as FCE_API_KEY in your environment, CI secrets, or agent config.",
-    link: { label: "Open dashboard", href: "/api/dashboard" },
+    title: "Run fce login",
+    desc: "Opens your browser, signs you in, and saves a key to your OS keychain automatically. API keys always reflect your current plan.",
+    link: { label: "CLI install guide", href: "/api/cli#install" },
   },
   {
     step: "02",

@@ -109,7 +109,7 @@ fce 0.1.12 · darwin/arm64 · 2026-03-15`,
 ────────────────────────────────────────────────────
   ID    JpW3DImT3
   FROM  "SendTestEmail" <noreply@sendtestemail.com>
-  SUBJ  Verification code: 847291
+  SUBJ  Your OTP for FCE: 212342
   TIME  20:19:54
 ────────────────────────────────────────────────────`,
   },
@@ -131,7 +131,14 @@ fce 0.1.12 · darwin/arm64 · 2026-03-15`,
     id: "otp",
     label: "OTP",
     cmd: "fce otp dev-fy8x@ditcloud.info",
-    output: `847291`,
+    output: `────────────────────────────────────────────────
+  OTP
+────────────────────────────────────────────────
+
+  OTP   ·  212342
+  From  ·  "Dishant Singh" <dishupandey57@gmail.com>
+  Subj  ·  Your OTP for FCE: 212342
+  Time  ·  20:19:54`,
   },
 ];
 
@@ -306,14 +313,14 @@ function TerminalTypewriter() {
                     className={`leading-relaxed ${
                       line.includes("✓")
                         ? "text-emerald-500"
-                        : line.includes("·")
-                          ? "text-muted-foreground"
-                          : line.startsWith("─")
-                            ? "text-muted-foreground/30"
-                            : line.includes("GROWTH")
-                              ? "text-amber-500"
-                              : line.trim().match(/^\d{6}$/)
-                                ? "text-emerald-400 text-2xl font-bold tracking-[0.3em] my-1"
+                        : line.startsWith("─")
+                          ? "text-muted-foreground/30"
+                          : line.includes("GROWTH")
+                            ? "text-amber-500"
+                            : line.trim().startsWith("OTP") && line.includes("·")
+                              ? "text-emerald-400 font-semibold"
+                              : line.includes("·")
+                                ? "text-muted-foreground"
                                 : "text-foreground/70"
                     }`}
                   >
@@ -514,8 +521,8 @@ function DevShowcase() {
               <div className="text-muted-foreground/40 mb-2">────────────────────────────────</div>
               <div className="space-y-1">
                 <div><span className="text-muted-foreground">ID    </span><span className="text-foreground">JpW3DImT3</span></div>
-                <div><span className="text-muted-foreground">FROM  </span><span className="text-foreground">"SendTestEmail" &lt;noreply@sendtestemail.com&gt;</span></div>
-                <div><span className="text-muted-foreground">SUBJ  </span><span className="text-foreground">Verification code: <span className="text-emerald-400 font-bold">847291</span></span></div>
+                <div><span className="text-muted-foreground">FROM  </span><span className="text-foreground">"Dishant Singh" &lt;dishupandey57@gmail.com&gt;</span></div>
+                <div><span className="text-muted-foreground">SUBJ  </span><span className="text-foreground">Your OTP for FCE: <span className="text-emerald-400 font-bold">212342</span></span></div>
                 <div><span className="text-muted-foreground">TIME  </span><span className="text-foreground">20:19:54</span></div>
               </div>
               <div className="text-muted-foreground/40 mt-2">────────────────────────────────</div>
@@ -593,10 +600,10 @@ export default function CliOverviewPage() {
               {/* Feature bullets */}
               <motion.ul className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
                 {[
+                  "Login instantly with fce login — browser-based, keychain-backed",
                   "Real-time WebSocket streaming (< 200ms)",
                   "Automatic OTP extraction — no regex",
-                  "Keychain-backed secure credential storage",
-                  "CI/CD ready via FCE_API_KEY env var",
+                  "CI/CD ready: set FCE_API_KEY to skip interactive login",
                 ].map(t => (
                   <li key={t} className="flex items-center gap-3 text-sm font-mono text-muted-foreground">
                     <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> {t}
@@ -630,18 +637,18 @@ export default function CliOverviewPage() {
               {/* Update + Uninstall */}
               <div className="space-y-6">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Update</p>
-                  <CodeBlock code="fce update" language="bash" className="bg-muted/20" />
-                  <p className="font-mono text-[10px] text-muted-foreground/50 mt-2">Or use your package manager: <code>brew upgrade fce</code>, <code>scoop update fce</code>, etc.</p>
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Login</p>
+                  <CodeBlock code={`fce login\n# Opens browser → sign in → key saved to keychain`} language="bash" className="bg-muted/20" />
+                  <p className="font-mono text-[10px] text-muted-foreground/50 mt-2">One-time setup. API keys are auto-created and always reflect your current plan.</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">CI / CD (env var)</p>
-                  <CodeBlock code={`export FCE_API_KEY=fce_your_key_here\nfce status`} language="bash" className="bg-muted/20" />
-                  <p className="font-mono text-[10px] text-muted-foreground/50 mt-2">Skips keychain entirely — perfect for GitHub Actions and pipelines.</p>
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">CI / CD — skip keychain</p>
+                  <CodeBlock code={`# In GitHub Actions / any pipeline:\nexport FCE_API_KEY=\${{ secrets.FCE_API_KEY }}\nfce status`} language="bash" className="bg-muted/20" />
+                  <p className="font-mono text-[10px] text-muted-foreground/50 mt-2">Get your key from the dashboard after <code>fce login</code>. Set it as a CI secret.</p>
                 </div>
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
                   <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0" />
-                  <p className="text-sm text-emerald-600 font-mono">Credentials stored in OS keychain (macOS / Windows / Linux Secret Service).</p>
+                  <p className="text-sm text-emerald-600 font-mono">Keychain-backed locally · API keys update automatically with your plan.</p>
                 </div>
               </div>
             </div>

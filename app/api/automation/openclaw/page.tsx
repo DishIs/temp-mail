@@ -16,35 +16,35 @@ import { CodeBlock } from "@/components/CodeBlock";
 const SETUP_STEPS = [
   {
     step: "01",
-    icon: <Key className="h-5 w-5" />,
-    title: "Get your FCE API key",
-    desc: "Sign in to the FCE dashboard and copy your API key. It starts with fce_...",
-    code: null,
-    link: { label: "Open Dashboard", href: "/api/dashboard" },
+    icon: <Terminal className="h-5 w-5" />,
+    title: "Install the fce CLI",
+    desc: "One command installs the CLI on macOS, Linux, or Windows. This is the only binary you need.",
+    code: { content: "curl -fsSL freecustom.email/install.sh | sh", lang: "bash" },
+    link: { label: "All install options", href: "/api/cli#install" },
   },
   {
     step: "02",
-    icon: <Terminal className="h-5 w-5" />,
-    title: "Install the fce CLI",
-    desc: "The CLI is the bridge between OpenClaw and your FCE inboxes. Install it once.",
-    code: { content: "curl -fsSL freecustom.email/install.sh | sh", lang: "bash" },
-    link: { label: "CLI docs", href: "/api/cli" },
-  },
-  {
-    step: "03",
-    icon: <Shield className="h-5 w-5" />,
-    title: "Set FCE_API_KEY",
-    desc: "Export your key so the CLI authenticates without interactive login — perfect for agents.",
-    code: { content: "export FCE_API_KEY=fce_your_key_here\n\n# Verify it works\nfce status", lang: "bash" },
+    icon: <Key className="h-5 w-5" />,
+    title: "Run fce login",
+    desc: "Opens your browser, you sign in, and your API key is saved to the OS keychain automatically. Keys always reflect your current plan — no manual copying needed.",
+    code: { content: "fce login\n\n# Verify it worked\nfce status", lang: "bash" },
     link: null,
   },
   {
-    step: "04",
+    step: "03",
     icon: <Bot className="h-5 w-5" />,
-    title: "Point OpenClaw at it",
-    desc: "OpenClaw discovers FCE_API_KEY automatically. Just describe what you need.",
+    title: "Point OpenClaw at fce",
+    desc: "OpenClaw reads from your keychain automatically. Just describe what you need — it will run the right fce commands.",
     code: { content: `# In OpenClaw, simply ask:\n"Create a random inbox, watch it, and tell me the next OTP that arrives"`, lang: "bash" },
     link: { label: "Prompt examples below", href: "#prompts" },
+  },
+  {
+    step: "04",
+    icon: <Shield className="h-5 w-5" />,
+    title: "CI / CD: use FCE_API_KEY",
+    desc: "For headless pipelines where there's no browser, export your key as an env var. Get it from the dashboard after logging in.",
+    code: { content: "# GitHub Actions / any CI runner:\nexport FCE_API_KEY=${{ secrets.FCE_API_KEY }}\nfce status", lang: "bash" },
+    link: { label: "Open Dashboard", href: "/api/dashboard" },
   },
 ];
 
@@ -55,11 +55,11 @@ const PROMPT_CATEGORIES = [
     prompts: [
       {
         title: "Create and watch an inbox",
-        prompt: `Using the fce CLI (with FCE_API_KEY already set), create a random disposable inbox and watch it for incoming emails. Show me each email as it arrives, formatted clearly with FROM, SUBJECT, and TIME.`,
+        prompt: `Using the fce CLI (already logged in via \`fce login\`), create a random disposable inbox and watch it for incoming emails. Show me each email as it arrives, formatted clearly with FROM, SUBJECT, and TIME.`,
       },
       {
         title: "Get the next OTP",
-        prompt: `Use \`fce dev\` to create a temp inbox and watch it. When an email arrives with an OTP or verification code, extract and return just the numeric code. My plan is Growth so you can also use \`fce otp\` directly.`,
+        prompt: `Use \`fce dev\` to create a temp inbox and watch it. When an email arrives with an OTP or verification code, extract and return it using \`fce otp\`. Show the full OTP output including From, Subj, and Time.`,
       },
       {
         title: "Check account status",
@@ -74,26 +74,25 @@ const PROMPT_CATEGORIES = [
       {
         title: "End-to-end signup test",
         prompt: `Write and run a bash script that:
-1. Uses fce CLI to create a disposable inbox
+1. Uses fce CLI to create a disposable inbox (already logged in via fce login)
 2. Sends a POST to https://myapp.com/api/signup with that email
 3. Waits up to 30 seconds for an OTP using \`fce otp\`
 4. POSTs the OTP to https://myapp.com/api/verify
-5. Returns success or failure with timing info
-Use FCE_API_KEY from the environment.`,
+5. Returns success or failure with timing info`,
       },
       {
         title: "Parallel inbox testing",
-        prompt: `Create 3 disposable inboxes using fce CLI in parallel. For each one, trigger a signup to our staging API at https://staging.myapp.com. Then collect all three OTPs concurrently using \`fce otp\` and return them as a JSON mapping of inbox → OTP.`,
+        prompt: `Create 3 disposable inboxes using fce CLI in parallel. For each one, trigger a signup to our staging API at https://staging.myapp.com. Then collect all three OTPs concurrently using \`fce otp\` and return them as a JSON mapping of inbox → OTP. Auth: fce is already logged in.`,
       },
       {
         title: "Regression test script",
-        prompt: `Generate a complete shell script for testing our email verification flow in CI. It should:
+        prompt: `Generate a complete shell script for testing our email verification flow. It should:
 - Install fce if not present (check with which fce)
+- Auth: use FCE_API_KEY env var if set, otherwise assume fce login is done
 - Create a new inbox per test run
 - Have configurable timeout (default 60s)
 - Exit with code 0 on success, 1 on failure
-- Clean up the inbox after use
-- Work with FCE_API_KEY env var`,
+- Clean up the inbox after use`,
       },
     ],
   },
@@ -257,16 +256,16 @@ export default function OpenClawPage() {
                 className="text-lg text-muted-foreground mb-8 leading-relaxed max-w-lg"
                 initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               >
-                OpenClaw (formerly ClawdBot) is an AI agent that can orchestrate fce CLI commands using natural language. Set your API key once — then just describe what you want.
+                OpenClaw (formerly ClawdBot) is an AI agent that can orchestrate fce CLI commands using natural language. Run <code className="bg-muted px-1 rounded text-xs">fce login</code> once to authenticate — then just describe what you need.
               </motion.p>
 
               <motion.ul className="space-y-2.5 mb-8"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
                 {[
+                  "Run fce login once — browser-based, keychain-backed",
                   "No code required — describe in plain English",
                   "Runs real fce CLI commands under the hood",
                   "Handles inbox creation, OTP extraction, watching",
-                  "Integrates with any pipeline or workflow",
                 ].map(t => (
                   <li key={t} className="flex items-center gap-3 text-sm font-mono text-muted-foreground">
                     <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> {t}
@@ -307,14 +306,18 @@ export default function OpenClawPage() {
                   {/* Agent response */}
                   <div className="space-y-1.5 text-muted-foreground">
                     <p><span className="text-emerald-500">▸</span> Running <code className="text-foreground">fce dev</code>…</p>
-                    <p className="pl-4 text-muted-foreground/70">Inbox ready: dev-x9k2@ditcloud.info</p>
+                    <p className="pl-4 text-muted-foreground/70">Inbox ready: dev-fy8x@ditcloud.info</p>
                     <p className="pl-4 text-muted-foreground/70">WebSocket connected · watching…</p>
                     <p><span className="text-emerald-500">▸</span> Email received (2.1s)</p>
-                    <p className="pl-4 text-muted-foreground/70">FROM: noreply@yourapp.com</p>
-                    <p className="pl-4 text-muted-foreground/70">SUBJ: Your verification code</p>
-                    <div className="mt-2 bg-muted/20 rounded p-2 border border-border">
-                      <p className="text-[10px] text-muted-foreground/60 mb-1">OTP extracted</p>
-                      <p className="text-2xl font-bold text-emerald-400 tracking-[0.3em]">847291</p>
+                    <p className="pl-4 text-muted-foreground/70">FROM: "Dishant Singh" &lt;dishupandey57@gmail.com&gt;</p>
+                    <p className="pl-4 text-muted-foreground/70">SUBJ: Your OTP for FCE: 212342</p>
+                    <div className="mt-3 rounded border border-border bg-muted/10 p-3 font-mono text-xs space-y-1">
+                      <div className="text-muted-foreground/40">────────────────────────────</div>
+                      <div><span className="text-muted-foreground">OTP   · </span><span className="text-emerald-400 font-bold"> 212342</span></div>
+                      <div><span className="text-muted-foreground">From  · </span><span className="text-foreground/70"> "Dishant Singh" &lt;dishupandey57@gmail.com&gt;</span></div>
+                      <div><span className="text-muted-foreground">Subj  · </span><span className="text-foreground/70"> Your OTP for FCE: 212342</span></div>
+                      <div><span className="text-muted-foreground">Time  · </span><span className="text-foreground/70"> 20:19:54</span></div>
+                      <div className="text-muted-foreground/40">────────────────────────────</div>
                     </div>
                   </div>
                 </div>
@@ -355,15 +358,7 @@ export default function OpenClawPage() {
                       )}
                     </div>
                     <div className="px-7 py-8 bg-muted/5">
-                      {step.code ? (
-                        <CodeBlock code={step.code.content} language={step.code.lang} className="bg-muted/20" />
-                      ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <Button asChild>
-                            <Link href="/api/dashboard">Open Dashboard →</Link>
-                          </Button>
-                        </div>
-                      )}
+                      <CodeBlock code={step.code!.content} language={step.code!.lang} className="bg-muted/20" />
                     </div>
                   </div>
                 </div>
@@ -445,24 +440,24 @@ export default function OpenClawPage() {
             <SectionMarker index={5} total={T} label="Reference" />
             <div className="grid lg:grid-cols-2 gap-14">
               <div>
-                <h2 className="text-3xl font-bold mb-4 tracking-tight">Environment variables</h2>
+                <h2 className="text-3xl font-bold mb-4 tracking-tight">Authentication</h2>
                 <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-                  The only env var you need. Set it once and all fce commands authenticate automatically.
+                  <strong className="text-foreground">Primary:</strong> run <code className="bg-muted px-1 rounded text-xs text-foreground">fce login</code> once — it opens your browser, saves a key to your OS keychain, and you're done. Keys automatically reflect your current plan.
+                  <br /><br />
+                  <strong className="text-foreground">CI / headless:</strong> export <code className="bg-muted px-1 rounded text-xs text-foreground">FCE_API_KEY</code> as an environment variable. Get the value from the dashboard after logging in via <code className="bg-muted px-1 rounded text-xs text-foreground">fce login</code>.
                 </p>
                 <div className="rounded-lg border border-border overflow-hidden">
                   <div className="px-5 py-4 border-b border-border bg-muted/10 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Variables
+                    CI / headless env var
                   </div>
                   <div className="divide-y divide-border">
                     {[
-                      { name: "FCE_API_KEY", desc: "Your API key (fce_...). Skips keychain auth entirely.", required: true },
+                      { name: "FCE_API_KEY", desc: "Your API key (fce_...). Skips keychain — for CI pipelines and headless agents only.", required: false },
                     ].map(v => (
                       <div key={v.name} className="px-5 py-4 flex gap-4 items-start">
                         <code className="font-mono text-xs text-foreground bg-muted/40 px-2 py-0.5 rounded shrink-0">{v.name}</code>
                         <span className="text-sm text-muted-foreground leading-relaxed">{v.desc}</span>
-                        {v.required && (
-                          <span className="font-mono text-[9px] text-emerald-600 border border-emerald-500/20 rounded px-1.5 py-px shrink-0">required</span>
-                        )}
+                        <span className="font-mono text-[9px] text-muted-foreground/50 border border-border rounded px-1.5 py-px shrink-0">CI only</span>
                       </div>
                     ))}
                   </div>
