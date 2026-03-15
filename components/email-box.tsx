@@ -35,7 +35,7 @@ import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal"
 const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
 const FREE_NOTE_LIMIT = 20;
 const PRO_NOTE_LIMIT = 500;
-const HISTORY_DEFAULT_SHOW = 3;
+const HISTORY_DEFAULT_SHOW = 5;
 const MESSAGES_PER_PAGE = 10;
 
 const DOMAIN_SEED: FetchedDomain[] = [
