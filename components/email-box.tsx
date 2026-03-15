@@ -7,7 +7,7 @@ import {
   Star, ListOrdered, Clock, Archive, ArchiveRestore,
   Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck,
   Lock, ExternalLink, Globe, Zap, Link2, ChevronDown, Terminal, Download,
-  FileText, X, Cloud,
+  FileText, X, Cloud, ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,8 @@ import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal"
 const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
 const FREE_NOTE_LIMIT = 20;
 const PRO_NOTE_LIMIT = 500;
-
+const HISTORY_DEFAULT_SHOW = 3;
+const MESSAGES_PER_PAGE = 10;
 
 const DOMAIN_SEED: FetchedDomain[] = [
   { domain: "ditube.info", tier: "free", tags: [] }
@@ -356,10 +357,16 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const [flashQueue, setFlashQueue] = useState<{ id: string; from: string; subject: string }[]>([]);
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set());
 
+  // Notes state
   const [inboxNotes, setInboxNotes] = useState<Record<string, string>>({});
   const [editingNoteInbox, setEditingNoteInbox] = useState<string | null>(null);
   const [noteInputValue, setNoteInputValue] = useState('');
 
+  // History collapse state
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+
+  // Message list pagination
+  const [visibleMessageCount, setVisibleMessageCount] = useState(MESSAGES_PER_PAGE);
 
   const skipNextSettingsSave = useRef(false);
   const originalTitle = useRef(typeof document !== "undefined" ? document.title : "DITMail");
@@ -380,7 +387,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const availableDomains = useMemo(() => {
     const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
-
     const sortedFetched = [...fetchedDomains].sort((a, b) => {
       const score = (d: FetchedDomain) => {
         let s = 0;
@@ -394,13 +400,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       if (scoreDiff !== 0) return scoreDiff;
       return a.domain.localeCompare(b.domain);
     }).map(d => d.domain);
-
     return [...new Set([...custom, ...sortedFetched])];
   }, [initialCustomDomains, fetchedDomains]);
 
   const hasNewDomain = useMemo(() => fetchedDomains.some(d => d.tags.includes('new')), [fetchedDomains]);
 
-  // Security Helper: Synchronously verifies if the user is authorized for a specific domain
   const checkDomainAllowed = useCallback((domain: string, domainsList: FetchedDomain[]) => {
     if (isPro) return true;
     const fd = domainsList.find(d => d.domain === domain);
@@ -481,54 +485,34 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   useEffect(() => {
     const init = async () => {
       await fetchToken();
-
       const cacheKey = `domains_v2_${isPro ? "pro" : isAuthenticated ? "free" : "anon"}`;
       const cached = sessionStorage.getItem(cacheKey);
-
       let currentFetchedDomains = DOMAIN_SEED;
       if (cached) {
         try {
           const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < 5 * 60 * 1000) {
-            setFetchedDomains(data);
-            currentFetchedDomains = data;
-          } else throw new Error("stale");
-        } catch {
-          sessionStorage.removeItem(cacheKey);
-        }
+          if (Date.now() - ts < 5 * 60 * 1000) { setFetchedDomains(data); currentFetchedDomains = data; }
+          else throw new Error("stale");
+        } catch { sessionStorage.removeItem(cacheKey); }
       }
-
       fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
         .then(r => r.json())
-        .then(d => {
-          if (Array.isArray(d?.data)) {
-            setFetchedDomains(d.data);
-            sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() }));
-          }
-        })
-        .catch(() => { /* seed fallback stays in state */ });
-
+        .then(d => { if (Array.isArray(d?.data)) { setFetchedDomains(d.data); sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() })); } })
+        .catch(() => { });
       const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
       const allowedDomainsList = currentFetchedDomains.filter(d => checkDomainAllowed(d.domain, currentFetchedDomains)).map(d => d.domain);
-
       const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
       const lastDomain = localStorage.getItem("lastUsedDomain");
       let initEmail: string, hist: string[];
-
       const savedSettings = safeJsonParse<UserSettings | null>(localStorage.getItem("userSettings"), null);
       if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
-
       setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
       setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
       setIsStorageLoaded(true);
-
-      // Secure the initial load: Don't load Pro domains for Free/Logged Out users from Cache
       if (initialInboxes.length > 0) {
         const merged = [...new Set([...initialInboxes, ...localHistory])];
         hist = userPlan === "free" ? merged.slice(0, 7) : merged;
         initEmail = initialCurrentInbox || initialInboxes[0];
-
-        // If the backend fed us an unauthorized inbox on initial boot (e.g. race condition plan downgrade)
         if (!checkDomainAllowed(initEmail.split("@")[1], currentFetchedDomains)) {
           const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
           initEmail = generateRandomEmail(d);
@@ -537,21 +521,16 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       } else if (localHistory.length > 0) {
         hist = localHistory.slice(0, 5);
         const topDomain = hist[0].split("@")[1];
-
-        // Randomize email if the top history item is no longer allowed (e.g. user just logged out from Pro)
         if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
           const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
           initEmail = generateRandomEmail(d);
           hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
-        } else {
-          initEmail = hist[0];
-        }
+        } else { initEmail = hist[0]; }
       } else {
         const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
         initEmail = generateRandomEmail(d);
         hist = [initEmail];
       }
-
       if (!email) setEmail(initEmail);
       setEmailHistory(hist);
       setSelectedDomain(initEmail.split("@")[1] || "");
@@ -573,31 +552,24 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (isStorageLoaded) fetch_();
   }, [isAuthenticated, isStorageLoaded]);
 
+  // Notes load effect
   useEffect(() => {
     if (!isStorageLoaded) return;
-
-    // Always load from localStorage first (offline / unauthenticated baseline)
-    const local = safeJsonParse<Record<string, string>>(
-      localStorage.getItem("inboxNotes"),
-      {},
-    );
+    const local = safeJsonParse<Record<string, string>>(localStorage.getItem("inboxNotes"), {});
     setInboxNotes(local);
-
-    // Pro users: merge server copy (server wins on conflict to preserve cross-device notes)
     if (isPro && isAuthenticated) {
       fetch("/api/user/inbox-notes")
-        .then((r) => r.json())
-        .then((d) => {
+        .then(r => r.json())
+        .then(d => {
           if (d.success && d.notes && typeof d.notes === 'object') {
             const merged = { ...local, ...d.notes };
             setInboxNotes(merged);
             localStorage.setItem("inboxNotes", JSON.stringify(merged));
           }
         })
-        .catch(() => { /* silently ignore — local notes remain */ });
+        .catch(() => { });
     }
   }, [isStorageLoaded, isPro, isAuthenticated]); // eslint-disable-line
-
 
   useEffect(() => {
     if (!isStorageLoaded) return;
@@ -611,6 +583,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     const base = originalTitle.current.replace(/^\(\d+\)\s*/, "");
     document.title = n > 0 ? `(${n}) ${base}` : base;
   }, [messages, readMessageIds, dismissedMessageIds]);
+
+  // Reset pagination when email or tab changes
+  useEffect(() => { setVisibleMessageCount(MESSAGES_PER_PAGE); }, [email, activeTab]);
 
   const sendNotification = (title: string, body: string) => {
     if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => { }); } catch { }
@@ -733,7 +708,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (isEditing) {
       const [p] = email.split("@");
       if (p?.length > 0) {
-        // Prevent console hacking by explicitly verifying the selectedDomain right before commit
         if (!checkDomainAllowed(selectedDomain, fetchedDomains)) {
           openUpsell(!fetchedDomains.some(d => d.domain === selectedDomain) ? "Custom Domains" : "Pro Domains");
           return;
@@ -747,40 +721,26 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const handleUseHistoryEmail = (he: string) => {
     const domain = he.split("@")[1];
     if (!domain) return;
-
-    // Prevent usage of expired Pro / Custom domains if they are on Free plan / logged out
     if (!checkDomainAllowed(domain, fetchedDomains)) {
       openUpsell(!fetchedDomains.some(d => d.domain === domain) ? "Custom Domains" : "Pro Domains");
       return;
     }
-
-    setEmail(he);
-    setSelectedDomain(domain);
-    setOldEmailUsed(!oldEmailUsed);
-    setDomainExpiry(null);
+    setEmail(he); setSelectedDomain(domain); setOldEmailUsed(!oldEmailUsed); setDomainExpiry(null);
   };
 
+  // Notes callbacks
   const saveInboxNote = useCallback(
     (inbox: string, note: string) => {
       const trimmed = note.trim().slice(0, noteCharLimit);
       const updated = { ...inboxNotes };
-
-      if (trimmed) {
-        updated[inbox] = trimmed;
-      } else {
-        delete updated[inbox];
-      }
-
+      if (trimmed) { updated[inbox] = trimmed; } else { delete updated[inbox]; }
       setInboxNotes(updated);
       localStorage.setItem("inboxNotes", JSON.stringify(updated));
       setEditingNoteInbox(null);
       setNoteInputValue('');
-
-      // Pro: fire-and-forget server sync
       if (isPro && isAuthenticated) {
-        const method = trimmed ? 'POST' : 'DELETE';
-        fetch('/api/inbox-notes', {
-          method,
+        fetch('/api/user/inbox-notes', {
+          method: trimmed ? 'POST' : 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ inbox, note: trimmed }),
         }).catch(() => { });
@@ -790,20 +750,15 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   );
 
   const handleDeleteInbox = useCallback(async (inbox: string) => {
-    // 1. Remove from local state
     setEmailHistory(prev => prev.filter(e => e !== inbox));
     const updated = emailHistory.filter(e => e !== inbox);
     localStorage.setItem('emailHistory', JSON.stringify(updated));
-
-    // 2. Also wipe any note for it
     const updatedNotes = { ...inboxNotes };
     delete updatedNotes[inbox];
     setInboxNotes(updatedNotes);
     localStorage.setItem('inboxNotes', JSON.stringify(updatedNotes));
-
-    // 3. Server sync (fire-and-forget)
     if (isAuthenticated) {
-      fetch('/api/inbox', {
+      fetch('/api/user/inboxes', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inbox }),
@@ -811,16 +766,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     }
   }, [emailHistory, inboxNotes, isAuthenticated]);
 
-
-
-  const startEditingNote = useCallback(
-    (inbox: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      setEditingNoteInbox(inbox);
-      setNoteInputValue(inboxNotes[inbox] ?? '');
-    },
-    [inboxNotes],
-  );
+  const startEditingNote = useCallback((inbox: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingNoteInbox(inbox);
+    setNoteInputValue(inboxNotes[inbox] ?? '');
+  }, [inboxNotes]);
 
   const cancelEditingNote = useCallback(() => {
     setEditingNoteInbox(null);
@@ -843,6 +793,13 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     return messages.filter(m => !dismissedMessageIds.has(m.id));
   }, [messages, activeTab, dismissedMessageIds]);
 
+  // Paginated slice of visible messages
+  const visibleMessages = useMemo(
+    () => filteredMessages.slice(0, visibleMessageCount),
+    [filteredMessages, visibleMessageCount],
+  );
+  const hiddenCount = filteredMessages.length - visibleMessages.length;
+
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.body.setAttribute("data-fce-layout", userSettings.layout);
@@ -851,6 +808,15 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       if (typeof document !== "undefined") document.body.removeAttribute("data-fce-layout");
     };
   }, [userSettings.layout]);
+
+  // ── History helpers ────────────────────────────────────────────────────────
+  // Only show the collapse control when user has more than HISTORY_DEFAULT_SHOW inboxes
+  // and can save more than 5 (pro or free authenticated with history > 5)
+  const canHaveMoreHistory = emailHistory.length > HISTORY_DEFAULT_SHOW;
+  const visibleHistory = canHaveMoreHistory && !historyExpanded
+    ? emailHistory.slice(0, HISTORY_DEFAULT_SHOW)
+    : emailHistory;
+  const hiddenHistoryCount = emailHistory.length - HISTORY_DEFAULT_SHOW;
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
@@ -901,79 +867,112 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70 text-right">Time</span>
         <span />
       </div>
+
       {filteredMessages.length === 0 ? renderEmptyState() : (
-        <div className="divide-y divide-border/50">
-          {filteredMessages.map((msg, idx) => {
-            const isRead = readMessageIds.has(msg.id);
-            const isSelected = selectedMessage?.id === msg.id;
-            const isNew = newRowIds.has(msg.id);
-            return (
-              <div key={msg.id} onClick={() => viewMessage(msg)}
-                className={cn(
-                  "group relative cursor-pointer transition-all duration-200",
-                  "grid items-center px-3 gap-0",
-                  isCompact ? "py-1.5" : "py-2.5",
-                  isSelected && isSplit ? "bg-foreground/5 border-l-2 border-l-foreground" : "hover:bg-muted/25",
-                  isNew && "[animation:rowEnter_0.45s_ease-out]",
-                )}
-                style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4rem" }}>
-                {isNew && <div className="absolute inset-y-0 left-0 w-0.5 bg-emerald-500 [animation:glowFadeOut_1.4s_ease-out_forwards]" />}
-                <span className={cn("font-mono text-[10px] tabular-nums shrink-0", isNew ? "text-emerald-500 font-bold" : "text-muted-foreground/30")}>
-                  {isNew ? "→" : String(idx + 1).padStart(2, "0")}
-                </span>
-                <div className="min-w-0 flex flex-col gap-0.5 pl-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {!isCompact && (
-                      <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded text-[10px] font-bold font-mono shrink-0",
-                        isRead ? "bg-muted/40 text-muted-foreground/70" : "bg-foreground/8 text-foreground/70")}>
-                        {msg.from.charAt(0).toUpperCase()}
+        <>
+          <div className="divide-y divide-border/50">
+            {visibleMessages.map((msg, idx) => {
+              const isRead = readMessageIds.has(msg.id);
+              const isSelected = selectedMessage?.id === msg.id;
+              const isNew = newRowIds.has(msg.id);
+              return (
+                <div key={msg.id} onClick={() => viewMessage(msg)}
+                  className={cn(
+                    "group relative cursor-pointer transition-all duration-200",
+                    "grid items-center px-3 gap-0",
+                    isCompact ? "py-1.5" : "py-2.5",
+                    isSelected && isSplit ? "bg-foreground/5 border-l-2 border-l-foreground" : "hover:bg-muted/25",
+                    isNew && "[animation:rowEnter_0.45s_ease-out]",
+                  )}
+                  style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4rem" }}>
+                  {isNew && <div className="absolute inset-y-0 left-0 w-0.5 bg-emerald-500 [animation:glowFadeOut_1.4s_ease-out_forwards]" />}
+                  <span className={cn("font-mono text-[10px] tabular-nums shrink-0", isNew ? "text-emerald-500 font-bold" : "text-muted-foreground/30")}>
+                    {isNew ? "→" : String(idx + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0 flex flex-col gap-0.5 pl-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {!isCompact && (
+                        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded text-[10px] font-bold font-mono shrink-0",
+                          isRead ? "bg-muted/40 text-muted-foreground/70" : "bg-foreground/8 text-foreground/70")}>
+                          {msg.from.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span className={cn("font-mono text-xs truncate", isRead ? "text-muted-foreground" : "text-foreground font-semibold")}>
+                        {msg.from.replace(/<.*?>/g, "").trim() || msg.from}
+                      </span>
+                      {!isRead && <span className="h-1 w-1 rounded-full bg-foreground shrink-0" />}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap pl-0 sm:pl-7">
+                      <span className={cn("font-mono text-[11px] truncate flex-1", isRead ? "text-muted-foreground/70" : "text-muted-foreground")}>
+                        {msg.subject || "(no subject)"}
+                      </span>
+                      {renderBadges(msg)}
+                      {msg.hasAttachments && <Paperclip className="h-2.5 w-2.5 text-muted-foreground/35 shrink-0" />}
+                    </div>
+                    {!isCompact && !isPro && (
+                      <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1 pl-0 sm:pl-7">
+                        <Clock className="h-2.5 w-2.5" />expires {getExpiry(msg.date, 24)}
                       </span>
                     )}
-                    <span className={cn("font-mono text-xs truncate", isRead ? "text-muted-foreground" : "text-foreground font-semibold")}>
-                      {msg.from.replace(/<.*?>/g, "").trim() || msg.from}
-                    </span>
-                    {!isRead && <span className="h-1 w-1 rounded-full bg-foreground shrink-0" />}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap pl-0 sm:pl-7">
-                    <span className={cn("font-mono text-[11px] truncate flex-1", isRead ? "text-muted-foreground/70" : "text-muted-foreground")}>
-                      {msg.subject || "(no subject)"}
-                    </span>
-                    {renderBadges(msg)}
-                    {msg.hasAttachments && <Paperclip className="h-2.5 w-2.5 text-muted-foreground/35 shrink-0" />}
-                  </div>
-                  {!isCompact && !isPro && (
-                    <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1 pl-0 sm:pl-7">
-                      <Clock className="h-2.5 w-2.5" />expires {getExpiry(msg.date, 24)}
-                    </span>
-                  )}
-                </div>
-                <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">
-                  {fmtDateShort(msg.date)}
-                </span>
-                <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
-                  {userPlan === "free" && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}>
-                      <Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} />
+                  <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">
+                    {fmtDateShort(msg.date)}
+                  </span>
+                  {/* Action buttons: always visible on mobile, hover-only on desktop */}
+                  <div className="flex items-center justify-end gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pl-1">
+                    {userPlan === "free" && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}>
+                        <Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>
+                      <Trash2 className="h-3 w-3" />
                     </Button>
-                  )}
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>
-                    {activeTab === "dismissed" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
-                  </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>
+                      {activeTab === "dismissed" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* ── Load-more bar — only appears when messages are hidden ── */}
+          {hiddenCount > 0 && (
+            <div className="border-t border-border/50 px-3 py-2 flex items-center justify-between bg-muted/5">
+              <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
+                {visibleMessages.length} of {filteredMessages.length}
+              </span>
+              <button
+                onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
+                className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 underline underline-offset-2 decoration-border hover:decoration-foreground"
+              >
+                Show {Math.min(hiddenCount, MESSAGES_PER_PAGE)} more
+                <ChevronDown className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          )}
+
+          {/* ── Collapse bar — appears when all messages shown and there are many ── */}
+          {hiddenCount === 0 && filteredMessages.length > MESSAGES_PER_PAGE && (
+            <div className="border-t border-border/50 px-3 py-2 flex items-center justify-end bg-muted/5">
+              <button
+                onClick={() => setVisibleMessageCount(MESSAGES_PER_PAGE)}
+                className="font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors flex items-center gap-1"
+              >
+                <ChevronUp className="h-2.5 w-2.5" />
+                Collapse
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 
   const renderMobileMessageList = () => (
     <div className="flex flex-col gap-2 py-2 px-3">
-      {filteredMessages.map(msg => (
+      {filteredMessages.slice(0, visibleMessageCount).map(msg => (
         <div key={msg.id} onClick={() => viewMessage(msg)}
           className="bg-card border border-border rounded-lg p-3 active:scale-[0.98] transition-transform flex items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
@@ -988,6 +987,15 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         </div>
       ))}
       {filteredMessages.length === 0 && renderEmptyState()}
+      {filteredMessages.length > visibleMessageCount && (
+        <button
+          onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
+          className="w-full py-2.5 font-mono text-[11px] text-muted-foreground hover:text-foreground border border-dashed border-border rounded-lg transition-colors flex items-center justify-center gap-1.5"
+        >
+          Show {Math.min(filteredMessages.length - visibleMessageCount, MESSAGES_PER_PAGE)} more
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 
@@ -996,7 +1004,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       <Table><TableBody>
         {filteredMessages.length === 0
           ? <tr><td colSpan={4} className="py-8">{renderEmptyState()}</td></tr>
-          : filteredMessages.map((msg, i) => (
+          : filteredMessages.slice(0, visibleMessageCount).map((msg, i) => (
             <TableRow key={msg.id} className={cn("border-b border-border/50 transition-colors", i % 2 === 0 ? "bg-muted/10" : "bg-background", "hover:bg-muted/20")}>
               <td className="py-2 pl-3 font-mono text-xs truncate max-w-[120px] text-muted-foreground">{msg.from}</td>
               <td className="py-2 px-2"><div className="flex items-center gap-2 flex-wrap"><span className="font-mono text-xs text-foreground">{msg.subject}</span>{renderBadges(msg)}</div></td>
@@ -1013,6 +1021,18 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               </td>
             </TableRow>
           ))}
+        {filteredMessages.length > visibleMessageCount && (
+          <tr>
+            <td colSpan={4} className="py-2 px-3 border-t border-border/50">
+              <button
+                onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
+                className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              >
+                Show {Math.min(filteredMessages.length - visibleMessageCount, MESSAGES_PER_PAGE)} more…
+              </button>
+            </td>
+          </tr>
+        )}
       </TableBody></Table>
     </div>
   );
@@ -1033,243 +1053,222 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   );
 
   const renderHistorySection = () => (
-  <div className="flex-1 px-4 py-4">
-    <div className="flex items-center justify-between mb-3">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        {t("history_title")}
-      </p>
-      {isPro && (
-        <span className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/50">
-          <Cloud className="h-2.5 w-2.5" />
-          synced
-        </span>
-      )}
-    </div>
- 
-    <ul className="space-y-0 divide-y divide-border/30">
-      {emailHistory.map((he, i) => {
-        const note          = inboxNotes[he];
-        const isEditingThis = editingNoteInbox === he;
-        const charCount     = noteInputValue.length;
-        const nearLimit     = charCount >= Math.floor(noteCharLimit * 0.85);
-        const atLimit       = charCount >= noteCharLimit;
-        const isActive      = he === email;
- 
-        return (
-          <li key={i} className="group py-2 first:pt-0 last:pb-0">
- 
-            <div className="flex items-center gap-2 min-w-0">
- 
-              <span
-                className={cn(
+    <div className="flex-1 px-4 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {t("history_title")}
+        </p>
+        {isPro && (
+          <span className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/50">
+            <Cloud className="h-2.5 w-2.5" />
+            synced
+          </span>
+        )}
+      </div>
+
+      <ul className="space-y-0 divide-y divide-border/30">
+        {visibleHistory.map((he, i) => {
+          const note          = inboxNotes[he];
+          const isEditingThis = editingNoteInbox === he;
+          const charCount     = noteInputValue.length;
+          const nearLimit     = charCount >= Math.floor(noteCharLimit * 0.85);
+          const atLimit       = charCount >= noteCharLimit;
+          const isActive      = he === email;
+
+          return (
+            <li key={i} className="group py-2 first:pt-0 last:pb-0">
+
+              {/* ── Main row ─────────────────────────────────────────── */}
+              <div className="flex items-center gap-2 min-w-0">
+
+                {/* Address */}
+                <span className={cn(
                   "font-mono text-[11px] min-w-0 truncate transition-colors shrink-0",
-                  isActive
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground/80 group-hover:text-muted-foreground",
+                  isActive ? "text-foreground font-medium" : "text-muted-foreground/80 group-hover:text-muted-foreground",
+                )}>
+                  {he}
+                </span>
+
+                {/* Desktop inline note (no note yet) */}
+                {!isEditingThis && !note && (
+                  <button
+                    type="button"
+                    onClick={(e) => startEditingNote(he, e)}
+                    title="Add note"
+                    aria-label="Add note"
+                    className="hidden md:flex shrink-0 items-center gap-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <FileText className="h-2.5 w-2.5" />
+                    <span>add note</span>
+                  </button>
                 )}
-              >
-                {he}
-              </span>
- 
-              {!isEditingThis && !note && (
+
+                {/* Desktop inline note (has note) */}
+                {!isEditingThis && note && (
+                  <button
+                    type="button"
+                    onClick={(e) => startEditingNote(he, e)}
+                    aria-label="Edit note"
+                    className="hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/note text-left transition-colors"
+                  >
+                    <FileText className="h-2.5 w-2.5 text-amber-500/60 shrink-0" />
+                    <span className="font-mono text-[11px] text-muted-foreground/55 italic truncate group-hover/note:text-muted-foreground transition-colors">
+                      {note}
+                    </span>
+                  </button>
+                )}
+
+                <span className="flex-1" />
+
+                {/* Note icon — mobile only */}
                 <button
                   type="button"
-                  onClick={(e) => startEditingNote(he, e)}
-                  title="Add note"
-                  aria-label="Add note"
+                  aria-label={note ? "Edit note" : "Add note"}
+                  onClick={(e) => { if (isEditingThis) return; startEditingNote(he, e); }}
                   className={cn(
-                    "hidden md:flex shrink-0 items-center gap-1",
-                    "font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/60",
-                    "transition-colors opacity-0 group-hover:opacity-100",
+                    "md:hidden shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
+                    note
+                      ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10"
+                      : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
                   )}
                 >
-                  <FileText className="h-2.5 w-2.5" />
-                  <span>add note</span>
+                  <FileText className="h-3 w-3" />
                 </button>
-              )}
- 
-              {!isEditingThis && note && (
+
                 <button
-                  type="button"
-                  onClick={(e) => startEditingNote(he, e)}
-                  aria-label="Edit note"
-                  className={cn(
-                    "hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/note",
-                    "text-left transition-colors",
-                  )}
+                  onClick={() => handleUseHistoryEmail(he)}
+                  className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground"
                 >
-                  <FileText className="h-2.5 w-2.5 text-amber-500/60 shrink-0" />
-                  <span className="font-mono text-[11px] text-muted-foreground/55 italic truncate group-hover/note:text-muted-foreground transition-colors">
-                    {note}
-                  </span>
+                  {t("history_use")}
                 </button>
-              )}
- 
-              <span className="flex-1" />
- 
-              <button
-                type="button"
-                aria-label={note ? "Edit note" : "Add note"}
-                onClick={(e) => {
-                  if (isEditingThis) return;
-                  startEditingNote(he, e);
-                }}
-                className={cn(
-                  "md:hidden shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
-                  note
-                    ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10"
-                    : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
-                )}
-              >
-                <FileText className="h-3 w-3" />
-              </button>
- 
-              <button
-                onClick={() => handleUseHistoryEmail(he)}
-                className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground"
-              >
-                {t("history_use")}
-              </button>
-            </div>
- 
-            {isEditingThis && (
-              <div className="mt-1.5 space-y-1.5">
-                <div className="flex gap-1.5 items-start">
-                  <textarea
-                    value={noteInputValue}
-                    onChange={(e) =>
-                      setNoteInputValue(e.target.value.slice(0, noteCharLimit))
-                    }
-                    placeholder="Type your note… (Enter to save, Esc to cancel)"
-                    rows={1}
-                    autoFocus
-                    onInput={(e) => {
-                      const el = e.currentTarget;
-                      el.style.height = 'auto';
-                      el.style.height = `${el.scrollHeight}px`;
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        saveInboxNote(he, noteInputValue);
-                      }
-                      if (e.key === 'Escape') cancelEditingNote();
-                    }}
-                    style={{ minHeight: '28px', overflow: 'hidden' }}
-                    className={cn(
-                      "flex-1 resize-none rounded-md border bg-muted/20 px-2.5 py-1.5",
-                      "font-mono text-[11px] text-foreground placeholder:text-muted-foreground/35",
-                      "focus:outline-none focus:ring-1 focus:border-foreground/25 focus:ring-foreground/10",
-                      "transition-all duration-150 border-border leading-relaxed",
+              </div>
+
+              {/* ── Edit mode ───────────────────────────────────────── */}
+              {isEditingThis && (
+                <div className="mt-1.5 space-y-1.5">
+                  <div className="flex gap-1.5 items-start">
+                    <textarea
+                      value={noteInputValue}
+                      onChange={(e) => setNoteInputValue(e.target.value.slice(0, noteCharLimit))}
+                      placeholder="Type your note… (Enter to save, Esc to cancel)"
+                      rows={1}
+                      autoFocus
+                      onInput={(e) => {
+                        const el = e.currentTarget;
+                        el.style.height = 'auto';
+                        el.style.height = `${el.scrollHeight}px`;
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveInboxNote(he, noteInputValue); }
+                        if (e.key === 'Escape') cancelEditingNote();
+                      }}
+                      style={{ minHeight: '28px', overflow: 'hidden' }}
+                      className="flex-1 resize-none rounded-md border bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/35 focus:outline-none focus:ring-1 focus:border-foreground/25 focus:ring-foreground/10 transition-all duration-150 border-border leading-relaxed"
+                    />
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <button
+                        type="button"
+                        aria-label="Save note"
+                        onClick={() => saveInboxNote(he, noteInputValue)}
+                        className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-foreground/60 hover:text-foreground transition-colors"
+                        title="Save (Enter)"
+                      >
+                        <Check className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Cancel"
+                        onClick={cancelEditingNote}
+                        className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-muted-foreground/60 hover:text-foreground transition-colors"
+                        title="Cancel (Esc)"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className={cn("font-mono text-[10px] tabular-nums transition-colors", atLimit ? "text-red-500" : nearLimit ? "text-amber-500" : "text-muted-foreground/40")}>
+                      {charCount} / {noteCharLimit}
+                    </span>
+                    {!isPro && nearLimit && (
+                      <button type="button" onClick={() => openUpsell("Extended Inbox Notes")}
+                        className="font-mono text-[10px] text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline transition-colors">
+                        Upgrade for 500 chars →
+                      </button>
                     )}
-                  />
-                  <div className="flex flex-col gap-1 shrink-0">
-                    <button
-                      type="button"
-                      aria-label="Save note"
-                      onClick={() => saveInboxNote(he, noteInputValue)}
-                      className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-foreground/60 hover:text-foreground transition-colors"
-                      title="Save (Enter)"
-                    >
-                      <Check className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Cancel editing"
-                      onClick={cancelEditingNote}
-                      className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-muted-foreground/60 hover:text-foreground transition-colors"
-                      title="Cancel (Esc)"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                    {isPro && (
+                      <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1">
+                        <Cloud className="h-2.5 w-2.5" />syncs to cloud
+                      </span>
+                    )}
+                    {!isPro && !nearLimit && (
+                      <span className="font-mono text-[10px] text-muted-foreground/30">local only</span>
+                    )}
                   </div>
                 </div>
- 
-                <div className="flex items-center justify-between px-0.5">
-                  <span
-                    className={cn(
-                      "font-mono text-[10px] tabular-nums transition-colors",
-                      atLimit
-                        ? "text-red-500"
-                        : nearLimit
-                          ? "text-amber-500"
-                          : "text-muted-foreground/40",
-                    )}
-                  >
-                    {charCount} / {noteCharLimit}
+              )}
+
+              {/* ── View mode note — mobile only ─────────────────────── */}
+              {!isEditingThis && note && (
+                <div
+                  className="md:hidden mt-1 flex items-center gap-1.5 group/note cursor-pointer"
+                  onClick={(e) => startEditingNote(he, e as any)}
+                  role="button"
+                  aria-label="Edit note"
+                >
+                  <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0" />
+                  <span className="font-mono text-[11px] text-muted-foreground/55 italic flex-1 leading-relaxed line-clamp-2 group-hover/note:text-muted-foreground transition-colors">
+                    {note}
                   </span>
-                  {!isPro && nearLimit && (
-                    <button
-                      type="button"
-                      onClick={() => openUpsell("Extended Inbox Notes")}
-                      className="font-mono text-[10px] text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline transition-colors"
-                    >
-                      Upgrade for 500 chars →
-                    </button>
-                  )}
-                  {isPro && (
-                    <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1">
-                      <Cloud className="h-2.5 w-2.5" />
-                      syncs to cloud
-                    </span>
-                  )}
-                  {!isPro && !nearLimit && (
-                    <span className="font-mono text-[10px] text-muted-foreground/30">
-                      local only
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    aria-label="Remove note"
+                    onClick={(e) => { e.stopPropagation(); saveInboxNote(he, ''); }}
+                    className="shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
                 </div>
-              </div>
-            )}
- 
-            {!isEditingThis && note && (
-              <div
-                className="md:hidden mt-1 flex items-center gap-1.5 group/note cursor-pointer"
-                onClick={(e) => startEditingNote(he, e as any)}
-                role="button"
-                aria-label="Edit note"
-              >
-                <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0" />
-                <span className="font-mono text-[11px] text-muted-foreground/55 italic flex-1 leading-relaxed line-clamp-2 group-hover/note:text-muted-foreground transition-colors">
-                  {note}
-                </span>
+              )}
+
+              {/* ── Add note ghost — mobile only ──────────────────────── */}
+              {!note && !isEditingThis && (
                 <button
                   type="button"
-                  aria-label="Remove note"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    saveInboxNote(he, '');
-                  }}
-                  className="shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
-                  title="Remove note"
+                  onClick={(e) => startEditingNote(he, e)}
+                  className="md:hidden mt-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/50 flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100"
                 >
-                  <X className="h-2.5 w-2.5" />
+                  <FileText className="h-2.5 w-2.5" />
+                  add note
                 </button>
-              </div>
-            )}
- 
-            {!note && !isEditingThis && (
-              <button
-                type="button"
-                onClick={(e) => startEditingNote(he, e)}
-                className={cn(
-                  "md:hidden mt-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/50",
-                  "flex items-center gap-1 transition-colors",
-                  "opacity-0 group-hover:opacity-100",
-                )}
-              >
-                <FileText className="h-2.5 w-2.5" />
-                add note
-              </button>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  </div>
-);
+              )}
+            </li>
+          );
+        })}
+      </ul>
 
-
+      {/* ── History collapse / expand controls ──────────────────── */}
+      {canHaveMoreHistory && (
+        <button
+          type="button"
+          onClick={() => setHistoryExpanded(v => !v)}
+          className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground border border-dashed border-border/50 hover:border-border rounded-md transition-all"
+        >
+          {historyExpanded ? (
+            <>
+              <ChevronUp className="h-2.5 w-2.5" />
+              Show less
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-2.5 w-2.5" />
+              {hiddenHistoryCount} more inbox{hiddenHistoryCount !== 1 ? "es" : ""}
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
 
   if (isRetro) return (
     <>{renderRetroMessageList()}
@@ -1289,12 +1288,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       `}} />
 
       {flashQueue.length > 0 && (
-        <NewEmailFlash
-          key={flashQueue[0].id}
-          from={flashQueue[0].from}
-          subject={flashQueue[0].subject}
-          onDone={() => setFlashQueue(q => q.slice(1))}
-        />
+        <NewEmailFlash key={flashQueue[0].id} from={flashQueue[0].from} subject={flashQueue[0].subject} onDone={() => setFlashQueue(q => q.slice(1))} />
       )}
 
       <div className={cn("rounded-lg border border-border bg-background overflow-hidden", isZen && "border-0 bg-transparent")}>
@@ -1335,12 +1329,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       const isFetchedPro = fetchedDomain?.tier === "pro";
                       const isUserCustom = !isFetchedFree && !isFetchedPro;
                       const isProLocked = isFetchedPro && !isPro;
-
                       const tags = fetchedDomain?.tags || [];
                       const isNew = tags.includes("new");
                       const isFeatured = tags.includes("featured");
                       const isPopular = tags.includes("popular");
-
                       return (
                         <DropdownMenuItem key={d}
                           onSelect={() => {
@@ -1354,20 +1346,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                             {(isUserCustom || isFetchedPro) && <Crown className="h-3 w-3 text-amber-500" />}
                             {isProLocked && <Lock className="h-3 w-3 text-amber-500" />}
                             <span>@{d}</span>
-
                             <div className="flex gap-1.5">
-                              {isFeatured && (
-                                <span className="font-mono text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded px-1 py-px uppercase tracking-wider">Top</span>
-                              )}
-                              {isPopular && !isFeatured && (
-                                <span className="font-mono text-[9px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded px-1 py-px uppercase tracking-wider">Hot</span>
-                              )}
-                              {isNew && (
-                                <span className="font-mono text-[9px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded px-1 py-px uppercase tracking-wider">New</span>
-                              )}
-                              {isProLocked && (
-                                <span className="font-mono text-[9px] text-amber-500 uppercase tracking-wider">Pro</span>
-                              )}
+                              {isFeatured && <span className="font-mono text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded px-1 py-px uppercase tracking-wider">Top</span>}
+                              {isPopular && !isFeatured && <span className="font-mono text-[9px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded px-1 py-px uppercase tracking-wider">Hot</span>}
+                              {isNew && <span className="font-mono text-[9px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded px-1 py-px uppercase tracking-wider">New</span>}
+                              {isProLocked && <span className="font-mono text-[9px] text-amber-500 uppercase tracking-wider">Pro</span>}
                             </div>
                           </div>
                           <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-transparent shrink-0"
@@ -1383,13 +1366,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                         </DropdownMenuItem>
                       );
                     })}
-
                     {!isPro && (
                       <DropdownMenuItem
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          openUpsell("Premium Domains");
-                        }}
+                        onSelect={(e) => { e.preventDefault(); openUpsell("Premium Domains"); }}
                         className="flex items-center justify-center gap-1.5 px-3 py-2 mt-1 rounded cursor-pointer font-mono text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/20 transition-colors"
                       >
                         <Lock className="h-3 w-3 shrink-0" />
@@ -1491,10 +1470,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           )}
         </div>
 
-        {/* ── Domain expiry banner — only renders when server says so ──────── */}
-        {domainExpiry && (
-          <DomainExpiryBanner expiry={domainExpiry} isPro={isPro} onUpsell={openUpsell} />
-        )}
+        {domainExpiry && <DomainExpiryBanner expiry={domainExpiry} isPro={isPro} onUpsell={openUpsell} />}
 
         {/* ── Message list ────────────────────────────────────────────────── */}
         {isSplit ? (
@@ -1554,7 +1530,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
       </div>
 
-      <ManageInboxesModal onDeleteInbox={handleDeleteInbox} isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); setDomainExpiry(null); }} />
+      <ManageInboxesModal onDeleteInbox={handleDeleteInbox} isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={emailHistory} currentInbox={email} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); setDomainExpiry(null); }} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
       <CliModal email={email} isOpen={isCliModalOpen} onClose={() => setIsCliModalOpen(false)} />
       <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />
