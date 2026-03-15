@@ -13,14 +13,15 @@ import {
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 
-const NAV_LINKS =[
-  { href: "/api",                label: "Overview"  },
-  { href: "/api/docs",           label: "Docs"      },
-  { href: "/api/cli",            label: "CLI"       },
-  { href: "/api/playground",     label: "Playground"},
-  { href: "/api/pricing",        label: "Pricing"   },
-  { href: "/api/docs/changelog", label: "Changelog" },
-  { href: "/api/dashboard",      label: "Dashboard" },
+const NAV_LINKS = [
+  { href: "/api",                label: "Overview"   },
+  { href: "/api/docs",           label: "Docs"       },
+  { href: "/api/cli",            label: "CLI"        },
+  { href: "/api/automation",     label: "Automation" },
+  { href: "/api/playground",     label: "Playground" },
+  { href: "/api/pricing",        label: "Pricing"    },
+  { href: "/api/docs/changelog", label: "Changelog"  },
+  { href: "/api/dashboard",      label: "Dashboard"  },
 ];
 
 interface ApiStatusData {
@@ -54,11 +55,11 @@ function useThemeRipple() {
       setTheme(next);
     }).ready.then(() => {
       document.documentElement.animate(
-        { clipPath:[`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
         { duration: 420, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }
       );
     });
-  },[theme, setTheme]);
+  }, [theme, setTheme]);
 
   return { theme, toggle, btnRef };
 }
@@ -78,17 +79,17 @@ export function DevHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { theme, toggle, btnRef } = useThemeRipple();
-  const[menuOpen, setMenuOpen] = useState(false);
-  const[mounted,  setMounted]  = useState(false);
-  const[apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted,  setMounted]  = useState(false);
+  const [apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
 
-  useEffect(() => setMounted(true),[]);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (status === "loading") return;
-    if (status !== "authenticated" || !session?.user?.id) { 
-      setApiStatus(null); 
-      return; 
+    if (status !== "authenticated" || !session?.user?.id) {
+      setApiStatus(null);
+      return;
     }
     fetch("/api/user/api-status")
       .then((r) => r.ok ? r.json() : null)
@@ -97,11 +98,11 @@ export function DevHeader() {
         setApiStatus(data || null);
       })
       .catch(() => setApiStatus(null));
-  },[status, session?.user?.id]);
+  }, [status, session?.user?.id]);
 
   const isSessionLoading = !mounted || status === "loading";
   const isApiStatusLoading = status === "authenticated" && apiStatus === undefined;
-  
+
   const isLoggedIn = status === "authenticated" && !!session?.user;
   const planLabel  = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
   const credits    = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
@@ -109,6 +110,9 @@ export function DevHeader() {
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/api" && pathname.startsWith(href));
+
+  // Show first 4 links in nav, rest in overflow (md) or all on lg
+  const PRIMARY_COUNT = 4;
 
   return (
     <>
@@ -135,7 +139,7 @@ export function DevHeader() {
             {NAV_LINKS.map(({ href, label }, index) => (
               <Link key={href} href={href}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  index >= 3 ? "hidden lg:flex" : "flex"
+                  index >= PRIMARY_COUNT ? "hidden lg:flex" : "flex"
                 } ${
                   isActive(href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -144,7 +148,7 @@ export function DevHeader() {
               </Link>
             ))}
 
-            {/* Overflow dots dropdown exclusively for md devices */}
+            {/* Overflow dropdown for md */}
             <div className="flex lg:hidden items-center ml-1">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -153,11 +157,9 @@ export function DevHeader() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-[10rem]">
-                  {NAV_LINKS.slice(3).map(({ href, label }) => (
+                  {NAV_LINKS.slice(PRIMARY_COUNT).map(({ href, label }) => (
                     <DropdownMenuItem key={href} asChild>
-                      <Link href={href} className={isActive(href) ? "font-medium" : ""}>
-                        {label}
-                      </Link>
+                      <Link href={href} className={isActive(href) ? "font-medium" : ""}>{label}</Link>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -174,7 +176,6 @@ export function DevHeader() {
               <ThemeIcon theme={theme} mounted={mounted} />
             </button>
 
-            {/* min-w-[175px] anchor locks the auth area width across all transitions */}
             <div className="flex items-center justify-end gap-2 min-w-[175px]">
               {isSessionLoading ? (
                 <>
@@ -252,7 +253,7 @@ export function DevHeader() {
               >
                 <ThemeIcon theme={theme} mounted={mounted} />
               </button>
-              
+
               <div className="ml-auto flex items-center justify-end gap-2 min-w-[175px]">
                 {isSessionLoading ? (
                   <>
