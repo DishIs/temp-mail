@@ -15,41 +15,35 @@ curl -X POST https://api2.freecustom.email/v1/inboxes \\
 curl "https://api2.freecustom.email/v1/inboxes/test@ditmail.info/otp" \\
   -H "Authorization: Bearer fce_your_api_key"`;
 
-const NODE = `const res = await fetch("https://api2.freecustom.email/v1/inboxes", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer " + process.env.FCE_API_KEY,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ inbox: "test@ditmail.info" }),
+const NODE = `import { FreecustomEmailClient } from 'freecustom-email';
+// npm install freecustom-email
+
+const client = new FreecustomEmailClient({
+  apiKey: process.env.FCE_API_KEY,
 });
-const { data } = await res.json();
-const inbox = data?.inbox;
 
-const otpRes = await fetch(
-  \`https://api2.freecustom.email/v1/inboxes/\${inbox}/otp\`,
-  { headers: { "Authorization": "Bearer " + process.env.FCE_API_KEY } }
-);
-const { data: otpData } = await otpRes.json();
-const otp = otpData?.otp;`;
+// Register a disposable inbox
+await client.inboxes.register('test@ditmail.info');
 
-const PYTHON = `import os
-import requests
+// Wait for OTP — no polling, no regex
+const otp = await client.otp.waitFor('test@ditmail.info');
+console.log(otp); // '212342'`;
 
-headers = {"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
+const PYTHON = `from freecustom_email import FreeCustomEmail
+# pip install freecustom-email
+import asyncio, os
 
-r = requests.post(
-    "https://api2.freecustom.email/v1/inboxes",
-    headers=headers,
-    json={"inbox": "test@ditmail.info"},
-)
-inbox = r.json()["data"]["inbox"]
+client = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"])
 
-r2 = requests.get(
-    f"https://api2.freecustom.email/v1/inboxes/{inbox}/otp",
-    headers=headers,
-)
-otp = r2.json().get("data", {}).get("otp")`;
+async def main():
+    # Register a disposable inbox
+    await client.inboxes.register("test@ditmail.info")
+
+    # Wait for OTP — no polling, no regex
+    otp = await client.otp.wait_for("test@ditmail.info")
+    print(otp)  # '212342'
+
+asyncio.run(main())`;
 
 const GO = `package main
 
@@ -77,12 +71,12 @@ func main() {
   _ = resp
 }`;
 
-type Tab = { id: string; label: string; lang: string; code: string };
+type Tab = { id: string; label: string; lang: string; code: string; badge?: string };
 
 const TABS: Tab[] = [
-  { id: "curl",   label: "cURL",    lang: "curl",       code: CURL   },
-  { id: "node",   label: "Node.js", lang: "javascript", code: NODE   },
-  { id: "python", label: "Python",  lang: "python",     code: PYTHON },
+  { id: "curl",   label: "cURL",    lang: "bash",       code: CURL   },
+  { id: "node",   label: "Node.js", lang: "typescript", code: NODE,   badge: "SDK" },
+  { id: "python", label: "Python",  lang: "python",     code: PYTHON, badge: "SDK" },
   { id: "go",     label: "Go",      lang: "go",         code: GO     },
 ];
 
@@ -92,7 +86,7 @@ export function ApiCodeExamples() {
 
   return (
     <div className="w-full rounded-lg border border-border overflow-hidden">
-      {/* Tab bar — underline style matching dashboard */}
+      {/* Tab bar */}
       <div className="flex items-center border-b border-border bg-muted/10 px-4 gap-0 overflow-x-auto">
         {/* Terminal dots */}
         <div className="flex items-center gap-1.5 pr-4 mr-2 border-r border-border shrink-0 py-3" aria-hidden>
@@ -105,13 +99,22 @@ export function ApiCodeExamples() {
           <button
             key={tab.id}
             onClick={() => setActive(tab.id)}
-            className={`relative px-4 py-3 font-mono text-xs uppercase tracking-widest transition-colors duration-150 shrink-0 ${
+            className={`relative flex items-center gap-1.5 px-4 py-3 font-mono text-xs uppercase tracking-widest transition-colors duration-150 shrink-0 ${
               active === tab.id
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab.label}
+            {tab.badge && (
+              <span className={`font-mono text-[8px] uppercase tracking-wider border rounded px-1 py-px leading-none transition-colors ${
+                active === tab.id
+                  ? "border-foreground/40 text-foreground/70"
+                  : "border-border text-muted-foreground/50"
+              }`}>
+                {tab.badge}
+              </span>
+            )}
             {/* animated underline indicator */}
             {active === tab.id && (
               <motion.div
@@ -122,6 +125,24 @@ export function ApiCodeExamples() {
             )}
           </button>
         ))}
+
+        {/* SDK install hint — only visible when an SDK tab is active */}
+        <AnimatePresence>
+          {current.badge === "SDK" && (
+            <motion.div
+              key="sdk-hint"
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.2 }}
+              className="ml-auto shrink-0 flex items-center gap-2"
+            >
+              <span className="font-mono text-[10px] text-muted-foreground/50">
+                {active === "node" ? "npm install freecustom-email" : "pip install freecustom-email"}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Code panel */}
@@ -133,7 +154,6 @@ export function ApiCodeExamples() {
           exit={{    opacity: 0, y: -4 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
         >
-          {/* Re-use CodeBlock but strip its own border/rounding so it sits flush */}
           <CodeBlock
             code={current.code}
             language={current.lang}
