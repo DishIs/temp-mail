@@ -12,7 +12,7 @@ import { CodeBlock } from "@/components/CodeBlock";
 const INSTALL_STEPS = [
   { label: "Homebrew", cmd: "brew tap DishIs/homebrew-tap\nbrew install fce", lang: "bash" },
   { label: "Scoop", cmd: "scoop bucket add fce https://github.com/DishIs/scoop-bucket\nscoop install fce", lang: "powershell" },
-  { label: "Shell Script", cmd: "curl -sSfL https://raw.githubusercontent.com/DishIs/fce-cli/main/scripts/install.sh | sh", lang: "bash" },
+  { label: "Shell Script", cmd: "curl -fsSL freecustom.email/install.sh | sh", lang: "bash" },
 ];
 
 const TERMINAL_OUTPUTS = {
