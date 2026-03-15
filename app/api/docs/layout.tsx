@@ -3,13 +3,13 @@ import { DocsSidebar } from "@/components/DocsSidebar";
 
 export default function ApiDocsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen items-start">
       <DocsSidebar />
-      <div className="lg:pl-[240px] min-h-screen">
+      <main className="flex-1 min-w-0">
         <div className="mx-auto max-w-[720px] px-4 sm:px-6 py-10">
           {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

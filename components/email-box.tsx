@@ -7,6 +7,7 @@ import {
   Star, ListOrdered, Clock, Archive, ArchiveRestore,
   Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck,
   Lock, ExternalLink, Globe, Zap, Link2, ChevronDown, Terminal, Download,
+  FileText, X, Cloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,11 @@ import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { AuthNeed, UpsellModal } from "./upsell-modal";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 
+
 const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
+const FREE_NOTE_LIMIT = 20;
+const PRO_NOTE_LIMIT = 500;
+
 
 const DOMAIN_SEED: FetchedDomain[] = [
   { domain: "ditube.info", tier: "free", tags: [] }
@@ -309,6 +314,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   // @ts-ignore
   const userPlan = session?.user?.plan || "none";
   const isPro = userPlan === "pro";
+  const noteCharLimit = isPro ? PRO_NOTE_LIMIT : FREE_NOTE_LIMIT;
+
   const API_ENDPOINT = isAuthenticated ? "/api/private-mailbox" : "/api/public-mailbox";
 
   const [fetchedDomains, setFetchedDomains] = useState<FetchedDomain[]>(DOMAIN_SEED);
@@ -349,6 +356,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const [flashQueue, setFlashQueue] = useState<{ id: string; from: string; subject: string }[]>([]);
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set());
 
+  const [inboxNotes, setInboxNotes] = useState<Record<string, string>>({});
+  const [editingNoteInbox, setEditingNoteInbox] = useState<string | null>(null);
+  const [noteInputValue, setNoteInputValue] = useState('');
+
+
   const skipNextSettingsSave = useRef(false);
   const originalTitle = useRef(typeof document !== "undefined" ? document.title : "DITMail");
   const wsRef = useRef<WebSocket | null>(null);
@@ -368,7 +380,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const availableDomains = useMemo(() => {
     const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
-    
+
     const sortedFetched = [...fetchedDomains].sort((a, b) => {
       const score = (d: FetchedDomain) => {
         let s = 0;
@@ -472,7 +484,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
       const cacheKey = `domains_v2_${isPro ? "pro" : isAuthenticated ? "free" : "anon"}`;
       const cached = sessionStorage.getItem(cacheKey);
-      
+
       let currentFetchedDomains = DOMAIN_SEED;
       if (cached) {
         try {
@@ -485,7 +497,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           sessionStorage.removeItem(cacheKey);
         }
       }
-      
+
       fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
         .then(r => r.json())
         .then(d => {
@@ -515,7 +527,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         const merged = [...new Set([...initialInboxes, ...localHistory])];
         hist = userPlan === "free" ? merged.slice(0, 7) : merged;
         initEmail = initialCurrentInbox || initialInboxes[0];
-        
+
         // If the backend fed us an unauthorized inbox on initial boot (e.g. race condition plan downgrade)
         if (!checkDomainAllowed(initEmail.split("@")[1], currentFetchedDomains)) {
           const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
@@ -525,7 +537,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       } else if (localHistory.length > 0) {
         hist = localHistory.slice(0, 5);
         const topDomain = hist[0].split("@")[1];
-        
+
         // Randomize email if the top history item is no longer allowed (e.g. user just logged out from Pro)
         if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
           const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
@@ -560,6 +572,32 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     };
     if (isStorageLoaded) fetch_();
   }, [isAuthenticated, isStorageLoaded]);
+
+  useEffect(() => {
+    if (!isStorageLoaded) return;
+
+    // Always load from localStorage first (offline / unauthenticated baseline)
+    const local = safeJsonParse<Record<string, string>>(
+      localStorage.getItem("inboxNotes"),
+      {},
+    );
+    setInboxNotes(local);
+
+    // Pro users: merge server copy (server wins on conflict to preserve cross-device notes)
+    if (isPro && isAuthenticated) {
+      fetch("/api/user/inbox-notes")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.notes && typeof d.notes === 'object') {
+            const merged = { ...local, ...d.notes };
+            setInboxNotes(merged);
+            localStorage.setItem("inboxNotes", JSON.stringify(merged));
+          }
+        })
+        .catch(() => { /* silently ignore — local notes remain */ });
+    }
+  }, [isStorageLoaded, isPro, isAuthenticated]); // eslint-disable-line
+
 
   useEffect(() => {
     if (!isStorageLoaded) return;
@@ -697,10 +735,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       if (p?.length > 0) {
         // Prevent console hacking by explicitly verifying the selectedDomain right before commit
         if (!checkDomainAllowed(selectedDomain, fetchedDomains)) {
-           openUpsell(!fetchedDomains.some(d => d.domain === selectedDomain) ? "Custom Domains" : "Pro Domains");
-           return;
+          openUpsell(!fetchedDomains.some(d => d.domain === selectedDomain) ? "Custom Domains" : "Pro Domains");
+          return;
         }
-        setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null); 
+        setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
       }
       else setError("Enter a valid email prefix.");
     } else setIsEditing(true);
@@ -709,7 +747,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const handleUseHistoryEmail = (he: string) => {
     const domain = he.split("@")[1];
     if (!domain) return;
-    
+
     // Prevent usage of expired Pro / Custom domains if they are on Free plan / logged out
     if (!checkDomainAllowed(domain, fetchedDomains)) {
       openUpsell(!fetchedDomains.some(d => d.domain === domain) ? "Custom Domains" : "Pro Domains");
@@ -721,6 +759,73 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     setOldEmailUsed(!oldEmailUsed);
     setDomainExpiry(null);
   };
+
+  const saveInboxNote = useCallback(
+    (inbox: string, note: string) => {
+      const trimmed = note.trim().slice(0, noteCharLimit);
+      const updated = { ...inboxNotes };
+
+      if (trimmed) {
+        updated[inbox] = trimmed;
+      } else {
+        delete updated[inbox];
+      }
+
+      setInboxNotes(updated);
+      localStorage.setItem("inboxNotes", JSON.stringify(updated));
+      setEditingNoteInbox(null);
+      setNoteInputValue('');
+
+      // Pro: fire-and-forget server sync
+      if (isPro && isAuthenticated) {
+        const method = trimmed ? 'POST' : 'DELETE';
+        fetch('/api/inbox-notes', {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inbox, note: trimmed }),
+        }).catch(() => { });
+      }
+    },
+    [inboxNotes, noteCharLimit, isPro, isAuthenticated],
+  );
+
+  const handleDeleteInbox = useCallback(async (inbox: string) => {
+    // 1. Remove from local state
+    setEmailHistory(prev => prev.filter(e => e !== inbox));
+    const updated = emailHistory.filter(e => e !== inbox);
+    localStorage.setItem('emailHistory', JSON.stringify(updated));
+
+    // 2. Also wipe any note for it
+    const updatedNotes = { ...inboxNotes };
+    delete updatedNotes[inbox];
+    setInboxNotes(updatedNotes);
+    localStorage.setItem('inboxNotes', JSON.stringify(updatedNotes));
+
+    // 3. Server sync (fire-and-forget)
+    if (isAuthenticated) {
+      fetch('/api/inbox', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inbox }),
+      }).catch(() => { });
+    }
+  }, [emailHistory, inboxNotes, isAuthenticated]);
+
+
+
+  const startEditingNote = useCallback(
+    (inbox: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setEditingNoteInbox(inbox);
+      setNoteInputValue(inboxNotes[inbox] ?? '');
+    },
+    [inboxNotes],
+  );
+
+  const cancelEditingNote = useCallback(() => {
+    setEditingNoteInbox(null);
+    setNoteInputValue('');
+  }, []);
 
   const handleProShortcut = (fn: () => void, name: string) => { if (isPro) fn(); else openUpsell(`Keyboard Shortcut: ${name}`); };
   const handleAuthShortcut = (fn: () => void, name: string) => { if (isAuthenticated) fn(); else { setAuthNeedFeature(`Keyboard Shortcut: ${name}`); setIsAuthNeedOpen(true); } };
@@ -927,6 +1032,245 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     </div>
   );
 
+  const renderHistorySection = () => (
+  <div className="flex-1 px-4 py-4">
+    <div className="flex items-center justify-between mb-3">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        {t("history_title")}
+      </p>
+      {isPro && (
+        <span className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/50">
+          <Cloud className="h-2.5 w-2.5" />
+          synced
+        </span>
+      )}
+    </div>
+ 
+    <ul className="space-y-0 divide-y divide-border/30">
+      {emailHistory.map((he, i) => {
+        const note          = inboxNotes[he];
+        const isEditingThis = editingNoteInbox === he;
+        const charCount     = noteInputValue.length;
+        const nearLimit     = charCount >= Math.floor(noteCharLimit * 0.85);
+        const atLimit       = charCount >= noteCharLimit;
+        const isActive      = he === email;
+ 
+        return (
+          <li key={i} className="group py-2 first:pt-0 last:pb-0">
+ 
+            <div className="flex items-center gap-2 min-w-0">
+ 
+              <span
+                className={cn(
+                  "font-mono text-[11px] min-w-0 truncate transition-colors shrink-0",
+                  isActive
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground/80 group-hover:text-muted-foreground",
+                )}
+              >
+                {he}
+              </span>
+ 
+              {!isEditingThis && !note && (
+                <button
+                  type="button"
+                  onClick={(e) => startEditingNote(he, e)}
+                  title="Add note"
+                  aria-label="Add note"
+                  className={cn(
+                    "hidden md:flex shrink-0 items-center gap-1",
+                    "font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/60",
+                    "transition-colors opacity-0 group-hover:opacity-100",
+                  )}
+                >
+                  <FileText className="h-2.5 w-2.5" />
+                  <span>add note</span>
+                </button>
+              )}
+ 
+              {!isEditingThis && note && (
+                <button
+                  type="button"
+                  onClick={(e) => startEditingNote(he, e)}
+                  aria-label="Edit note"
+                  className={cn(
+                    "hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/note",
+                    "text-left transition-colors",
+                  )}
+                >
+                  <FileText className="h-2.5 w-2.5 text-amber-500/60 shrink-0" />
+                  <span className="font-mono text-[11px] text-muted-foreground/55 italic truncate group-hover/note:text-muted-foreground transition-colors">
+                    {note}
+                  </span>
+                </button>
+              )}
+ 
+              <span className="flex-1" />
+ 
+              <button
+                type="button"
+                aria-label={note ? "Edit note" : "Add note"}
+                onClick={(e) => {
+                  if (isEditingThis) return;
+                  startEditingNote(he, e);
+                }}
+                className={cn(
+                  "md:hidden shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
+                  note
+                    ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10"
+                    : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
+                )}
+              >
+                <FileText className="h-3 w-3" />
+              </button>
+ 
+              <button
+                onClick={() => handleUseHistoryEmail(he)}
+                className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground"
+              >
+                {t("history_use")}
+              </button>
+            </div>
+ 
+            {isEditingThis && (
+              <div className="mt-1.5 space-y-1.5">
+                <div className="flex gap-1.5 items-start">
+                  <textarea
+                    value={noteInputValue}
+                    onChange={(e) =>
+                      setNoteInputValue(e.target.value.slice(0, noteCharLimit))
+                    }
+                    placeholder="Type your note… (Enter to save, Esc to cancel)"
+                    rows={1}
+                    autoFocus
+                    onInput={(e) => {
+                      const el = e.currentTarget;
+                      el.style.height = 'auto';
+                      el.style.height = `${el.scrollHeight}px`;
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        saveInboxNote(he, noteInputValue);
+                      }
+                      if (e.key === 'Escape') cancelEditingNote();
+                    }}
+                    style={{ minHeight: '28px', overflow: 'hidden' }}
+                    className={cn(
+                      "flex-1 resize-none rounded-md border bg-muted/20 px-2.5 py-1.5",
+                      "font-mono text-[11px] text-foreground placeholder:text-muted-foreground/35",
+                      "focus:outline-none focus:ring-1 focus:border-foreground/25 focus:ring-foreground/10",
+                      "transition-all duration-150 border-border leading-relaxed",
+                    )}
+                  />
+                  <div className="flex flex-col gap-1 shrink-0">
+                    <button
+                      type="button"
+                      aria-label="Save note"
+                      onClick={() => saveInboxNote(he, noteInputValue)}
+                      className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-foreground/60 hover:text-foreground transition-colors"
+                      title="Save (Enter)"
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Cancel editing"
+                      onClick={cancelEditingNote}
+                      className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-muted-foreground/60 hover:text-foreground transition-colors"
+                      title="Cancel (Esc)"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+ 
+                <div className="flex items-center justify-between px-0.5">
+                  <span
+                    className={cn(
+                      "font-mono text-[10px] tabular-nums transition-colors",
+                      atLimit
+                        ? "text-red-500"
+                        : nearLimit
+                          ? "text-amber-500"
+                          : "text-muted-foreground/40",
+                    )}
+                  >
+                    {charCount} / {noteCharLimit}
+                  </span>
+                  {!isPro && nearLimit && (
+                    <button
+                      type="button"
+                      onClick={() => openUpsell("Extended Inbox Notes")}
+                      className="font-mono text-[10px] text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline transition-colors"
+                    >
+                      Upgrade for 500 chars →
+                    </button>
+                  )}
+                  {isPro && (
+                    <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1">
+                      <Cloud className="h-2.5 w-2.5" />
+                      syncs to cloud
+                    </span>
+                  )}
+                  {!isPro && !nearLimit && (
+                    <span className="font-mono text-[10px] text-muted-foreground/30">
+                      local only
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+ 
+            {!isEditingThis && note && (
+              <div
+                className="md:hidden mt-1 flex items-center gap-1.5 group/note cursor-pointer"
+                onClick={(e) => startEditingNote(he, e as any)}
+                role="button"
+                aria-label="Edit note"
+              >
+                <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0" />
+                <span className="font-mono text-[11px] text-muted-foreground/55 italic flex-1 leading-relaxed line-clamp-2 group-hover/note:text-muted-foreground transition-colors">
+                  {note}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Remove note"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    saveInboxNote(he, '');
+                  }}
+                  className="shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
+                  title="Remove note"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            )}
+ 
+            {!note && !isEditingThis && (
+              <button
+                type="button"
+                onClick={(e) => startEditingNote(he, e)}
+                className={cn(
+                  "md:hidden mt-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/50",
+                  "flex items-center gap-1 transition-colors",
+                  "opacity-0 group-hover:opacity-100",
+                )}
+              >
+                <FileText className="h-2.5 w-2.5" />
+                add note
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+);
+
+
+
   if (isRetro) return (
     <>{renderRetroMessageList()}
       <style dangerouslySetInnerHTML={{ __html: `body[data-fce-layout="retro"] header, body[data-fce-layout="retro"] footer, body[data-fce-layout="retro"] nav { display: none !important; }` }} />
@@ -988,10 +1332,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     {availableDomains.map(d => {
                       const fetchedDomain = fetchedDomains.find(fd => fd.domain === d);
                       const isFetchedFree = freeDomainSet.has(d);
-                      const isFetchedPro  = fetchedDomain?.tier === "pro";
-                      const isUserCustom  = !isFetchedFree && !isFetchedPro;
-                      const isProLocked   = isFetchedPro && !isPro;
-                      
+                      const isFetchedPro = fetchedDomain?.tier === "pro";
+                      const isUserCustom = !isFetchedFree && !isFetchedPro;
+                      const isProLocked = isFetchedPro && !isPro;
+
                       const tags = fetchedDomain?.tags || [];
                       const isNew = tags.includes("new");
                       const isFeatured = tags.includes("featured");
@@ -1010,7 +1354,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                             {(isUserCustom || isFetchedPro) && <Crown className="h-3 w-3 text-amber-500" />}
                             {isProLocked && <Lock className="h-3 w-3 text-amber-500" />}
                             <span>@{d}</span>
-                            
+
                             <div className="flex gap-1.5">
                               {isFeatured && (
                                 <span className="font-mono text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded px-1 py-px uppercase tracking-wider">Top</span>
@@ -1039,7 +1383,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                         </DropdownMenuItem>
                       );
                     })}
-                    
+
                     {!isPro && (
                       <DropdownMenuItem
                         onSelect={(e) => {
@@ -1172,20 +1516,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         {!isZen && (
           <div className="border-t border-border">
             <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
-              <div className="flex-1 px-4 py-4">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">{t("history_title")}</p>
-                <ul className="space-y-1.5">
-                  {emailHistory.map((he, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2 group">
-                      <span className="font-mono text-[11px] text-muted-foreground/80 truncate group-hover:text-muted-foreground transition-colors">{he}</span>
-                      <button onClick={() => handleUseHistoryEmail(he)}
-                        className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground">
-                        {t("history_use")}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {renderHistorySection()}
               {!isPro && (
                 <div className="md:w-72 shrink-0 px-4 py-4">
                   <PhonePromoCard />
@@ -1196,10 +1527,21 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
 
         {!isZen && (
-          <div className="border-t border-border px-4 py-3 bg-muted/5">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Inbox</p>
-            <h2 className="text-sm font-semibold text-foreground">{t("card_header_title")}</h2>
-            <p className="font-mono text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{t("card_header_p")}</p>
+          <div className="border-t border-border px-4 py-3 bg-muted/5 flex items-center justify-between">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Inbox</p>
+              <h2 className="text-sm font-semibold text-foreground">{t("card_header_title")}</h2>
+              <p className="font-mono text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{t("card_header_p")}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 font-mono text-[10px] text-muted-foreground hover:text-foreground shrink-0 gap-2 border border-transparent hover:border-border"
+              onClick={() => setIsCliModalOpen(true)}
+            >
+              <Download className="h-3 w-3" />
+              Install CLI
+            </Button>
           </div>
         )}
 
@@ -1212,7 +1554,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
       </div>
 
-      <ManageInboxesModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); setDomainExpiry(null); }} />
+      <ManageInboxesModal onDeleteInbox={handleDeleteInbox} isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} inboxes={initialInboxes} onSelectInbox={(he) => { setEmail(he); setSelectedDomain(he.split("@")[1]); setIsEditing(false); setDomainExpiry(null); }} />
       <QRCodeModal email={email} isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
       <CliModal email={email} isOpen={isCliModalOpen} onClose={() => setIsCliModalOpen(false)} />
       <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />

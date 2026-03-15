@@ -40,3 +40,28 @@ export async function POST(request: Request) {
 
   return NextResponse.json(data, { status });
 }
+
+export async function DELETE(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ success: false, message: 'Unauthorized.' }, { status: 401 });
+  }
+ 
+  const body = await req.json().catch(() => ({}));
+  if (!body.inbox) {
+    return NextResponse.json({ success: false, message: 'inbox is required.' }, { status: 400 });
+  }
+ 
+  try {
+    const data = await fetchFromServiceAPIWithStatus('/user/inboxes', {
+      method: 'DELETE',
+      body: JSON.stringify({ wyiUserId: session.user.id, inbox: body.inbox }),
+    });
+    return NextResponse.json(data);
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, message: err?.message ?? 'Server error.' },
+      { status: 500 },
+    );
+  }
+}

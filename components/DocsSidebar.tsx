@@ -11,15 +11,15 @@ const SIDEBAR_GROUPS: { label: string; links: { href: string; label: string }[] 
   {
     label: "Getting Started",
     links: [
-      { href: "/api/docs/quickstart",     label: "Quickstart"     },
+      { href: "/api/docs/quickstart", label: "Quickstart" },
     ],
   },
   {
     label: "SDKs",
     links: [
-      { href: "/api/docs/sdk",            label: "Overview"            },
-      { href: "/api/docs/sdk/npm",        label: "JavaScript / TypeScript" },
-      { href: "/api/docs/sdk/python",     label: "Python"              },
+      { href: "/api/docs/sdk", label: "Overview" },
+      { href: "/api/docs/sdk/npm", label: "JavaScript / TypeScript" },
+      { href: "/api/docs/sdk/python", label: "Python" },
     ],
   },
   {
@@ -31,37 +31,37 @@ const SIDEBAR_GROUPS: { label: string; links: { href: string; label: string }[] 
   {
     label: "Endpoints",
     links: [
-      { href: "/api/docs/inboxes",        label: "Inbox management"    },
-      { href: "/api/docs/messages",       label: "Reading messages"    },
-      { href: "/api/docs/otp",            label: "OTP extraction"      },
+      { href: "/api/docs/inboxes", label: "Inbox management" },
+      { href: "/api/docs/messages", label: "Reading messages" },
+      { href: "/api/docs/otp", label: "OTP extraction" },
     ],
   },
   {
     label: "Domains",
     links: [
-      { href: "/api/docs/platform-domains", label: "Platform domains"  },
-      { href: "/api/docs/custom-domains",   label: "Custom domains"    },
+      { href: "/api/docs/platform-domains", label: "Platform domains" },
+      { href: "/api/docs/custom-domains", label: "Custom domains" },
     ],
   },
   {
     label: "Real-time",
     links: [
-      { href: "/api/docs/websocket",      label: "WebSocket"           },
+      { href: "/api/docs/websocket", label: "WebSocket" },
     ],
   },
   {
     label: "Billing",
     links: [
-      { href: "/api/docs/rate-limits",    label: "Rate limits"         },
-      { href: "/api/docs/credits",        label: "Credits"             },
+      { href: "/api/docs/rate-limits", label: "Rate limits" },
+      { href: "/api/docs/credits", label: "Credits" },
     ],
   },
   {
     label: "Reference",
     links: [
-      { href: "/api/docs/errors",         label: "Errors"              },
-      { href: "/api/docs/changelog",      label: "Changelog"           },
-      { href: "/api/docs/faq",            label: "FAQ"                 },
+      { href: "/api/docs/errors", label: "Errors" },
+      { href: "/api/docs/changelog", label: "Changelog" },
+      { href: "/api/docs/faq", label: "FAQ" },
     ],
   },
 ];
@@ -143,9 +143,10 @@ export function DocsSidebar() {
         <NavContent onNav={() => setOpen(false)} />
       </aside>
 
-      <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-[240px] border-r border-border bg-background overflow-y-auto">
+      <aside className="hidden lg:block w-[240px] shrink-0 self-start sticky top-16 h-[calc(100vh-4rem)] border-r border-border bg-background overflow-y-auto">
         <NavContent />
       </aside>
+
     </>
   );
 }
