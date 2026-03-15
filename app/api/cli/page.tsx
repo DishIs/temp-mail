@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Terminal, Download, Check, ShieldCheck, Github } from "lucide-react";
+import { Terminal, Download, Check, ShieldCheck, Github, Copy } from "lucide-react";
 import { CodeBlock } from "@/components/CodeBlock";
 
 // ─── data ──────────────────────────────────────────────────────────────────
@@ -87,18 +87,26 @@ export default function CliOverviewPage() {
           
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <motion.h1 
+              <motion.h1
                 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-[1.1]"
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               >
                 FreeCustom.Email<br />in your terminal
               </motion.h1>
-              <motion.p 
+              <motion.p
                 className="text-lg text-muted-foreground mb-8 leading-relaxed max-w-lg"
                 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               >
-                The official open-source CLI to manage disposable inboxes, extract OTPs, and stream events directly from your shell.
+                Create disposable inboxes, stream incoming emails, and extract OTP codes directly from your terminal.
               </motion.p>
+              
+              <motion.div
+                className="mb-8 flex flex-col gap-2"
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              >
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Quick Install</span>
+                <CodeBlock code="curl -fsSL freecustom.email/install.sh | sh" language="bash" />
+              </motion.div>
               <motion.div 
                 className="flex flex-wrap gap-4"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
@@ -203,9 +211,15 @@ export default function CliOverviewPage() {
               { c: "fce help",    d: "Full command reference" },
             ].map((cmd, i) => (
               <FadeIn key={cmd.c} delay={i * 0.06}>
-                <div className="bg-background px-6 py-8 h-full hover:bg-muted/10 transition-colors duration-200">
+                <div
+                  className="bg-background px-6 py-8 h-full hover:bg-muted/10 transition-colors duration-200 group relative cursor-pointer"
+                  onClick={() => navigator.clipboard.writeText(cmd.c)}
+                >
                   <p className="font-mono text-xs text-muted-foreground mb-3">{String(i + 1).padStart(2, "0")}</p>
-                  <p className="text-sm font-semibold text-foreground mb-2">{cmd.c}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-foreground">{cmd.c}</p>
+                    <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">{cmd.d}</p>
                 </div>
               </FadeIn>
