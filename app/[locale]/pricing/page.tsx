@@ -5,6 +5,7 @@ import {
   Paperclip, Clock, Mail, MessageSquareCode,
   Star, MailOpen, Shield, Sparkles,
   Keyboard, Lock, Users, HeartHandshake, Gift, RefreshCw,
+  FileText,
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -23,13 +24,11 @@ import {
 
 type BillingCycle = "monthly" | "yearly";
 
-// ── DOT BG ─────────────────────────────────────────────────────────────────
 const DOT_BG = {
   backgroundImage: "radial-gradient(circle at 1px 1px, hsl(0 0% 50% / 0.11) 1px, transparent 0)",
   backgroundSize: "28px 28px",
 } as const;
 
-// ── ASCII layer ────────────────────────────────────────────────────────────
 const ASCII_FRAGS = [
   { x: "2%",  y: "5%",  t: "EHLO api2.freecustom.email" },
   { x: "67%", y: "3%",  t: "250 2.1.0 Ok" },
@@ -46,7 +45,6 @@ const ASCII_FRAGS = [
   { x: "4%",  y: "93%", t: "Subject: Your verification code is 847291" },
 ];
 
-// ── Payment methods ────────────────────────────────────────────────────────
 const PAYMENT_METHODS = [
   { icon: SiVisa,            label: "Visa"        },
   { icon: SiMastercard,      label: "Mastercard"  },
@@ -56,32 +54,23 @@ const PAYMENT_METHODS = [
   { icon: SiGooglepay,       label: "Google Pay"  },
 ];
 
-// ── Paddle trust strip ────────────────────────────────────────────────────
 function PaddleTrustStrip() {
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
-      {/* Paddle badge */}
       <span className="flex items-center gap-1.5 border border-border rounded-md px-3 py-1.5 bg-background text-xs text-muted-foreground font-mono">
         <svg className="h-3.5 w-3.5 shrink-0 text-foreground/70" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1-11h2v2h-2V9zm0 4h2v6h-2v-6z"/>
         </svg>
         Secure checkout via Paddle
       </span>
-
-      {/* Card icons */}
       <div className="flex items-center gap-1">
         {PAYMENT_METHODS.map(({ icon: Icon, label }) => (
-          <span
-            key={label}
-            title={label}
-            className="flex items-center justify-center rounded border border-border bg-muted/20 px-2 py-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
-          >
+          <span key={label} title={label}
+            className="flex items-center justify-center rounded border border-border bg-muted/20 px-2 py-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors">
             <Icon className="h-3.5 w-auto" />
           </span>
         ))}
       </div>
-
-      {/* 200+ countries */}
       <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground border border-border rounded-md px-2.5 py-1.5 bg-background">
         <Globe className="h-3 w-3 shrink-0" />
         200+ countries
@@ -90,11 +79,9 @@ function PaddleTrustStrip() {
   );
 }
 
-// ── Domain freshness callout ──────────────────────────────────────────────
 function DomainCallout() {
   return (
     <div className="w-full max-w-xl mx-auto mt-10 rounded-lg border border-border bg-background overflow-hidden">
-      {/* top label bar */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/20">
         <RefreshCw className="h-3 w-3 text-muted-foreground shrink-0" />
         <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -104,7 +91,6 @@ function DomainCallout() {
           Biggest advantage
         </span>
       </div>
-
       <div className="px-5 py-4">
         <p className="text-sm font-semibold text-foreground leading-snug mb-1">
           New domains added regularly — never blocked, never blacklisted.
@@ -114,13 +100,11 @@ function DomainCallout() {
           Pro members get access to freshly rotated domains that haven't been seen by spam filters yet —
           so your signups, verifications, and OTPs actually land.
         </p>
-
-        {/* three micro-stats */}
         <div className="mt-4 grid grid-cols-3 gap-px bg-border rounded-md overflow-hidden">
           {[
-            { label: "Rotation",   value: "Regular" },
-            { label: "Blocked",    value: "Rarely"  },
-            { label: "Free plan",  value: "Sometimes" },
+            { label: "Rotation",  value: "Regular"   },
+            { label: "Blocked",   value: "Rarely"    },
+            { label: "Free plan", value: "Sometimes" },
           ].map(({ label, value }) => (
             <div key={label} className="bg-background px-3 py-2.5">
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">{label}</p>
@@ -132,7 +116,6 @@ function DomainCallout() {
     </div>
   );
 }
-
 
 function AsciiLayer() {
   return (
@@ -180,7 +163,6 @@ function FadeIn({ children, delay = 0, className = "" }: {
   );
 }
 
-// ── Table primitives ───────────────────────────────────────────────────────
 const Tick  = () => <Check className="h-3.5 w-3.5 text-foreground shrink-0 mx-auto" />;
 const Cross = () => <span className="block h-3.5 w-3.5 mx-auto rounded-full border border-border" />;
 const V = ({ v, accent }: { v: string; accent?: boolean }) => (
@@ -188,7 +170,6 @@ const V = ({ v, accent }: { v: string; accent?: boolean }) => (
     accent ? "text-foreground" : "text-muted-foreground")}>{v}</span>
 );
 
-// Feature rows for the comparison table
 interface FRow {
   icon: React.ReactNode;
   label: string;
@@ -243,7 +224,6 @@ function SectionRow({ label }: { label: string }) {
   );
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────
 export default function PricingPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -332,14 +312,12 @@ export default function PricingPage() {
               Permanent inbox. New domains regularly. Custom domains. Auto OTP. One plan for everything.
             </motion.p>
 
-            {/* Domain freshness callout */}
             <motion.div
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}>
               <DomainCallout />
             </motion.div>
 
-            {/* Social proof row */}
             <motion.div className="flex flex-wrap items-center justify-center gap-4 mt-10 mb-10 text-sm text-muted-foreground"
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.25 }}>
@@ -362,7 +340,6 @@ export default function PricingPage() {
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}>
 
-              {/* Toggle pills */}
               <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1 gap-1">
                 {(["monthly", "yearly"] as BillingCycle[]).map((c) => (
                   <button key={c} onClick={() => setCycle(c)}
@@ -381,7 +358,6 @@ export default function PricingPage() {
                 ))}
               </div>
 
-              {/* Context strip */}
               <div className="flex items-center gap-2 border border-border rounded-lg px-5 py-3 bg-background min-w-[280px] justify-center">
                 {isMonthly
                   ? <><Gift className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -399,7 +375,6 @@ export default function PricingPage() {
                 }
               </div>
 
-              {/* CTAs */}
               <div className="flex flex-wrap gap-3 justify-center mt-2">
                 {!isPro && (
                   <Button size="lg" onClick={() => upgrade("pro")} disabled={busy}>
@@ -418,7 +393,6 @@ export default function PricingPage() {
                 </p>
               )}
 
-              {/* ── Paddle trust strip ── */}
               {!isPro && <PaddleTrustStrip />}
             </motion.div>
           </div>
@@ -442,7 +416,6 @@ export default function PricingPage() {
             <FadeIn delay={0.1}>
               <div className="rounded-lg border border-border overflow-hidden overflow-x-auto">
                 <table className="w-full text-sm min-w-[480px]">
-                  {/* Column headers */}
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
                       <th className="text-left py-3 px-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Feature</th>
@@ -504,6 +477,16 @@ export default function PricingPage() {
                       guest={false} free={<span className="font-mono text-[10px] text-muted-foreground">Pro only</span>} pro={true} />
                     <FeatureRow icon={<Link2 className="h-3.5 w-3.5" />} label="Verification link detection" hint="One-click verify button extracted from email" isNew
                       guest={false} free={<span className="font-mono text-[10px] text-muted-foreground">Pro only</span>} pro={true} />
+                    {/* ── NEW: Inbox notes row ── */}
+                    <FeatureRow
+                      icon={<FileText className="h-3.5 w-3.5" />}
+                      label="Inbox notes"
+                      hint="Annotate each saved address — free users get 20 chars (local only), Pro gets 500 chars synced to cloud"
+                      isNew
+                      guest={false}
+                      free={<span className="font-mono text-[10px] text-muted-foreground">20 chars · local</span>}
+                      pro={<span className="font-mono text-[10px] text-foreground font-semibold">500 chars · cloud</span>}
+                    />
                     <FeatureRow icon={<MessageSquareCode className="h-3.5 w-3.5" />} label="Real-time delivery" hint="WebSocket push — no reloading" guest={true} free={true} pro={true} />
                     <FeatureRow icon={<Sparkles className="h-3.5 w-3.5" />} label="Inbox layouts" hint="Classic, split, compact, zen, mobile & more"
                       guest={<V v="1" />} free={<V v="3" />} pro={<V v="All" accent />} />
@@ -598,20 +581,22 @@ export default function PricingPage() {
 
                       <div className="mt-8 grid sm:grid-cols-2 gap-3">
                         {[
-                          "Fresh domains added regularly",
-                          "New domains rarely blocked or blacklisted",
-                          "Emails kept forever + 5 GB storage",
-                          "Auto OTP extraction",
-                          "Verification link detection",
-                          "Custom domains",
-                          "Private inboxes",
-                          "Completely ad-free",
-                        ].map((b, i) => (
-                          <div key={b} className={cn(
+                          { text: "Fresh domains added regularly",          key: true  },
+                          { text: "New domains rarely blocked or blacklisted", key: true },
+                          { text: "Emails kept forever + 5 GB storage",     key: false },
+                          { text: "Auto OTP extraction",                     key: false },
+                          { text: "Verification link detection",             key: false },
+                          { text: "Inbox notes — 500 chars, synced to cloud", key: false },
+                          { text: "Custom domains",                          key: false },
+                          { text: "Private inboxes",                         key: false },
+                          { text: "Completely ad-free",                      key: false },
+                        ].map(({ text, key }, i) => (
+                          <div key={text} className={cn(
                             "flex items-center gap-2 text-sm",
-                            i < 2 ? "text-foreground font-medium" : "text-muted-foreground"
+                            key ? "text-foreground font-medium" : "text-muted-foreground"
                           )}>
-                            <Check className={cn("h-3.5 w-3.5 shrink-0", i < 2 ? "text-foreground" : "text-foreground")} />{b}
+                            <Check className="h-3.5 w-3.5 shrink-0 text-foreground" />
+                            {text}
                             {i === 0 && <span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px text-muted-foreground ml-auto">Key feature</span>}
                           </div>
                         ))}
@@ -627,8 +612,6 @@ export default function PricingPage() {
                         <p className="text-xs text-muted-foreground text-center">
                           {isMonthly ? "No card charged today" : "Billed annually"}
                         </p>
-
-                        {/* ── Paddle trust strip (compact, in CTA cell) ── */}
                         <div className="pt-1 border-t border-border space-y-2">
                           <p className="text-[10px] text-muted-foreground font-mono text-center">Secure payment via Paddle · 200+ countries</p>
                           <div className="flex flex-wrap justify-center gap-1">
@@ -684,6 +667,7 @@ export default function PricingPage() {
                 { id: "retention", q: "What happens to my emails if I don't upgrade?",a: "Free plan emails are automatically deleted after 24 hours. Pro keeps all your emails and attachments forever (up to 5 GB)." },
                 { id: "otp",       q: "How does auto OTP extraction work?",            a: "Our SMTP plugin scans the subject and body the moment an email arrives. It uses layered regex patterns to detect 4–8 digit codes. The code appears instantly in your inbox list without opening the email. Pro only." },
                 { id: "verify",    q: "What is verification link detection?",          a: "When an email contains a Verify, Confirm, Activate, or Magic Link button, our server extracts the URL from the HTML. You'll see a Verify chip in your inbox list. Pro only." },
+                { id: "notes",     q: "What are inbox notes?",                        a: "Inbox notes let you annotate each saved email address so you remember what it was used for. Free and authenticated users can add a short note (up to 20 characters) saved locally in their browser. Pro users get 500 characters per note, synced to the cloud so notes follow you across all devices." },
                 { id: "domain",    q: t("faq_domain_title"),                          a: t("faq_domain_desc") },
                 { id: "storage",   q: t("faq_storage_title"),                         a: t("faq_storage_desc") },
                 { id: "billing",   q: "Can I switch from monthly to yearly?",          a: "Yes. Contact us with your account email and we'll apply remaining credit to the yearly plan. No double charging." },

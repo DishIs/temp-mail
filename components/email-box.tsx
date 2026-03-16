@@ -35,7 +35,7 @@ import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal"
 const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
 const FREE_NOTE_LIMIT = 20;
 const PRO_NOTE_LIMIT = 500;
-const HISTORY_DEFAULT_SHOW = 5;
+const HISTORY_DEFAULT_SHOW = 3;
 const MESSAGES_PER_PAGE = 10;
 
 const DOMAIN_SEED: FetchedDomain[] = [
@@ -361,6 +361,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const [inboxNotes, setInboxNotes] = useState<Record<string, string>>({});
   const [editingNoteInbox, setEditingNoteInbox] = useState<string | null>(null);
   const [noteInputValue, setNoteInputValue] = useState('');
+  const [noteHintDismissed, setNoteHintDismissed] = useState(true); // true until storage loaded
 
   // History collapse state
   const [historyExpanded, setHistoryExpanded] = useState(false);
@@ -557,6 +558,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (!isStorageLoaded) return;
     const local = safeJsonParse<Record<string, string>>(localStorage.getItem("inboxNotes"), {});
     setInboxNotes(local);
+    // Show the hint only if user has never interacted with notes before
+    setNoteHintDismissed(localStorage.getItem("noteHintSeen") === "1");
     if (isPro && isAuthenticated) {
       fetch("/api/user/inbox-notes")
         .then(r => r.json())
@@ -739,7 +742,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       setEditingNoteInbox(null);
       setNoteInputValue('');
       if (isPro && isAuthenticated) {
-        fetch('/api/user/inbox-notes', {
+        fetch('/api/inbox-notes', {
           method: trimmed ? 'POST' : 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ inbox, note: trimmed }),
@@ -768,9 +771,14 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const startEditingNote = useCallback((inbox: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isAuthenticated) {
+      setAuthNeedFeature("Inbox Notes");
+      setIsAuthNeedOpen(true);
+      return;
+    }
     setEditingNoteInbox(inbox);
     setNoteInputValue(inboxNotes[inbox] ?? '');
-  }, [inboxNotes]);
+  }, [inboxNotes, isAuthenticated]);
 
   const cancelEditingNote = useCallback(() => {
     setEditingNoteInbox(null);
@@ -910,9 +918,15 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       {msg.hasAttachments && <Paperclip className="h-2.5 w-2.5 text-muted-foreground/35 shrink-0" />}
                     </div>
                     {!isCompact && !isPro && (
-                      <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1 pl-0 sm:pl-7">
-                        <Clock className="h-2.5 w-2.5" />expires {getExpiry(msg.date, 24)}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Email Storage"); }}
+                        className="font-mono text-[10px] text-muted-foreground/35 hover:text-amber-500/80 flex items-center gap-1 pl-0 sm:pl-7 transition-colors text-left"
+                        title="Upgrade to Pro — emails never expire"
+                      >
+                        <Clock className="h-2.5 w-2.5 shrink-0" />
+                        expires {getExpiry(msg.date, isAuthenticated ? 24 : 10)}
+                      </button>
                     )}
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">
@@ -1064,6 +1078,17 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             synced
           </span>
         )}
+        {!isPro && (
+          <button
+            type="button"
+            onClick={() => openUpsell("Cloud-Synced Inbox Notes")}
+            className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/40 hover:text-amber-500/80 transition-colors"
+            title="Upgrade to Pro to sync notes across devices"
+          >
+            <Cloud className="h-2.5 w-2.5" />
+            not synced
+          </button>
+        )}
       </div>
 
       <ul className="space-y-0 divide-y divide-border/30">
@@ -1074,6 +1099,14 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           const nearLimit     = charCount >= Math.floor(noteCharLimit * 0.85);
           const atLimit       = charCount >= noteCharLimit;
           const isActive      = he === email;
+          // Show the demo hint only on the first item, when it has no real note yet
+          const showHint      = i === 0 && !note && !isEditingThis && !noteHintDismissed;
+
+          const dismissHint = (e: React.MouseEvent) => {
+            localStorage.setItem("noteHintSeen", "1");
+            setNoteHintDismissed(true);
+            startEditingNote(he, e);
+          };
 
           return (
             <li key={i} className="group py-2 first:pt-0 last:pb-0">
@@ -1090,7 +1123,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 </span>
 
                 {/* Desktop inline note (no note yet) */}
-                {!isEditingThis && !note && (
+                {!isEditingThis && !note && !showHint && (
                   <button
                     type="button"
                     onClick={(e) => startEditingNote(he, e)}
@@ -1100,6 +1133,21 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   >
                     <FileText className="h-2.5 w-2.5" />
                     <span>add note</span>
+                  </button>
+                )}
+
+                {/* Demo hint note — desktop inline */}
+                {showHint && (
+                  <button
+                    type="button"
+                    onClick={dismissHint}
+                    aria-label="Try adding a note"
+                    className="hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/hint text-left"
+                  >
+                    <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0 animate-pulse" />
+                    <span className="font-mono text-[11px] text-amber-500/60 italic truncate group-hover/hint:text-amber-500 transition-colors border-b border-dashed border-amber-500/30">
+                      click me to edit ✏
+                    </span>
                   </button>
                 )}
 
@@ -1142,6 +1190,21 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   {t("history_use")}
                 </button>
               </div>
+
+              {/* ── Demo hint note — mobile only ──────────────────────── */}
+              {showHint && (
+                <button
+                  type="button"
+                  onClick={dismissHint}
+                  aria-label="Try adding a note"
+                  className="md:hidden mt-1 flex items-center gap-1.5 w-full text-left"
+                >
+                  <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0 animate-pulse" />
+                  <span className="font-mono text-[11px] text-amber-500/60 italic border-b border-dashed border-amber-500/30 hover:text-amber-500 transition-colors">
+                    click me to edit ✏
+                  </span>
+                </button>
+              )}
 
               {/* ── Edit mode ───────────────────────────────────────── */}
               {isEditingThis && (
@@ -1202,7 +1265,14 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       </span>
                     )}
                     {!isPro && !nearLimit && (
-                      <span className="font-mono text-[10px] text-muted-foreground/30">local only</span>
+                      <button
+                        type="button"
+                        onClick={() => openUpsell("Cloud-Synced Inbox Notes")}
+                        className="font-mono text-[10px] text-muted-foreground/30 hover:text-amber-500/70 transition-colors"
+                        title="Upgrade to Pro to sync notes across devices"
+                      >
+                        not synced ↗
+                      </button>
                     )}
                   </div>
                 </div>
