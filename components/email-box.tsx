@@ -7,7 +7,7 @@ import {
   Star, ListOrdered, Clock, Archive, ArchiveRestore,
   Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck,
   Lock, ExternalLink, Globe, Zap, Link2, ChevronDown, Terminal, Download,
-  FileText, X, Cloud, ChevronUp,
+  FileText, X, Cloud, ChevronUp, Pin, PinOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { AuthNeed, UpsellModal } from "./upsell-modal";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
-
+import { BrandAvatar } from "./brand-avatar"; // NEW
 
 const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
 const FREE_NOTE_LIMIT = 20;
@@ -38,10 +38,133 @@ const PRO_NOTE_LIMIT = 500;
 const HISTORY_DEFAULT_SHOW = 3;
 const MESSAGES_PER_PAGE = 10;
 
+// Pin limits
+const PRO_PIN_MSG_LIMIT = 3;
+const PRO_PIN_INBOX_LIMIT = 2;
+const FREE_PIN_MSG_LIMIT = 1;
+const FREE_PIN_INBOX_LIMIT = 1;
+
 const DOMAIN_SEED: FetchedDomain[] = [
   { domain: "ditube.info", tier: "free", tags: [] }
 ];
 
+// ── Brand categorization map ──────────────────────────────────────────────────
+// Maps sender domain/name keywords → category label
+const BRAND_CATEGORY_MAP: Record<string, string> = {
+  "discord": "Discord",
+  "instagram": "Instagram",
+  "facebook": "Facebook",
+  "meta": "Facebook",
+  "twitter": "Twitter/X",
+  "x.com": "Twitter/X",
+  "google": "Google",
+  "github": "GitHub",
+  "netflix": "Netflix",
+  "spotify": "Spotify",
+  "amazon": "Amazon",
+  "apple": "Apple",
+  "microsoft": "Microsoft",
+  "linkedin": "LinkedIn",
+  "reddit": "Reddit",
+  "twitch": "Twitch",
+  "paypal": "PayPal",
+  "stripe": "Stripe",
+  "slack": "Slack",
+  "notion": "Notion",
+  "figma": "Figma",
+  "dropbox": "Dropbox",
+  "zoom": "Zoom",
+  "shopify": "Shopify",
+  "tiktok": "TikTok",
+  "snapchat": "Snapchat",
+  "whatsapp": "WhatsApp",
+  "telegram": "Telegram",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  "Discord":    "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  "Instagram":  "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
+  "Facebook":   "bg-blue-600/10 text-blue-700 dark:text-blue-400 border-blue-600/20",
+  "Twitter/X":  "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+  "Google":     "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+  "GitHub":     "bg-zinc-800/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
+  "Netflix":    "bg-red-600/10 text-red-700 dark:text-red-400 border-red-600/20",
+  "Spotify":    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  "Amazon":     "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  "Apple":      "bg-zinc-400/10 text-zinc-600 dark:text-zinc-400 border-zinc-400/20",
+  "Microsoft":  "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  "LinkedIn":   "bg-sky-600/10 text-sky-700 dark:text-sky-400 border-sky-600/20",
+  "Reddit":     "bg-orange-600/10 text-orange-600 dark:text-orange-400 border-orange-600/20",
+  "Twitch":     "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  "PayPal":     "bg-blue-700/10 text-blue-700 dark:text-blue-400 border-blue-700/20",
+  "Stripe":     "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+  "Slack":      "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
+  "Notion":     "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
+  "Figma":      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  "Dropbox":    "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  "Zoom":       "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  "Shopify":    "bg-green-600/10 text-green-700 dark:text-green-400 border-green-600/20",
+  "TikTok":     "bg-zinc-800/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
+  "Snapchat":   "bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 border-yellow-400/20",
+  "WhatsApp":   "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+  "Telegram":   "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+};
+
+function detectCategory(from: string): string | null {
+  const lower = (from || "").toLowerCase();
+  for (const [keyword, category] of Object.entries(BRAND_CATEGORY_MAP)) {
+    if (lower.includes(keyword)) return category;
+  }
+  return null;
+}
+
+// ── Sender display name parser ────────────────────────────────────────────────
+// Handles all RFC 5322 formats:
+//   "SendTestEmail" <hello@test.com>  →  SendTestEmail
+//   SendTestEmail <hello@test.com>    →  SendTestEmail
+//   hello@test.com                    →  hello  (strips domain)
+export function parseSenderName(from: string): string {
+  if (!from) return "?";
+  // Strip <email@domain> portion
+  let name = from.replace(/<[^>]*>/g, "").trim();
+  // Strip surrounding quotes (single or double)
+  name = name.replace(/^["'\u201C\u201D]+|["'\u201C\u201D]+$/g, "").trim();
+  // If nothing left, fall back to the local-part of the email
+  if (!name) name = from.replace(/@.*$/, "").replace(/[<>]/g, "").trim();
+  return name || from;
+}
+
+
+const PRO_ADJECTIVES = [
+  "swift","lunar","neon","azure","ivory","onyx","amber","cobalt","sage",
+  "frost","ember","cedar","jade","slate","opal","raven","dusk","dawn",
+  "prism","echo","apex","nova","zenith","cipher","velvet","obsidian",
+];
+const PRO_NOUNS = [
+  "circuit","horizon","nexus","beacon","cipher","vortex","lattice",
+  "phantom","zenith","solstice","catalyst","vertex","quasar","delta",
+  "aurora","prism","haven","vector","summit","atlas","orbit","pulse",
+];
+
+export function generateProEmail(domain: string) {
+  const adj = PRO_ADJECTIVES[Math.floor(Math.random() * PRO_ADJECTIVES.length)];
+  const noun = PRO_NOUNS[Math.floor(Math.random() * PRO_NOUNS.length)];
+  const num = Math.floor(Math.random() * 100);
+  return `${adj}.${noun}${num}@${domain}`;
+}
+
+const adjectives = ["rapid","silent","cosmic","bright","frozen","wild","golden"];
+const nouns = ["river","tiger","cloud","pixel","storm","forest","wolf"];
+
+export function generateRandomEmail(domain: string, isPro = false) {
+  if (isPro) return generateProEmail(domain);
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = Math.floor(Math.random() * 1000);
+  return `${adj}-${noun}${num}@${domain}`;
+}
+
+// ── Interfaces ────────────────────────────────────────────────────────────────
 interface Attachment { filename: string; contentType: string; content: string; size: number; }
 interface Message {
   id: string; from: string; to: string; subject: string; date: string;
@@ -50,30 +173,18 @@ interface Message {
   otp?: string | null; verificationLink?: string | null;
 }
 interface DomainExpiry {
-  domain: string;
-  expires_at: string;
-  expires_in_days: number;
-  expiring_soon: boolean;
-  expired: boolean;
+  domain: string; expires_at: string; expires_in_days: number;
+  expiring_soon: boolean; expired: boolean;
 }
 interface FetchedDomain {
-  domain: string;
-  tier: "free" | "pro";
-  tags: string[];
-  expires_at?: string;
-  expires_in_days?: number;
-  expiring_soon?: boolean;
+  domain: string; tier: "free" | "pro"; tags: string[];
+  expires_at?: string; expires_in_days?: number; expiring_soon?: boolean;
 }
 
 const safeJsonParse = <T,>(str: string | null, fallback: T): T => {
   if (!str) return fallback;
   try { return JSON.parse(str) as T; } catch { return fallback; }
 };
-
-function generateRandomEmail(domain: string) {
-  const chars = "abcdefghijklmnopqrstuvwxyz";
-  return [...Array(6)].map(() => chars[Math.floor(Math.random() * chars.length)]).join("") + "@" + domain;
-}
 
 const getPreferredDomain = (domains: string[], last: string | null, freeSet: Set<string>) =>
   (last && domains.includes(last))
@@ -99,60 +210,37 @@ const getExpiry = (dateStr: string, hours: number) => {
   return `Today ${timeStr}`;
 };
 
+// ── Sub-components (unchanged visuals) ────────────────────────────────────────
 function NewEmailFlash({ from, subject, onDone }: { from: string; subject: string; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3400);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
+  useEffect(() => { const t = setTimeout(onDone, 3400); return () => clearTimeout(t); }, [onDone]);
   return (
     <>
       <style>{`
-        @keyframes flashEnter {
-          0%   { transform:translateY(-100%); opacity:0; }
-          10%  { transform:translateY(0);     opacity:1; }
-          80%  { transform:translateY(0);     opacity:1; }
-          100% { transform:translateY(-100%); opacity:0; }
-        }
-        @keyframes scanSwipe {
-          0%   { background-position:-100% 0; }
-          100% { background-position:220% 0; }
-        }
+        @keyframes flashEnter { 0%{transform:translateY(-100%);opacity:0} 10%{transform:translateY(0);opacity:1} 80%{transform:translateY(0);opacity:1} 100%{transform:translateY(-100%);opacity:0} }
+        @keyframes scanSwipe { 0%{background-position:-100% 0} 100%{background-position:220% 0} }
       `}</style>
-      <div
-        className="absolute top-0 inset-x-0 z-50 overflow-hidden pointer-events-none"
-        style={{ animation: "flashEnter 3.4s ease-out forwards" }}
-      >
+      <div className="absolute top-0 inset-x-0 z-50 overflow-hidden pointer-events-none" style={{ animation: "flashEnter 3.4s ease-out forwards" }}>
         <div className="relative flex items-center gap-3 px-4 py-2.5 bg-background border-b border-border">
-          <div className="absolute inset-0" style={{
-            background: "linear-gradient(90deg,transparent 0%,hsl(var(--foreground)/0.05) 50%,transparent 100%)",
-            backgroundSize: "60% 100%",
-            animation: "scanSwipe 0.7s ease-out 0.1s",
-          }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(90deg,transparent 0%,hsl(var(--foreground)/0.05) 50%,transparent 100%)", backgroundSize: "60% 100%", animation: "scanSwipe 0.7s ease-out 0.1s" }} />
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">RCVD</span>
           <span className="font-mono text-xs text-foreground font-semibold truncate">{from}</span>
           <span className="text-border shrink-0">·</span>
           <span className="font-mono text-xs text-muted-foreground truncate">{subject || "(no subject)"}</span>
-          <span className="ml-auto font-mono text-[10px] text-muted-foreground/70 shrink-0 tabular-nums">
-            {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
-          </span>
+          <span className="ml-auto font-mono text-[10px] text-muted-foreground/70 shrink-0 tabular-nums">{new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</span>
         </div>
       </div>
     </>
   );
 }
 
-function ProLockChip({ label, blurContent, onUpsell, variant = "otp" }: {
-  label: string; blurContent: string; onUpsell: () => void; variant?: "otp" | "verify";
-}) {
+function ProLockChip({ label, blurContent, onUpsell, variant = "otp" }: { label: string; blurContent: string; onUpsell: () => void; variant?: "otp" | "verify" }) {
   const cls = variant === "otp"
     ? "bg-emerald-500/8 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15"
     : "bg-blue-500/8 border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/15";
   return (
     <button type="button" onClick={(e) => { e.stopPropagation(); onUpsell(); }}
-      className={cn("group shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-mono transition-all cursor-pointer select-none", cls)}
-      title={`Upgrade to Pro to see ${label}`}>
+      className={cn("group shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-mono transition-all cursor-pointer select-none", cls)}>
       <Lock className="h-2.5 w-2.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
       <span className="blur-[4px] tracking-widest pointer-events-none">{blurContent}</span>
     </button>
@@ -162,8 +250,7 @@ function ProLockChip({ label, blurContent, onUpsell, variant = "otp" }: {
 function OtpChip({ otp, onCopy, copied }: { otp: string; onCopy: () => void; copied: boolean }) {
   return (
     <div onClick={(e) => { e.stopPropagation(); onCopy(); }}
-      className="shrink-0 inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 text-[10px] font-mono cursor-pointer hover:bg-emerald-500/20 transition-colors"
-      title="Click to copy OTP">
+      className="shrink-0 inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 text-[10px] font-mono cursor-pointer hover:bg-emerald-500/20 transition-colors">
       <Zap className="h-2.5 w-2.5 shrink-0" />
       <span className="font-bold tracking-wider">{otp}</span>
       {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5 opacity-50" />}
@@ -174,8 +261,7 @@ function OtpChip({ otp, onCopy, copied }: { otp: string; onCopy: () => void; cop
 function VerifyChip({ url }: { url: string }) {
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-      className="shrink-0 inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 text-[10px] font-medium cursor-pointer hover:bg-blue-500/20 transition-colors"
-      title="Open verification link">
+      className="shrink-0 inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 text-[10px] font-medium cursor-pointer hover:bg-blue-500/20 transition-colors">
       <Link2 className="h-2.5 w-2.5 shrink-0" />
       <span>Verify</span>
       <ExternalLink className="h-2.5 w-2.5 opacity-60" />
@@ -183,38 +269,27 @@ function VerifyChip({ url }: { url: string }) {
   );
 }
 
-function DomainExpiryBanner({
-  expiry, isPro, onUpsell,
-}: {
-  expiry: DomainExpiry; isPro: boolean; onUpsell: (f: string) => void;
-}) {
-  if (!expiry.expiring_soon && !expiry.expired) return null;
-
-  const urgent = expiry.expired || expiry.expires_in_days <= 7;
-  const label = expiry.expired
-    ? `@${expiry.domain} has expired — emails may stop delivering.`
-    : `@${expiry.domain} expires in ${expiry.expires_in_days} day${expiry.expires_in_days !== 1 ? "s" : ""}.`;
-
+function CategoryChip({ category }: { category: string }) {
+  const cls = CATEGORY_COLORS[category] || "bg-muted/40 text-muted-foreground border-border";
   return (
-    <div
-      className={cn(
-        "border-t px-4 py-2.5 flex items-center gap-2 transition-colors",
-        urgent
-          ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/10"
-          : "border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10",
-        !isPro && "cursor-pointer",
-      )}
-      onClick={() => { if (!isPro) onUpsell("Custom Domain — keep your inbox forever"); }}
-    >
+    <span className={cn("shrink-0 inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-mono", cls)}>
+      {category}
+    </span>
+  );
+}
+
+function DomainExpiryBanner({ expiry, isPro, onUpsell }: { expiry: DomainExpiry; isPro: boolean; onUpsell: (f: string) => void }) {
+  if (!expiry.expiring_soon && !expiry.expired) return null;
+  const urgent = expiry.expired || expiry.expires_in_days <= 7;
+  const label = expiry.expired ? `@${expiry.domain} has expired — emails may stop delivering.` : `@${expiry.domain} expires in ${expiry.expires_in_days} day${expiry.expires_in_days !== 1 ? "s" : ""}.`;
+  return (
+    <div className={cn("border-t px-4 py-2.5 flex items-center gap-2 transition-colors", urgent ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/10" : "border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10", !isPro && "cursor-pointer")}
+      onClick={() => { if (!isPro) onUpsell("Custom Domain — keep your inbox forever"); }}>
       <Clock className={cn("h-3 w-3 shrink-0", urgent ? "text-red-500" : "text-amber-500")} />
       <span className={cn("font-mono text-[11px] flex-1", urgent ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400")}>
         {label}
-        {!isPro && (
-          <span className="ml-1 underline underline-offset-2">Get your own domain →</span>
-        )}
-        {isPro && (
-          <span className="ml-1 text-muted-foreground/80">Transfer to a custom domain in Settings.</span>
-        )}
+        {!isPro && <span className="ml-1 underline underline-offset-2">Get your own domain →</span>}
+        {isPro && <span className="ml-1 text-muted-foreground/80">Transfer to a custom domain in Settings.</span>}
       </span>
     </div>
   );
@@ -227,9 +302,7 @@ function PhonePromoCard() {
         <Zap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">OTP Verification</p>
       </div>
-      <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
-        Need a real phone number for OTP verification? Get one instantly from our partner.
-      </p>
+      <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">Need a real phone number for OTP verification? Get one instantly from our partner.</p>
       <a rel="sponsored" href={PHONE_AFFILIATE_URL} target="_blank"
         className="inline-flex items-center gap-1 font-mono text-[11px] text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground transition-colors">
         Get phone number →
@@ -238,9 +311,7 @@ function PhonePromoCard() {
   );
 }
 
-const SplitPaneMessageView = ({
-  message, token, apiEndpoint, isPro, onUpsell,
-}: { message: Message; token: string | null; apiEndpoint: string; isPro: boolean; onUpsell: (f: string) => void }) => {
+const SplitPaneMessageView = ({ message, token, apiEndpoint, isPro, onUpsell }: { message: Message; token: string | null; apiEndpoint: string; isPro: boolean; onUpsell: (f: string) => void }) => {
   const [fullMessage, setFullMessage] = useState<Message | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const fetchFull = useCallback(async (id: string) => {
@@ -255,7 +326,7 @@ const SplitPaneMessageView = ({
     } catch (e) { console.error(e); } finally { setIsLoading(false); }
   }, [message.to, token, apiEndpoint]);
   useEffect(() => { setFullMessage(null); fetchFull(message.id); }, [message.id, fetchFull]);
-  const fmt = (b: number) => { if (!b) return "0 B"; const s = ["B", "KB", "MB", "GB"]; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(1)} ${s[i]}`; };
+  const fmt = (b: number) => { if (!b) return "0 B"; const s = ["B","KB","MB","GB"]; const i = Math.floor(Math.log(b)/Math.log(1024)); return `${(b/Math.pow(1024,i)).toFixed(1)} ${s[i]}`; };
   const m = fullMessage || message;
   return (
     <div className="flex flex-col h-full bg-background">
@@ -263,7 +334,7 @@ const SplitPaneMessageView = ({
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Subject</p>
         <h2 className="text-sm font-semibold text-foreground mb-2 break-words leading-snug">{m.subject}</h2>
         <div className="grid gap-0.5 font-mono text-[11px] text-muted-foreground">
-          <span><span className="text-foreground/40 mr-2">FROM</span>{m.from}</span>
+          <span><span className="text-foreground/40 mr-2">FROM</span>{parseSenderName(m.from)}</span>
           <span><span className="text-foreground/40 mr-2">DATE</span>{new Date(m.date).toLocaleString()}</span>
         </div>
       </div>
@@ -301,6 +372,20 @@ const SplitPaneMessageView = ({
   );
 };
 
+// ── Pinned message chip ────────────────────────────────────────────────────────
+function PinButton({ isPinned, onClick, size = "sm" }: { isPinned: boolean; onClick: (e: React.MouseEvent) => void; size?: "sm" | "xs" }) {
+  return (
+    <Button variant="ghost" size="icon"
+      className={cn(size === "xs" ? "h-5 w-5" : "h-6 w-6", isPinned && "text-amber-500")}
+      onClick={onClick}
+      title={isPinned ? "Unpin" : "Pin"}
+    >
+      <Pin className={cn(size === "xs" ? "h-2.5 w-2.5" : "h-3 w-3", isPinned && "fill-amber-500")} />
+    </Button>
+  );
+}
+
+// ── Main Props ────────────────────────────────────────────────────────────────
 interface EmailBoxProps {
   initialSession: Session | null;
   initialCustomDomains: any[];
@@ -361,13 +446,23 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const [inboxNotes, setInboxNotes] = useState<Record<string, string>>({});
   const [editingNoteInbox, setEditingNoteInbox] = useState<string | null>(null);
   const [noteInputValue, setNoteInputValue] = useState('');
-  const [noteHintDismissed, setNoteHintDismissed] = useState(true); // true until storage loaded
+  const [noteHintDismissed, setNoteHintDismissed] = useState(true);
 
   // History collapse state
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
   // Message list pagination
   const [visibleMessageCount, setVisibleMessageCount] = useState(MESSAGES_PER_PAGE);
+
+  // ── NEW: Pin state ─────────────────────────────────────────────────────────
+  // Pinned message IDs
+  const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
+  // Pinned inbox addresses
+  const [pinnedInboxes, setPinnedInboxes] = useState<string[]>([]);
+
+  // ── NEW: Settings new-feature pulse tracking ───────────────────────────────
+  // Track which settings features have been "discovered" (seen)
+  const [unseenSettingsFeatures, setUnseenSettingsFeatures] = useState<Set<string>>(new Set());
 
   const skipNextSettingsSave = useRef(false);
   const originalTitle = useRef(typeof document !== "undefined" ? document.title : "DITMail");
@@ -381,10 +476,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const openUpsell = (feature: string) => { setUpsellFeature(feature); setIsUpsellOpen(true); };
 
-  const freeDomainSet = useMemo(
-    () => new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)),
-    [fetchedDomains],
-  );
+  const freeDomainSet = useMemo(() => new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)), [fetchedDomains]);
 
   const availableDomains = useMemo(() => {
     const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
@@ -422,14 +514,70 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const isMobile = userSettings.layout === "mobile" && isPro;
   const isRetro = userSettings.layout === "retro" && isPro;
 
+  // ── Category detection (memoized per message) ─────────────────────────────
+  const getMessageCategory = useCallback((msg: Message): string | null => {
+    if (!userSettings.categorization) return null;
+    return detectCategory(msg.from);
+  }, [userSettings.categorization]);
+
+  // ── Pin helpers ───────────────────────────────────────────────────────────
+  const getMsgPinLimit = () => isPro ? PRO_PIN_MSG_LIMIT : isAuthenticated ? FREE_PIN_MSG_LIMIT : 0;
+  const getInboxPinLimit = () => isPro ? PRO_PIN_INBOX_LIMIT : isAuthenticated ? FREE_PIN_INBOX_LIMIT : 0;
+
+  const togglePinMessage = useCallback((msgId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated) { setAuthNeedFeature("Pin Messages"); setIsAuthNeedOpen(true); return; }
+    const limit = getMsgPinLimit();
+    if (limit === 0) { openUpsell("Pin Messages"); return; }
+    setPinnedMessageIds(prev => {
+      if (prev.includes(msgId)) {
+        const next = prev.filter(id => id !== msgId);
+        localStorage.setItem("pinnedMessages", JSON.stringify(next));
+        return next;
+      }
+      if (prev.length >= limit) {
+        if (!isPro) openUpsell(`Pin up to ${PRO_PIN_MSG_LIMIT} Messages (Pro)`);
+        else openUpsell("Pin Messages — limit reached");
+        return prev;
+      }
+      const next = [...prev, msgId];
+      localStorage.setItem("pinnedMessages", JSON.stringify(next));
+      return next;
+    });
+  }, [isAuthenticated, isPro]);
+
+  const togglePinInbox = useCallback((inbox: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated) { setAuthNeedFeature("Pin Inboxes"); setIsAuthNeedOpen(true); return; }
+    const limit = getInboxPinLimit();
+    if (limit === 0) { openUpsell("Pin Inboxes"); return; }
+    setPinnedInboxes(prev => {
+      if (prev.includes(inbox)) {
+        const next = prev.filter(a => a !== inbox);
+        localStorage.setItem("pinnedInboxes", JSON.stringify(next));
+        return next;
+      }
+      if (prev.length >= limit) {
+        if (!isPro) openUpsell(`Pin up to ${PRO_PIN_INBOX_LIMIT} Inboxes (Pro)`);
+        else openUpsell("Pin Inboxes — limit reached");
+        return prev;
+      }
+      const next = [...prev, inbox];
+      localStorage.setItem("pinnedInboxes", JSON.stringify(next));
+      return next;
+    });
+  }, [isAuthenticated, isPro]);
+
+  // ── Render badges (OTP, verify, category) ────────────────────────────────
   const renderBadges = useCallback((msg: Message) => {
     const hasOtp = !!msg.otp;
     const hasVerify = !!msg.verificationLink;
-    if (!hasOtp && !hasVerify) return null;
+    const category = getMessageCategory(msg);
     const isRealOtp = msg.otp !== "__DETECTED__";
     const isRealLink = msg.verificationLink !== "__DETECTED__";
     return (
       <span className="inline-flex items-center gap-1 flex-wrap">
+        {category && <CategoryChip category={category} />}
         {hasOtp && (isPro && isRealOtp
           ? <OtpChip otp={msg.otp!} onCopy={() => { navigator.clipboard.writeText(msg.otp!); setOTPCopied(msg.id); setTimeout(() => setOTPCopied(null), 2000); }} copied={otpCopied === msg.id} />
           : <ProLockChip label="OTP code" blurContent="847291" onUpsell={() => openUpsell("Auto OTP Extraction")} variant="otp" />
@@ -440,7 +588,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
       </span>
     );
-  }, [isPro, otpCopied]);
+  }, [isPro, otpCopied, getMessageCategory]);
 
   const connectWebSocket = useCallback(async (mailbox: string) => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
@@ -461,10 +609,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         const msg: Message = { id: d.id, from: d.from, to: d.to, subject: d.subject, date: d.date, hasAttachments: d.hasAttachment, otp: d.otp ?? null, verificationLink: d.verificationLink ?? null };
         setMessagesRef.current(prev => {
           if (prev.some(m => m.id === msg.id)) return prev;
-          sendNotificationRef.current(`New Email from ${msg.from}`, msg.subject || "(No Subject)");
+          sendNotificationRef.current(`New Email from ${parseSenderName(msg.from)}`, msg.subject || "(No Subject)");
           return [msg, ...prev];
         });
-        setFlashQueue(q => [...q, { id: msg.id, from: msg.from, subject: msg.subject || "" }]);
+        setFlashQueue(q => [...q, { id: msg.id, from: parseSenderName(msg.from), subject: msg.subject || "" }]);
         setNewRowIds(s => new Set(s).add(msg.id));
         setTimeout(() => setNewRowIds(s => { const n = new Set(s); n.delete(msg.id); return n; }), 1400);
       } catch (_) { }
@@ -509,6 +657,14 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
       setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
       setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
+      // Load pins from storage
+      setPinnedMessageIds(safeJsonParse<string[]>(localStorage.getItem("pinnedMessages"), []));
+      setPinnedInboxes(safeJsonParse<string[]>(localStorage.getItem("pinnedInboxes"), []));
+      // Load unseen settings features
+      const seenFeatures = safeJsonParse<string[]>(localStorage.getItem("seenSettingsFeatures"), []);
+      const allNewFeatures = ["categorization"]; // add new feature keys here
+      const unseen = new Set(allNewFeatures.filter(f => !seenFeatures.includes(f)));
+      setUnseenSettingsFeatures(unseen);
       setIsStorageLoaded(true);
       if (initialInboxes.length > 0) {
         const merged = [...new Set([...initialInboxes, ...localHistory])];
@@ -516,7 +672,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         initEmail = initialCurrentInbox || initialInboxes[0];
         if (!checkDomainAllowed(initEmail.split("@")[1], currentFetchedDomains)) {
           const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-          initEmail = generateRandomEmail(d);
+          initEmail = generateRandomEmail(d, isPro);
           hist = [initEmail, ...hist.filter(e => e !== initEmail)];
         }
       } else if (localHistory.length > 0) {
@@ -524,12 +680,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         const topDomain = hist[0].split("@")[1];
         if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
           const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-          initEmail = generateRandomEmail(d);
+          initEmail = generateRandomEmail(d, isPro);
           hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
         } else { initEmail = hist[0]; }
       } else {
         const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-        initEmail = generateRandomEmail(d);
+        initEmail = generateRandomEmail(d, isPro);
         hist = [initEmail];
       }
       if (!email) setEmail(initEmail);
@@ -553,12 +709,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (isStorageLoaded) fetch_();
   }, [isAuthenticated, isStorageLoaded]);
 
-  // Notes load effect
   useEffect(() => {
     if (!isStorageLoaded) return;
     const local = safeJsonParse<Record<string, string>>(localStorage.getItem("inboxNotes"), {});
     setInboxNotes(local);
-    // Show the hint only if user has never interacted with notes before
     setNoteHintDismissed(localStorage.getItem("noteHintSeen") === "1");
     if (isPro && isAuthenticated) {
       fetch("/api/user/inbox-notes")
@@ -587,7 +741,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     document.title = n > 0 ? `(${n}) ${base}` : base;
   }, [messages, readMessageIds, dismissedMessageIds]);
 
-  // Reset pagination when email or tab changes
   useEffect(() => { setVisibleMessageCount(MESSAGES_PER_PAGE); }, [email, activeTab]);
 
   const sendNotification = (title: string, body: string) => {
@@ -638,7 +791,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       setDomainExpiry(d.domain_expiry ?? null);
       if (d.success && Array.isArray(d.data)) {
         const newMsgs = d.data.filter((m: Message) => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
-        if (newMsgs.length > 0 && messages.length > 0) sendNotification(`New Email from ${newMsgs[0].from}`, newMsgs[0].subject || "(No Subject)");
+        if (newMsgs.length > 0 && messages.length > 0) sendNotification(`New Email from ${parseSenderName(newMsgs[0].from)}`, newMsgs[0].subject || "(No Subject)");
         setMessages(d.data);
         const ids = new Set<string>(); d.data.forEach((msg: Message) => { if (localStorage.getItem(`saved-msg-${msg.id}`)) ids.add(msg.id); }); setSavedMessageIds(ids);
       }
@@ -679,7 +832,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const deleteEmail = () => {
     const allowedDomainsList = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains)).map(d => d.domain);
     const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("lastUsedDomain"), freeDomainSet);
-    const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
+    const ne = generateRandomEmail(d, isPro); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
   };
 
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
@@ -692,7 +845,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (itemToDelete?.type === "email") {
       const allowedDomainsList = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains)).map(d => d.domain);
       const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("primaryDomain"), freeDomainSet);
-      const ne = generateRandomEmail(d); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
+      const ne = generateRandomEmail(d, isPro); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
     } else if (itemToDelete?.type === "message" && itemToDelete.id) {
       try {
         const headers: Record<string, string> = { "x-fce-client": "web-client" };
@@ -716,8 +869,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           return;
         }
         setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
-      }
-      else setError("Enter a valid email prefix.");
+      } else setError("Enter a valid email prefix.");
     } else setIsEditing(true);
   };
 
@@ -732,25 +884,18 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   };
 
   // Notes callbacks
-  const saveInboxNote = useCallback(
-    (inbox: string, note: string) => {
-      const trimmed = note.trim().slice(0, noteCharLimit);
-      const updated = { ...inboxNotes };
-      if (trimmed) { updated[inbox] = trimmed; } else { delete updated[inbox]; }
-      setInboxNotes(updated);
-      localStorage.setItem("inboxNotes", JSON.stringify(updated));
-      setEditingNoteInbox(null);
-      setNoteInputValue('');
-      if (isPro && isAuthenticated) {
-        fetch('/api/inbox-notes', {
-          method: trimmed ? 'POST' : 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ inbox, note: trimmed }),
-        }).catch(() => { });
-      }
-    },
-    [inboxNotes, noteCharLimit, isPro, isAuthenticated],
-  );
+  const saveInboxNote = useCallback((inbox: string, note: string) => {
+    const trimmed = note.trim().slice(0, noteCharLimit);
+    const updated = { ...inboxNotes };
+    if (trimmed) { updated[inbox] = trimmed; } else { delete updated[inbox]; }
+    setInboxNotes(updated);
+    localStorage.setItem("inboxNotes", JSON.stringify(updated));
+    setEditingNoteInbox(null);
+    setNoteInputValue('');
+    if (isPro && isAuthenticated) {
+      fetch('/api/user/inbox-notes', { method: trimmed ? 'POST' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inbox, note: trimmed }) }).catch(() => { });
+    }
+  }, [inboxNotes, noteCharLimit, isPro, isAuthenticated]);
 
   const handleDeleteInbox = useCallback(async (inbox: string) => {
     setEmailHistory(prev => prev.filter(e => e !== inbox));
@@ -761,29 +906,18 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     setInboxNotes(updatedNotes);
     localStorage.setItem('inboxNotes', JSON.stringify(updatedNotes));
     if (isAuthenticated) {
-      fetch('/api/user/inboxes', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inbox }),
-      }).catch(() => { });
+      fetch('/api/user/inboxes', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inbox }) }).catch(() => { });
     }
   }, [emailHistory, inboxNotes, isAuthenticated]);
 
   const startEditingNote = useCallback((inbox: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated) {
-      setAuthNeedFeature("Inbox Notes");
-      setIsAuthNeedOpen(true);
-      return;
-    }
+    if (!isAuthenticated) { setAuthNeedFeature("Inbox Notes"); setIsAuthNeedOpen(true); return; }
     setEditingNoteInbox(inbox);
     setNoteInputValue(inboxNotes[inbox] ?? '');
   }, [inboxNotes, isAuthenticated]);
 
-  const cancelEditingNote = useCallback(() => {
-    setEditingNoteInbox(null);
-    setNoteInputValue('');
-  }, []);
+  const cancelEditingNote = useCallback(() => { setEditingNoteInbox(null); setNoteInputValue(''); }, []);
 
   const handleProShortcut = (fn: () => void, name: string) => { if (isPro) fn(); else openUpsell(`Keyboard Shortcut: ${name}`); };
   const handleAuthShortcut = (fn: () => void, name: string) => { if (isAuthenticated) fn(); else { setAuthNeedFeature(`Keyboard Shortcut: ${name}`); setIsAuthNeedOpen(true); } };
@@ -798,52 +932,52 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const filteredMessages = useMemo(() => {
     if (activeTab === "dismissed") return messages.filter(m => dismissedMessageIds.has(m.id));
-    return messages.filter(m => !dismissedMessageIds.has(m.id));
-  }, [messages, activeTab, dismissedMessageIds]);
+    const base = messages.filter(m => !dismissedMessageIds.has(m.id));
+    // Pinned messages float to top
+    const pinned = base.filter(m => pinnedMessageIds.includes(m.id));
+    const unpinned = base.filter(m => !pinnedMessageIds.includes(m.id));
+    return [...pinned, ...unpinned];
+  }, [messages, activeTab, dismissedMessageIds, pinnedMessageIds]);
 
-  // Paginated slice of visible messages
-  const visibleMessages = useMemo(
-    () => filteredMessages.slice(0, visibleMessageCount),
-    [filteredMessages, visibleMessageCount],
-  );
+  const visibleMessages = useMemo(() => filteredMessages.slice(0, visibleMessageCount), [filteredMessages, visibleMessageCount]);
   const hiddenCount = filteredMessages.length - visibleMessages.length;
 
   useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.body.setAttribute("data-fce-layout", userSettings.layout);
-    }
-    return () => {
-      if (typeof document !== "undefined") document.body.removeAttribute("data-fce-layout");
-    };
+    if (typeof document !== "undefined") document.body.setAttribute("data-fce-layout", userSettings.layout);
+    return () => { if (typeof document !== "undefined") document.body.removeAttribute("data-fce-layout"); };
   }, [userSettings.layout]);
 
   // ── History helpers ────────────────────────────────────────────────────────
-  // Only show the collapse control when user has more than HISTORY_DEFAULT_SHOW inboxes
-  // and can save more than 5 (pro or free authenticated with history > 5)
   const canHaveMoreHistory = emailHistory.length > HISTORY_DEFAULT_SHOW;
-  const visibleHistory = canHaveMoreHistory && !historyExpanded
-    ? emailHistory.slice(0, HISTORY_DEFAULT_SHOW)
-    : emailHistory;
+  // Pinned inboxes always at top
+  const sortedHistory = useMemo(() => {
+    const pinned = emailHistory.filter(e => pinnedInboxes.includes(e));
+    const rest = emailHistory.filter(e => !pinnedInboxes.includes(e));
+    return [...pinned, ...rest];
+  }, [emailHistory, pinnedInboxes]);
+  const visibleHistory = canHaveMoreHistory && !historyExpanded ? sortedHistory.slice(0, HISTORY_DEFAULT_SHOW) : sortedHistory;
   const hiddenHistoryCount = emailHistory.length - HISTORY_DEFAULT_SHOW;
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  // ── Handle settings open — mark categorization feature as seen ─────────────
+  const handleOpenSettings = () => {
+    setIsSettingsOpen(true);
+    if (unseenSettingsFeatures.size > 0) {
+      const allFeatures = ["categorization"];
+      localStorage.setItem("seenSettingsFeatures", JSON.stringify(allFeatures));
+      setUnseenSettingsFeatures(new Set());
+    }
+  };
 
+  // ── Render helpers ─────────────────────────────────────────────────────────
   const renderEmptyState = () => (
     <div className="py-14 flex flex-col items-center text-center px-6">
-      <button
-        onClick={() => setIsCliModalOpen(true)}
-        className="mb-5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors group"
-      >
-        <span>$</span>
-        <span>fce watch {email || "random"}</span>
+      <button onClick={() => setIsCliModalOpen(true)}
+        className="mb-5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors group">
+        <span>$</span><span>fce watch {email || "random"}</span>
         <span className="inline-block w-1.5 h-3.5 bg-muted-foreground/30 group-hover:bg-primary/50 animate-pulse" />
       </button>
-      <p className="font-mono text-xs text-muted-foreground/80 mb-1">
-        {activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}
-      </p>
-      <p className="font-mono text-[11px] text-muted-foreground/70 max-w-xs">
-        {activeTab === "all" ? t("inbox_empty_subtitle") : "Dismissed emails appear here."}
-      </p>
+      <p className="font-mono text-xs text-muted-foreground/80 mb-1">{activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}</p>
+      <p className="font-mono text-[11px] text-muted-foreground/70 max-w-xs">{activeTab === "all" ? t("inbox_empty_subtitle") : "Dismissed emails appear here."}</p>
       {activeTab === "all" && !isPro && (
         <div className="mt-6 border border-dashed border-border rounded-lg px-5 py-3 max-w-xs space-y-1.5">
           <p className="font-mono text-[10px] text-muted-foreground/80">Need a real phone number for OTP verification?</p>
@@ -859,17 +993,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const renderInboxList = () => (
     <div className="relative">
       <style>{`
-        @keyframes rowEnter {
-          0%  {opacity:0;transform:translateX(-6px);background-color:hsl(var(--foreground)/0.04);}
-          35% {opacity:1;transform:translateX(0);background-color:hsl(var(--foreground)/0.04);}
-          100%{background-color:transparent;}
-        }
-        @keyframes glowFadeOut {
-          0%  {opacity:1;}70%{opacity:1;}100%{opacity:0;}
-        }
+        @keyframes rowEnter { 0%{opacity:0;transform:translateX(-6px);background-color:hsl(var(--foreground)/0.04)} 35%{opacity:1;transform:translateX(0);background-color:hsl(var(--foreground)/0.04)} 100%{background-color:transparent} }
+        @keyframes glowFadeOut { 0%{opacity:1}70%{opacity:1}100%{opacity:0} }
       `}</style>
       <div className="grid items-center border-b border-border bg-muted/20 px-3 py-1.5"
-        style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4rem" }}>
+        style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4.5rem" }}>
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70">#</span>
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70 pl-2">From · Subject</span>
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70 text-right">Time</span>
@@ -883,6 +1011,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               const isRead = readMessageIds.has(msg.id);
               const isSelected = selectedMessage?.id === msg.id;
               const isNew = newRowIds.has(msg.id);
+              const isPinned = pinnedMessageIds.includes(msg.id);
               return (
                 <div key={msg.id} onClick={() => viewMessage(msg)}
                   className={cn(
@@ -890,25 +1019,25 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     "grid items-center px-3 gap-0",
                     isCompact ? "py-1.5" : "py-2.5",
                     isSelected && isSplit ? "bg-foreground/5 border-l-2 border-l-foreground" : "hover:bg-muted/25",
+                    isPinned && "bg-amber-500/3 border-l-2 border-l-amber-500/40",
                     isNew && "[animation:rowEnter_0.45s_ease-out]",
                   )}
-                  style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4rem" }}>
+                  style={{ gridTemplateColumns: "1.25rem 1fr 3.5rem 4.5rem" }}>
                   {isNew && <div className="absolute inset-y-0 left-0 w-0.5 bg-emerald-500 [animation:glowFadeOut_1.4s_ease-out_forwards]" />}
-                  <span className={cn("font-mono text-[10px] tabular-nums shrink-0", isNew ? "text-emerald-500 font-bold" : "text-muted-foreground/30")}>
-                    {isNew ? "→" : String(idx + 1).padStart(2, "0")}
+                  <span className={cn("font-mono text-[10px] tabular-nums shrink-0", isNew ? "text-emerald-500 font-bold" : isPinned ? "text-amber-500/60" : "text-muted-foreground/30")}>
+                    {isNew ? "→" : isPinned ? "↑" : String(idx + 1).padStart(2, "0")}
                   </span>
                   <div className="min-w-0 flex flex-col gap-0.5 pl-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {!isCompact && (
-                        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded text-[10px] font-bold font-mono shrink-0",
-                          isRead ? "bg-muted/40 text-muted-foreground/70" : "bg-foreground/8 text-foreground/70")}>
-                          {msg.from.charAt(0).toUpperCase()}
-                        </span>
+                        // ── Brand avatar (lazy-loaded icon or initial fallback) ──
+                        <BrandAvatar from={msg.from} size={20} className="shrink-0" />
                       )}
                       <span className={cn("font-mono text-xs truncate", isRead ? "text-muted-foreground" : "text-foreground font-semibold")}>
-                        {msg.from.replace(/<.*?>/g, "").trim() || msg.from}
+                        {parseSenderName(msg.from)}
                       </span>
                       {!isRead && <span className="h-1 w-1 rounded-full bg-foreground shrink-0" />}
+                      {isPinned && <Pin className="h-2.5 w-2.5 text-amber-500/60 shrink-0 fill-amber-500/30" />}
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap pl-0 sm:pl-7">
                       <span className={cn("font-mono text-[11px] truncate flex-1", isRead ? "text-muted-foreground/70" : "text-muted-foreground")}>
@@ -918,22 +1047,19 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       {msg.hasAttachments && <Paperclip className="h-2.5 w-2.5 text-muted-foreground/35 shrink-0" />}
                     </div>
                     {!isCompact && !isPro && (
-                      <button
-                        type="button"
+                      <button type="button"
                         onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Email Storage"); }}
                         className="font-mono text-[10px] text-muted-foreground/35 hover:text-amber-500/80 flex items-center gap-1 pl-0 sm:pl-7 transition-colors text-left"
-                        title="Upgrade to Pro — emails never expire"
-                      >
+                        title="Upgrade to Pro — emails never expire">
                         <Clock className="h-2.5 w-2.5 shrink-0" />
                         expires {getExpiry(msg.date, isAuthenticated ? 24 : 10)}
                       </button>
                     )}
                   </div>
-                  <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">
-                    {fmtDateShort(msg.date)}
-                  </span>
-                  {/* Action buttons: always visible on mobile, hover-only on desktop */}
+                  <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">{fmtDateShort(msg.date)}</span>
+                  {/* Action buttons */}
                   <div className="flex items-center justify-end gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pl-1">
+                    <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} />
                     {userPlan === "free" && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}>
                         <Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} />
@@ -951,31 +1077,20 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             })}
           </div>
 
-          {/* ── Load-more bar — only appears when messages are hidden ── */}
           {hiddenCount > 0 && (
             <div className="border-t border-border/50 px-3 py-2 flex items-center justify-between bg-muted/5">
-              <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">
-                {visibleMessages.length} of {filteredMessages.length}
-              </span>
-              <button
-                onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
-                className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 underline underline-offset-2 decoration-border hover:decoration-foreground"
-              >
-                Show {Math.min(hiddenCount, MESSAGES_PER_PAGE)} more
-                <ChevronDown className="h-2.5 w-2.5" />
+              <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">{visibleMessages.length} of {filteredMessages.length}</span>
+              <button onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
+                className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 underline underline-offset-2 decoration-border hover:decoration-foreground">
+                Show {Math.min(hiddenCount, MESSAGES_PER_PAGE)} more<ChevronDown className="h-2.5 w-2.5" />
               </button>
             </div>
           )}
-
-          {/* ── Collapse bar — appears when all messages shown and there are many ── */}
           {hiddenCount === 0 && filteredMessages.length > MESSAGES_PER_PAGE && (
             <div className="border-t border-border/50 px-3 py-2 flex items-center justify-end bg-muted/5">
-              <button
-                onClick={() => setVisibleMessageCount(MESSAGES_PER_PAGE)}
-                className="font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors flex items-center gap-1"
-              >
-                <ChevronUp className="h-2.5 w-2.5" />
-                Collapse
+              <button onClick={() => setVisibleMessageCount(MESSAGES_PER_PAGE)}
+                className="font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors flex items-center gap-1">
+                <ChevronUp className="h-2.5 w-2.5" />Collapse
               </button>
             </div>
           )}
@@ -986,28 +1101,35 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const renderMobileMessageList = () => (
     <div className="flex flex-col gap-2 py-2 px-3">
-      {filteredMessages.slice(0, visibleMessageCount).map(msg => (
-        <div key={msg.id} onClick={() => viewMessage(msg)}
-          className="bg-card border border-border rounded-lg p-3 active:scale-[0.98] transition-transform flex items-center justify-between gap-3">
-          <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
-            <span className="font-mono text-xs font-semibold truncate text-foreground">{msg.from}</span>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-[11px] text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>
-              {renderBadges(msg)}
+      {filteredMessages.slice(0, visibleMessageCount).map(msg => {
+        const isPinned = pinnedMessageIds.includes(msg.id);
+        return (
+          <div key={msg.id} onClick={() => viewMessage(msg)}
+            className={cn("bg-card border border-border rounded-lg p-3 active:scale-[0.98] transition-transform flex items-center justify-between gap-3", isPinned && "border-amber-500/30 bg-amber-500/3")}>
+            <div className="flex flex-col gap-0.5 overflow-hidden flex-1">
+              <div className="flex items-center gap-2">
+                <BrandAvatar from={msg.from} size={16} />
+                <span className="font-mono text-xs font-semibold truncate text-foreground">{parseSenderName(msg.from)}</span>
+                {isPinned && <Pin className="h-2.5 w-2.5 text-amber-500/60 fill-amber-500/30 shrink-0" />}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-[11px] text-muted-foreground truncate">{msg.subject || "(No Subject)"}</span>
+                {renderBadges(msg)}
+              </div>
+              <span className="font-mono text-[10px] text-muted-foreground/70">{fmtDate(msg.date)}</span>
             </div>
-            <span className="font-mono text-[10px] text-muted-foreground/70">{fmtDate(msg.date)}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} size="xs" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground/70" />
+            </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground/70 shrink-0" />
-        </div>
-      ))}
+        );
+      })}
       {filteredMessages.length === 0 && renderEmptyState()}
       {filteredMessages.length > visibleMessageCount && (
-        <button
-          onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
-          className="w-full py-2.5 font-mono text-[11px] text-muted-foreground hover:text-foreground border border-dashed border-border rounded-lg transition-colors flex items-center justify-center gap-1.5"
-        >
-          Show {Math.min(filteredMessages.length - visibleMessageCount, MESSAGES_PER_PAGE)} more
-          <ChevronDown className="h-3 w-3" />
+        <button onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
+          className="w-full py-2.5 font-mono text-[11px] text-muted-foreground hover:text-foreground border border-dashed border-border rounded-lg transition-colors flex items-center justify-center gap-1.5">
+          Show {Math.min(filteredMessages.length - visibleMessageCount, MESSAGES_PER_PAGE)} more<ChevronDown className="h-3 w-3" />
         </button>
       )}
     </div>
@@ -1018,34 +1140,40 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       <Table><TableBody>
         {filteredMessages.length === 0
           ? <tr><td colSpan={4} className="py-8">{renderEmptyState()}</td></tr>
-          : filteredMessages.slice(0, visibleMessageCount).map((msg, i) => (
-            <TableRow key={msg.id} className={cn("border-b border-border/50 transition-colors", i % 2 === 0 ? "bg-muted/10" : "bg-background", "hover:bg-muted/20")}>
-              <td className="py-2 pl-3 font-mono text-xs truncate max-w-[120px] text-muted-foreground">{msg.from}</td>
-              <td className="py-2 px-2"><div className="flex items-center gap-2 flex-wrap"><span className="font-mono text-xs text-foreground">{msg.subject}</span>{renderBadges(msg)}</div></td>
-              <td className="py-2 px-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{fmtDateShort(msg.date)}</td>
-              <td className="py-2 pr-3">
-                <div className="flex items-center gap-1">
-                  <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px]" onClick={() => viewMessage(msg)}>{t("view")}</Button>
-                  <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px] text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>{t("delete")}</Button>
-                  {userPlan === "free" && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>
-                    {activeTab === "dismissed" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </td>
-            </TableRow>
-          ))}
+          : filteredMessages.slice(0, visibleMessageCount).map((msg, i) => {
+            const isPinned = pinnedMessageIds.includes(msg.id);
+            return (
+              <TableRow key={msg.id} className={cn("border-b border-border/50 transition-colors", i % 2 === 0 ? "bg-muted/10" : "bg-background", "hover:bg-muted/20", isPinned && "bg-amber-500/5")}>
+                <td className="py-2 pl-3">
+                  <div className="flex items-center gap-2">
+                    <BrandAvatar from={msg.from} size={16} />
+                    <span className="font-mono text-xs truncate max-w-[120px] text-muted-foreground">{parseSenderName(msg.from)}</span>
+                    {isPinned && <Pin className="h-2.5 w-2.5 text-amber-500/60 fill-amber-500/30 shrink-0" />}
+                  </div>
+                </td>
+                <td className="py-2 px-2"><div className="flex items-center gap-2 flex-wrap"><span className="font-mono text-xs text-foreground">{msg.subject}</span>{renderBadges(msg)}</div></td>
+                <td className="py-2 px-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{fmtDateShort(msg.date)}</td>
+                <td className="py-2 pr-3">
+                  <div className="flex items-center gap-1">
+                    <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} size="xs" />
+                    <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px]" onClick={() => viewMessage(msg)}>{t("view")}</Button>
+                    <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px] text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>{t("delete")}</Button>
+                    {userPlan === "free" && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>
+                      {activeTab === "dismissed" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </td>
+              </TableRow>
+            );
+          })}
         {filteredMessages.length > visibleMessageCount && (
-          <tr>
-            <td colSpan={4} className="py-2 px-3 border-t border-border/50">
-              <button
-                onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
-                className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-              >
-                Show {Math.min(filteredMessages.length - visibleMessageCount, MESSAGES_PER_PAGE)} more…
-              </button>
-            </td>
-          </tr>
+          <tr><td colSpan={4} className="py-2 px-3 border-t border-border/50">
+            <button onClick={() => setVisibleMessageCount(c => c + MESSAGES_PER_PAGE)}
+              className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+              Show {Math.min(filteredMessages.length - visibleMessageCount, MESSAGES_PER_PAGE)} more…
+            </button>
+          </td></tr>
         )}
       </TableBody></Table>
     </div>
@@ -1054,12 +1182,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const renderRetroMessageList = () => (
     <div style={{ fontFamily: '"Times New Roman",serif', background: "white", color: "black", padding: 20, minHeight: "100vh" }}>
       <h1 style={{ fontSize: 24, fontWeight: "bold", marginBottom: 10 }}>Email Box 1.0</h1>
-      <div style={{ marginBottom: 20 }}>Welcome, <b>{email}</b>. [<a href="#" onClick={(e) => { e.preventDefault(); refreshInbox(); }} style={{ color: "blue" }}>Refresh</a>] [<a href="#" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }} style={{ color: "blue" }}>Settings</a>]</div>
+      <div style={{ marginBottom: 20 }}>Welcome, <b>{email}</b>. [<a href="#" onClick={(e) => { e.preventDefault(); refreshInbox(); }} style={{ color: "blue" }}>Refresh</a>] [<a href="#" onClick={(e) => { e.preventDefault(); handleOpenSettings(); }} style={{ color: "blue" }}>Settings</a>]</div>
       <hr /><ul style={{ listStyle: "disc", paddingLeft: 20, marginTop: 10 }}>
         {filteredMessages.length === 0 ? <li>No messages.</li> : filteredMessages.map(msg => (
           <li key={msg.id} style={{ marginBottom: 5 }}>
             <a href="#" onClick={(e) => { e.preventDefault(); viewMessage(msg); }} style={{ color: "blue" }}>{msg.subject || "(No Subject)"}</a>
-            <span style={{ fontSize: 12, color: "#555" }}> - {msg.from} ({fmtDate(msg.date)})</span>
+            <span style={{ fontSize: 12, color: "#555" }}> - {parseSenderName(msg.from)} ({fmtDate(msg.date)})</span>
           </li>
         ))}
       </ul>
@@ -1069,38 +1197,26 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const renderHistorySection = () => (
     <div className="flex-1 px-4 py-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          {t("history_title")}
-        </p>
-        {isPro && (
-          <span className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/50">
-            <Cloud className="h-2.5 w-2.5" />
-            synced
-          </span>
-        )}
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("history_title")}</p>
+        {isPro && <span className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/50"><Cloud className="h-2.5 w-2.5" />synced</span>}
         {!isPro && (
-          <button
-            type="button"
-            onClick={() => openUpsell("Cloud-Synced Inbox Notes")}
-            className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/40 hover:text-amber-500/80 transition-colors"
-            title="Upgrade to Pro to sync notes across devices"
-          >
-            <Cloud className="h-2.5 w-2.5" />
-            not synced
+          <button type="button" onClick={() => openUpsell("Cloud-Synced Inbox Notes")}
+            className="inline-flex items-center gap-1 font-mono text-[9px] text-muted-foreground/40 hover:text-amber-500/80 transition-colors">
+            <Cloud className="h-2.5 w-2.5" />not synced
           </button>
         )}
       </div>
 
       <ul className="space-y-0 divide-y divide-border/30">
         {visibleHistory.map((he, i) => {
-          const note          = inboxNotes[he];
+          const note = inboxNotes[he];
           const isEditingThis = editingNoteInbox === he;
-          const charCount     = noteInputValue.length;
-          const nearLimit     = charCount >= Math.floor(noteCharLimit * 0.85);
-          const atLimit       = charCount >= noteCharLimit;
-          const isActive      = he === email;
-          // Show the demo hint only on the first item, when it has no real note yet
-          const showHint      = i === 0 && !note && !isEditingThis && !noteHintDismissed;
+          const charCount = noteInputValue.length;
+          const nearLimit = charCount >= Math.floor(noteCharLimit * 0.85);
+          const atLimit = charCount >= noteCharLimit;
+          const isActive = he === email;
+          const isInboxPinned = pinnedInboxes.includes(he);
+          const showHint = i === 0 && !note && !isEditingThis && !noteHintDismissed;
 
           const dismissHint = (e: React.MouseEvent) => {
             localStorage.setItem("noteHintSeen", "1");
@@ -1110,117 +1226,82 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
           return (
             <li key={i} className="group py-2 first:pt-0 last:pb-0">
-
-              {/* ── Main row ─────────────────────────────────────────── */}
               <div className="flex items-center gap-2 min-w-0">
-
-                {/* Address */}
+                {/* Pin indicator for inbox */}
+                {isInboxPinned && <Pin className="h-2.5 w-2.5 text-amber-500/60 fill-amber-500/30 shrink-0" />}
                 <span className={cn(
                   "font-mono text-[11px] min-w-0 truncate transition-colors shrink-0",
                   isActive ? "text-foreground font-medium" : "text-muted-foreground/80 group-hover:text-muted-foreground",
-                )}>
-                  {he}
-                </span>
+                )}>{he}</span>
 
-                {/* Desktop inline note (no note yet) */}
+                {/* Desktop inline note */}
                 {!isEditingThis && !note && !showHint && (
-                  <button
-                    type="button"
-                    onClick={(e) => startEditingNote(he, e)}
-                    title="Add note"
-                    aria-label="Add note"
-                    className="hidden md:flex shrink-0 items-center gap-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <FileText className="h-2.5 w-2.5" />
-                    <span>add note</span>
+                  <button type="button" onClick={(e) => startEditingNote(he, e)} title="Add note" aria-label="Add note"
+                    className="hidden md:flex shrink-0 items-center gap-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors opacity-0 group-hover:opacity-100">
+                    <FileText className="h-2.5 w-2.5" /><span>add note</span>
                   </button>
                 )}
-
-                {/* Demo hint note — desktop inline */}
                 {showHint && (
-                  <button
-                    type="button"
-                    onClick={dismissHint}
-                    aria-label="Try adding a note"
-                    className="hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/hint text-left"
-                  >
+                  <button type="button" onClick={dismissHint} aria-label="Try adding a note"
+                    className="hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/hint text-left">
                     <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0 animate-pulse" />
-                    <span className="font-mono text-[11px] text-amber-500/60 italic truncate group-hover/hint:text-amber-500 transition-colors border-b border-dashed border-amber-500/30">
-                      click me to edit ✏
-                    </span>
+                    <span className="font-mono text-[11px] text-amber-500/60 italic truncate group-hover/hint:text-amber-500 transition-colors border-b border-dashed border-amber-500/30">click me to edit ✏</span>
                   </button>
                 )}
-
-                {/* Desktop inline note (has note) */}
                 {!isEditingThis && note && (
-                  <button
-                    type="button"
-                    onClick={(e) => startEditingNote(he, e)}
-                    aria-label="Edit note"
-                    className="hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/note text-left transition-colors"
-                  >
+                  <button type="button" onClick={(e) => startEditingNote(he, e)} aria-label="Edit note"
+                    className="hidden md:flex items-center gap-1 min-w-0 max-w-[200px] group/note text-left transition-colors">
                     <FileText className="h-2.5 w-2.5 text-amber-500/60 shrink-0" />
-                    <span className="font-mono text-[11px] text-muted-foreground/55 italic truncate group-hover/note:text-muted-foreground transition-colors">
-                      {note}
-                    </span>
+                    <span className="font-mono text-[11px] text-muted-foreground/55 italic truncate group-hover/note:text-muted-foreground transition-colors">{note}</span>
                   </button>
                 )}
 
                 <span className="flex-1" />
 
-                {/* Note icon — mobile only */}
-                <button
-                  type="button"
-                  aria-label={note ? "Edit note" : "Add note"}
+                {/* Pin inbox button — always visible for pinned, hover for rest */}
+                <button type="button" aria-label={isInboxPinned ? "Unpin inbox" : "Pin inbox"}
+                  onClick={(e) => togglePinInbox(he, e)}
+                  className={cn(
+                    "shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
+                    isInboxPinned
+                      ? "text-amber-500 hover:bg-amber-500/10"
+                      : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
+                  )}>
+                  <Pin className={cn("h-3 w-3", isInboxPinned && "fill-amber-500/50")} />
+                </button>
+
+                {/* Note icon mobile */}
+                <button type="button" aria-label={note ? "Edit note" : "Add note"}
                   onClick={(e) => { if (isEditingThis) return; startEditingNote(he, e); }}
                   className={cn(
                     "md:hidden shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
-                    note
-                      ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10"
-                      : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
-                  )}
-                >
+                    note ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10" : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
+                  )}>
                   <FileText className="h-3 w-3" />
                 </button>
 
-                <button
-                  onClick={() => handleUseHistoryEmail(he)}
-                  className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground"
-                >
+                <button onClick={() => handleUseHistoryEmail(he)}
+                  className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground">
                   {t("history_use")}
                 </button>
               </div>
 
-              {/* ── Demo hint note — mobile only ──────────────────────── */}
               {showHint && (
-                <button
-                  type="button"
-                  onClick={dismissHint}
-                  aria-label="Try adding a note"
-                  className="md:hidden mt-1 flex items-center gap-1.5 w-full text-left"
-                >
+                <button type="button" onClick={dismissHint} aria-label="Try adding a note"
+                  className="md:hidden mt-1 flex items-center gap-1.5 w-full text-left">
                   <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0 animate-pulse" />
-                  <span className="font-mono text-[11px] text-amber-500/60 italic border-b border-dashed border-amber-500/30 hover:text-amber-500 transition-colors">
-                    click me to edit ✏
-                  </span>
+                  <span className="font-mono text-[11px] text-amber-500/60 italic border-b border-dashed border-amber-500/30 hover:text-amber-500 transition-colors">click me to edit ✏</span>
                 </button>
               )}
 
-              {/* ── Edit mode ───────────────────────────────────────── */}
               {isEditingThis && (
                 <div className="mt-1.5 space-y-1.5">
                   <div className="flex gap-1.5 items-start">
-                    <textarea
-                      value={noteInputValue}
+                    <textarea value={noteInputValue}
                       onChange={(e) => setNoteInputValue(e.target.value.slice(0, noteCharLimit))}
                       placeholder="Type your note… (Enter to save, Esc to cancel)"
-                      rows={1}
-                      autoFocus
-                      onInput={(e) => {
-                        const el = e.currentTarget;
-                        el.style.height = 'auto';
-                        el.style.height = `${el.scrollHeight}px`;
-                      }}
+                      rows={1} autoFocus
+                      onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveInboxNote(he, noteInputValue); }
                         if (e.key === 'Escape') cancelEditingNote();
@@ -1229,22 +1310,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       className="flex-1 resize-none rounded-md border bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/35 focus:outline-none focus:ring-1 focus:border-foreground/25 focus:ring-foreground/10 transition-all duration-150 border-border leading-relaxed"
                     />
                     <div className="flex flex-col gap-1 shrink-0">
-                      <button
-                        type="button"
-                        aria-label="Save note"
-                        onClick={() => saveInboxNote(he, noteInputValue)}
-                        className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-foreground/60 hover:text-foreground transition-colors"
-                        title="Save (Enter)"
-                      >
+                      <button type="button" aria-label="Save note" onClick={() => saveInboxNote(he, noteInputValue)}
+                        className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-foreground/60 hover:text-foreground transition-colors">
                         <Check className="h-3 w-3" />
                       </button>
-                      <button
-                        type="button"
-                        aria-label="Cancel"
-                        onClick={cancelEditingNote}
-                        className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-muted-foreground/60 hover:text-foreground transition-colors"
-                        title="Cancel (Esc)"
-                      >
+                      <button type="button" aria-label="Cancel" onClick={cancelEditingNote}
+                        className="h-6 w-6 flex items-center justify-center rounded border border-border bg-background hover:bg-muted text-muted-foreground/60 hover:text-foreground transition-colors">
                         <X className="h-3 w-3" />
                       </button>
                     </div>
@@ -1254,62 +1325,32 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       {charCount} / {noteCharLimit}
                     </span>
                     {!isPro && nearLimit && (
-                      <button type="button" onClick={() => openUpsell("Extended Inbox Notes")}
-                        className="font-mono text-[10px] text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline transition-colors">
-                        Upgrade for 500 chars →
-                      </button>
+                      <button type="button" onClick={() => openUpsell("Extended Inbox Notes")} className="font-mono text-[10px] text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline transition-colors">Upgrade for 500 chars →</button>
                     )}
-                    {isPro && (
-                      <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1">
-                        <Cloud className="h-2.5 w-2.5" />syncs to cloud
-                      </span>
-                    )}
+                    {isPro && <span className="font-mono text-[10px] text-muted-foreground/35 flex items-center gap-1"><Cloud className="h-2.5 w-2.5" />syncs to cloud</span>}
                     {!isPro && !nearLimit && (
-                      <button
-                        type="button"
-                        onClick={() => openUpsell("Cloud-Synced Inbox Notes")}
-                        className="font-mono text-[10px] text-muted-foreground/30 hover:text-amber-500/70 transition-colors"
-                        title="Upgrade to Pro to sync notes across devices"
-                      >
-                        not synced ↗
-                      </button>
+                      <button type="button" onClick={() => openUpsell("Cloud-Synced Inbox Notes")} className="font-mono text-[10px] text-muted-foreground/30 hover:text-amber-500/70 transition-colors">not synced ↗</button>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* ── View mode note — mobile only ─────────────────────── */}
               {!isEditingThis && note && (
-                <div
-                  className="md:hidden mt-1 flex items-center gap-1.5 group/note cursor-pointer"
-                  onClick={(e) => startEditingNote(he, e as any)}
-                  role="button"
-                  aria-label="Edit note"
-                >
+                <div className="md:hidden mt-1 flex items-center gap-1.5 group/note cursor-pointer"
+                  onClick={(e) => startEditingNote(he, e as any)} role="button" aria-label="Edit note">
                   <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0" />
-                  <span className="font-mono text-[11px] text-muted-foreground/55 italic flex-1 leading-relaxed line-clamp-2 group-hover/note:text-muted-foreground transition-colors">
-                    {note}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Remove note"
-                    onClick={(e) => { e.stopPropagation(); saveInboxNote(he, ''); }}
-                    className="shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
-                  >
+                  <span className="font-mono text-[11px] text-muted-foreground/55 italic flex-1 leading-relaxed line-clamp-2 group-hover/note:text-muted-foreground transition-colors">{note}</span>
+                  <button type="button" aria-label="Remove note" onClick={(e) => { e.stopPropagation(); saveInboxNote(he, ''); }}
+                    className="shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive">
                     <X className="h-2.5 w-2.5" />
                   </button>
                 </div>
               )}
 
-              {/* ── Add note ghost — mobile only ──────────────────────── */}
               {!note && !isEditingThis && (
-                <button
-                  type="button"
-                  onClick={(e) => startEditingNote(he, e)}
-                  className="md:hidden mt-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/50 flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <FileText className="h-2.5 w-2.5" />
-                  add note
+                <button type="button" onClick={(e) => startEditingNote(he, e)}
+                  className="md:hidden mt-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/50 flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100">
+                  <FileText className="h-2.5 w-2.5" />add note
                 </button>
               )}
             </li>
@@ -1317,25 +1358,18 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         })}
       </ul>
 
-      {/* ── History collapse / expand controls ──────────────────── */}
       {canHaveMoreHistory && (
-        <button
-          type="button"
-          onClick={() => setHistoryExpanded(v => !v)}
-          className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground border border-dashed border-border/50 hover:border-border rounded-md transition-all"
-        >
-          {historyExpanded ? (
-            <>
-              <ChevronUp className="h-2.5 w-2.5" />
-              Show less
-            </>
-          ) : (
-            <>
-              <ChevronDown className="h-2.5 w-2.5" />
-              {hiddenHistoryCount} more inbox{hiddenHistoryCount !== 1 ? "es" : ""}
-            </>
-          )}
+        <button type="button" onClick={() => setHistoryExpanded(v => !v)}
+          className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground border border-dashed border-border/50 hover:border-border rounded-md transition-all">
+          {historyExpanded ? (<><ChevronUp className="h-2.5 w-2.5" />Show less</>) : (<><ChevronDown className="h-2.5 w-2.5" />{hiddenHistoryCount} more inbox{hiddenHistoryCount !== 1 ? "es" : ""}</>)}
         </button>
+      )}
+
+      {/* Pin limits hint */}
+      {(pinnedInboxes.length > 0 || pinnedMessageIds.length > 0) && (
+        <p className="mt-2 font-mono text-[9px] text-muted-foreground/30 text-center">
+          {pinnedInboxes.length}/{getInboxPinLimit()} inboxes · {pinnedMessageIds.length}/{getMsgPinLimit()} msgs pinned
+        </p>
       )}
     </div>
   );
@@ -1348,32 +1382,24 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     </>
   );
 
-  // ── Main render ────────────────────────────────────────────────────────────
   return (
     <div className={cn("relative", isZen && "")}>
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style dangerouslySetInnerHTML={{ __html: `
         body[data-fce-layout="zen"] header, body[data-fce-layout="zen"] footer, body[data-fce-layout="zen"] nav { display: none !important; }
         body[data-fce-layout="minimal"] footer { display: none !important; }
-      `}} />
+      ` }} />
 
-      {flashQueue.length > 0 && (
-        <NewEmailFlash key={flashQueue[0].id} from={flashQueue[0].from} subject={flashQueue[0].subject} onDone={() => setFlashQueue(q => q.slice(1))} />
-      )}
+      {flashQueue.length > 0 && <NewEmailFlash key={flashQueue[0].id} from={flashQueue[0].from} subject={flashQueue[0].subject} onDone={() => setFlashQueue(q => q.slice(1))} />}
 
       <div className={cn("rounded-lg border border-border bg-background overflow-hidden", isZen && "border-0 bg-transparent")}>
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
+        {/* ── Header ── */}
         <div className="border-b border-border">
           <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
             <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isRefreshing ? "bg-amber-500 animate-pulse" : "bg-emerald-500 animate-pulse")} />
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              SMTP · {email.split("@")[1] || "…"}
-            </span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">SMTP · {email.split("@")[1] || "…"}</span>
             <div className="flex-1" />
-            <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">
-              {messages.length} msg{messages.length !== 1 ? "s" : ""}
-            </span>
+            <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">{messages.length} msg{messages.length !== 1 ? "s" : ""}</span>
           </div>
 
           <div className="flex items-start gap-2 px-4 pb-3 pt-0.5">
@@ -1382,14 +1408,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 <Input
                   value={email.split("@")[0]}
                   onChange={(e) => { const v = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""); setEmail(`${v}@${selectedDomain}`); setBlockButtons(v.length === 0); }}
-                  className="flex-1 font-mono text-sm h-9"
-                  placeholder={t("placeholder_username")}
+                  className="flex-1 font-mono text-sm h-9" placeholder={t("placeholder_username")}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="shrink-0 font-mono text-xs h-9 gap-1 max-w-[160px]">
-                      <span className="truncate">@{selectedDomain}</span>
-                      <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+                      <span className="truncate">@{selectedDomain}</span><ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-[min(100%,14rem)] max-h-[60vh] overflow-y-auto p-1 rounded-md bg-background shadow-lg border border-border z-50">
@@ -1410,8 +1434,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                             if (isUserCustom && !isPro) { openUpsell("Custom Domains"); return; }
                             setSelectedDomain(d); setEmail(`${email.split("@")[0]}@${d}`);
                           }}
-                          className="flex items-center justify-between px-3 py-2 rounded cursor-pointer hover:bg-muted font-mono text-xs"
-                        >
+                          className="flex items-center justify-between px-3 py-2 rounded cursor-pointer hover:bg-muted font-mono text-xs">
                           <div className="flex items-center gap-2">
                             {(isUserCustom || isFetchedPro) && <Crown className="h-3 w-3 text-amber-500" />}
                             {isProLocked && <Lock className="h-3 w-3 text-amber-500" />}
@@ -1437,12 +1460,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       );
                     })}
                     {!isPro && (
-                      <DropdownMenuItem
-                        onSelect={(e) => { e.preventDefault(); openUpsell("Premium Domains"); }}
-                        className="flex items-center justify-center gap-1.5 px-3 py-2 mt-1 rounded cursor-pointer font-mono text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/20 transition-colors"
-                      >
-                        <Lock className="h-3 w-3 shrink-0" />
-                        <span>Get more domains</span>
+                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openUpsell("Premium Domains"); }}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 mt-1 rounded cursor-pointer font-mono text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-transparent hover:border-amber-500/20 transition-colors">
+                        <Lock className="h-3 w-3 shrink-0" /><span>Get more domains</span>
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -1450,28 +1470,21 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               </div>
             ) : (
               <div className="flex-1 min-w-0">
-                <div
-                  className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 group hover:border-foreground/30 transition-colors cursor-text"
-                  onClick={isAuthenticated ? () => { setIsEditing(true); setDiscoveredUpdates({ newDomains: true }); } : undefined}
-                >
+                <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 group hover:border-foreground/30 transition-colors cursor-text"
+                  onClick={isAuthenticated ? () => { setIsEditing(true); setDiscoveredUpdates({ newDomains: true }); } : undefined}>
                   <span className="font-mono text-[10px] text-muted-foreground/70 shrink-0 select-none">TO</span>
                   <span className="font-mono text-sm text-foreground flex-1 truncate">{email || t("loading")}</span>
                   {isAuthenticated && (
                     <div className="relative flex items-center justify-center">
                       <Edit className="h-3 w-3 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      {hasNewDomain && !discoveredUpdates.newDomains && (
-                        <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      )}
+                      {hasNewDomain && !discoveredUpdates.newDomains && <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                     </div>
                   )}
                 </div>
                 {!isPro && (
                   <p className="font-mono text-[10px] text-muted-foreground/70 mt-1 pl-1">
                     Need OTP phone?{" "}
-                    <a rel="sponsored" href={PHONE_AFFILIATE_URL} target="_blank"
-                      className="text-foreground/60 hover:text-foreground underline underline-offset-2 transition-colors">
-                      Get one instantly →
-                    </a>
+                    <a rel="sponsored" href={PHONE_AFFILIATE_URL} target="_blank" className="text-foreground/60 hover:text-foreground underline underline-offset-2 transition-colors">Get one instantly →</a>
                   </p>
                 )}
               </div>
@@ -1491,9 +1504,15 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 <Button aria-label="Show QR Code" variant="outline" size="icon" className="h-9 w-9 hidden sm:flex" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons}>
                   <QrCode className="h-3.5 w-3.5" />
                 </Button>
-                <Button aria-label="Open settings" variant="outline" size="icon" className="h-9 w-9" onClick={() => setIsSettingsOpen(true)} disabled={blockButtons}>
-                  <Settings className="h-3.5 w-3.5" />
-                </Button>
+                {/* Settings button with new-feature pulse */}
+                <div className="relative">
+                  <Button aria-label="Open settings" variant="outline" size="icon" className="h-9 w-9" onClick={handleOpenSettings} disabled={blockButtons}>
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                  {unseenSettingsFeatures.size > 0 && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 animate-pulse pointer-events-none" />
+                  )}
+                </div>
                 <ShareDropdown />
               </div>
             </TooltipProvider>
@@ -1526,10 +1545,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 const unread = tab === "all" ? filteredMessages.filter(m => !readMessageIds.has(m.id)).length : 0;
                 return (
                   <button key={tab} onClick={() => setActiveTab(tab)}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors",
-                      activeTab === tab ? "bg-background text-foreground" : "bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground"
-                    )}>
+                    className={cn("flex-1 flex items-center justify-center gap-1.5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                      activeTab === tab ? "bg-background text-foreground" : "bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground")}>
                     {tab === "all" ? <Mail className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
                     {tab}
                     {unread > 0 && <span className="font-mono text-[9px] border border-border rounded-sm px-1 py-px tabular-nums leading-none">{unread}</span>}
@@ -1542,7 +1559,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
         {domainExpiry && <DomainExpiryBanner expiry={domainExpiry} isPro={isPro} onUpsell={openUpsell} />}
 
-        {/* ── Message list ────────────────────────────────────────────────── */}
+        {/* ── Message list ── */}
         {isSplit ? (
           <div className="grid grid-cols-1 md:grid-cols-2 h-[560px]">
             <div className="border-r border-border overflow-y-auto">{renderInboxList()}</div>
@@ -1558,16 +1575,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             : renderInboxList()
         }
 
-        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        {/* ── Footer ── */}
         {!isZen && (
           <div className="border-t border-border">
             <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
               {renderHistorySection()}
-              {!isPro && (
-                <div className="md:w-72 shrink-0 px-4 py-4">
-                  <PhonePromoCard />
-                </div>
-              )}
+              {!isPro && <div className="md:w-72 shrink-0 px-4 py-4"><PhonePromoCard /></div>}
             </div>
           </div>
         )}
@@ -1579,14 +1592,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <h2 className="text-sm font-semibold text-foreground">{t("card_header_title")}</h2>
               <p className="font-mono text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{t("card_header_p")}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 font-mono text-[10px] text-muted-foreground hover:text-foreground shrink-0 gap-2 border border-transparent hover:border-border"
-              onClick={() => setIsCliModalOpen(true)}
-            >
-              <Download className="h-3 w-3" />
-              Install CLI
+            <Button variant="ghost" size="sm" className="h-8 font-mono text-[10px] text-muted-foreground hover:text-foreground shrink-0 gap-2 border border-transparent hover:border-border" onClick={() => setIsCliModalOpen(true)}>
+              <Download className="h-3 w-3" />Install CLI
             </Button>
           </div>
         )}

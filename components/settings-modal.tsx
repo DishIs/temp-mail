@@ -8,17 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Crown, Keyboard, Layout, Bell, Settings, Zap, ShieldCheck,
-  Smartphone, Table as TableIcon, Monitor, Sparkles, Check,
+  Smartphone, Table as TableIcon, Monitor, Sparkles, Check, Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ─── Types (unchanged) ────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 export interface UserSettings {
   notifications: boolean;
   sound: boolean;
   layout: "new" | "classic" | "split" | "compact" | "minimal" | "zen" | "retro" | "mobile";
   shortcuts: { refresh: string; copy: string; delete: string; new: string; qr: string };
   smartOtp: boolean;
+  /** Auto-categorize emails by brand (Discord, Instagram, etc.) — Pro only */
+  categorization: boolean;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -26,8 +28,19 @@ export const DEFAULT_SETTINGS: UserSettings = {
   sound: true,
   layout: "new",
   shortcuts: { refresh: "r", copy: "c", delete: "d", new: "n", qr: "q" },
-  smartOtp: false,
+  smartOtp: false,          // will be set to true for Pro on first load
+  categorization: false,    // opt-in, Pro only
 };
+
+/** Call this once after session loads to apply Pro defaults */
+export function applyProDefaults(settings: UserSettings, isPro: boolean): UserSettings {
+  if (!isPro) return settings;
+  return {
+    ...settings,
+    // OTP extraction ON by default for Pro (only if never explicitly changed)
+    smartOtp: settings.smartOtp === undefined ? true : settings.smartOtp,
+  };
+}
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -65,13 +78,14 @@ const LAYOUTS: {
   { id: "retro",    label: "Retro HTML",   desc: "1990s style — least CSS, raw HTML interface.",     icon: <Monitor  className="h-4 w-4" />, pro: true },
 ];
 
-// ─── Row component reused in Notifications + General ─────────────────────────
+// ─── Row component ─────────────────────────────────────────────────────────────
 function SettingRow({
-  label, description, locked, children,
+  label, description, locked, isNew, children,
 }: {
   label: string;
   description?: string;
   locked?: boolean;
+  isNew?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -80,6 +94,12 @@ function SettingRow({
         <div className="flex items-center gap-2 mb-0.5">
           <p className="text-sm font-medium text-foreground">{label}</p>
           {locked && <Crown className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+          {isNew && (
+            <span className="relative inline-flex items-center">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded px-1.5 py-px bg-emerald-500/8">New</span>
+              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            </span>
+          )}
         </div>
         {description && <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>}
       </div>
@@ -93,10 +113,20 @@ export function SettingsModal({
   isOpen, onClose, settings, onUpdate,
   isPro, isAuthenticated, onUpsell, onAuthNeed,
 }: SettingsModalProps) {
-  const [local,     setLocal]     = useState<UserSettings>(settings);
+  const [local, setLocal] = useState<UserSettings>(settings);
   const [activeTab, setActiveTab] = useState("general");
 
-  useEffect(() => { setLocal(settings); }, [settings, isOpen]);
+  // Apply Pro defaults on open (OTP on by default for Pro)
+  useEffect(() => {
+    const base = { ...settings };
+    if (isPro && base.smartOtp === false) {
+      // Only auto-enable if they haven't explicitly touched it
+      // We use localStorage to track if it was ever manually set
+      const manuallySet = localStorage.getItem("smartOtpManuallySet");
+      if (!manuallySet) base.smartOtp = true;
+    }
+    setLocal(base);
+  }, [settings, isOpen, isPro]);
 
   const requirePro = (action: () => void, feature: string) => {
     if (!isPro) { onUpsell(feature); } else { action(); }
@@ -119,6 +149,17 @@ export function SettingsModal({
     }
   };
 
+  const handleSmartOtpToggle = (checked: boolean) => {
+    requirePro(() => {
+      localStorage.setItem("smartOtpManuallySet", "1");
+      update("smartOtp", checked);
+    }, "Smart OTP Extractor");
+  };
+
+  const handleCategorizationToggle = (checked: boolean) => {
+    requirePro(() => update("categorization", checked), "Email Categorization");
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={o => !o && onClose()}>
       <DialogContent
@@ -130,20 +171,16 @@ export function SettingsModal({
         ].join(" ")}
       >
 
-        {/* ── Desktop sidebar ─────────────────────────────────────── */}
+        {/* ── Desktop sidebar ── */}
         <aside className="hidden md:flex flex-col w-56 border-r border-border bg-muted/10 shrink-0">
-          {/* Header */}
           <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
             <div className="flex items-center gap-1.5" aria-hidden>
               <span className="h-2 w-2 rounded-full border border-border bg-background" />
               <span className="h-2 w-2 rounded-full border border-border bg-background" />
               <span className="h-2 w-2 rounded-full border border-border bg-background" />
             </div>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground ml-1">
-              Settings
-            </span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Settings</span>
           </div>
-
           <nav className="flex flex-col gap-0.5 p-3 flex-1">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setActiveTab(id)}
@@ -160,7 +197,7 @@ export function SettingsModal({
           </nav>
         </aside>
 
-        {/* ── Mobile header ───────────────────────────────────────── */}
+        {/* ── Mobile header ── */}
         <div className="md:hidden flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Settings</span>
           <button onClick={onClose}
@@ -169,7 +206,7 @@ export function SettingsModal({
           </button>
         </div>
 
-        {/* ── Mobile tab strip ────────────────────────────────────── */}
+        {/* ── Mobile tab strip ── */}
         <div className="md:hidden border-b border-border shrink-0 bg-muted/10 overflow-x-auto">
           <div className="flex gap-0 px-0">
             {TABS.map(({ id, label, icon: Icon }) => (
@@ -180,15 +217,13 @@ export function SettingsModal({
                 )}>
                 <Icon className="h-3 w-3" />
                 {label}
-                {activeTab === id && (
-                  <span className="absolute bottom-0 left-0 right-0 h-px bg-foreground" />
-                )}
+                {activeTab === id && <span className="absolute bottom-0 left-0 right-0 h-px bg-foreground" />}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Content pane ────────────────────────────────────────── */}
+        {/* ── Content pane ── */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto px-6 py-6">
 
@@ -197,16 +232,71 @@ export function SettingsModal({
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">General</p>
                 <p className="text-xs text-muted-foreground mb-6">Automation and smart features.</p>
+
+                {/* Smart OTP — ON by default for Pro */}
                 <SettingRow
                   label="Smart OTP Extractor"
-                  description="Automatically detect 4–8 digit codes in incoming emails and show a Copy button in the list."
+                  description={
+                    isPro
+                      ? "Automatically detect 4–8 digit codes in incoming emails and show a Copy button. Enabled by default for Pro."
+                      : "Automatically detect 4–8 digit codes in incoming emails and show a Copy button."
+                  }
                   locked={!isPro}
                 >
-                  <Switch
-                    checked={local.smartOtp}
-                    onCheckedChange={c => requirePro(() => update("smartOtp", c), "Smart OTP Extractor")}
-                  />
+                  {isPro ? (
+                    <Switch
+                      checked={local.smartOtp}
+                      onCheckedChange={handleSmartOtpToggle}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onUpsell("Smart OTP Extractor")}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-500/30 bg-amber-500/8 text-amber-600 dark:text-amber-400 font-mono text-[10px] uppercase tracking-wider hover:bg-amber-500/15 transition-colors"
+                    >
+                      <Crown className="h-3 w-3" />
+                      Upgrade to Pro
+                    </button>
+                  )}
                 </SettingRow>
+
+                {/* Email Categorization — NEW, Pro only */}
+                <SettingRow
+                  label="Email Categorization"
+                  description="Auto-label emails from Discord, Instagram, GitHub, Google and 50+ brands. Shown as a badge next to each message."
+                  locked={!isPro}
+                  isNew
+                >
+                  {isPro ? (
+                    <Switch
+                      checked={local.categorization}
+                      onCheckedChange={handleCategorizationToggle}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onUpsell("Email Categorization")}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-500/30 bg-amber-500/8 text-amber-600 dark:text-amber-400 font-mono text-[10px] uppercase tracking-wider hover:bg-amber-500/15 transition-colors"
+                    >
+                      <Crown className="h-3 w-3" />
+                      Upgrade to Pro
+                    </button>
+                  )}
+                </SettingRow>
+
+                {/* Categorization preview — only when enabled */}
+                {isPro && local.categorization && (
+                  <div className="mt-2 mb-2 rounded-lg border border-border bg-muted/10 p-4">
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Preview — badge examples</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Discord","Instagram","GitHub","Google","Stripe","Slack","Spotify","Netflix"].map(cat => (
+                        <span key={cat} className="inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono bg-muted/40 border-border text-muted-foreground">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -249,7 +339,6 @@ export function SettingsModal({
                           "group relative bg-background px-5 py-5 text-left flex flex-col gap-3 hover:bg-muted/10 transition-colors",
                           active && "bg-muted/20",
                         )}>
-                        {/* Icon row */}
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground">{icon}</span>
                           <div className="flex items-center gap-1.5">
@@ -287,33 +376,40 @@ export function SettingsModal({
                 <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
                   {Object.entries(local.shortcuts).map(([action, key]) => (
                     <div key={action} className="flex items-center justify-between px-5 py-3 bg-background hover:bg-muted/10 transition-colors">
-                      <span className="text-sm text-foreground capitalize">
-                        {action === "new" ? "Quick Edit / New" : action}
-                      </span>
+                      <span className="text-sm text-foreground capitalize">{action === "new" ? "Quick Edit / New" : action}</span>
                       <Input
                         value={key}
                         readOnly={!isPro}
-                        className={cn(
-                          "w-10 text-center font-mono uppercase h-7 text-xs",
-                          !isPro && "cursor-not-allowed opacity-50 bg-muted",
-                        )}
+                        className={cn("w-10 text-center font-mono uppercase h-7 text-xs", !isPro && "cursor-not-allowed opacity-50 bg-muted")}
                         onChange={e => updateShortcut(action as keyof UserSettings["shortcuts"], e.target.value.toLowerCase().slice(-1))}
                       />
                     </div>
                   ))}
                 </div>
+                {!isPro && (
+                  <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 flex items-center gap-3">
+                    <Crown className="h-4 w-4 text-amber-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground mb-0.5">Custom Shortcuts — Pro Feature</p>
+                      <p className="text-xs text-muted-foreground">Remap every shortcut to any key you want.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onUpsell("Custom Keyboard Shortcuts")}
+                      className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 underline underline-offset-2 hover:no-underline transition-colors"
+                    >
+                      Upgrade →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Footer */}
           <div className="border-t border-border px-6 py-4 flex justify-end gap-2 shrink-0 bg-muted/10">
-            <Button variant="ghost" size="sm" onClick={onClose} className="font-mono text-xs uppercase tracking-widest">
-              Cancel
-            </Button>
-            <Button size="sm" onClick={() => { onUpdate(local); onClose(); }} className="font-mono text-xs uppercase tracking-widest min-w-[80px]">
-              Save
-            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose} className="font-mono text-xs uppercase tracking-widest">Cancel</Button>
+            <Button size="sm" onClick={() => { onUpdate(local); onClose(); }} className="font-mono text-xs uppercase tracking-widest min-w-[80px]">Save</Button>
           </div>
         </div>
 
