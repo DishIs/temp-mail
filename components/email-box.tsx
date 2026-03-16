@@ -373,7 +373,8 @@ const SplitPaneMessageView = ({ message, token, apiEndpoint, isPro, onUpsell }: 
 };
 
 // ── Pinned message chip ────────────────────────────────────────────────────────
-function PinButton({ isPinned, onClick, size = "sm" }: { isPinned: boolean; onClick: (e: React.MouseEvent) => void; size?: "sm" | "xs" }) {
+function PinButton({ isPinned, onClick, size = "sm", hidden }: { isPinned: boolean; onClick: (e: React.MouseEvent) => void; size?: "sm" | "xs"; hidden?: boolean }) {
+  if (hidden) return null;
   return (
     <Button variant="ghost" size="icon"
       className={cn(size === "xs" ? "h-5 w-5" : "h-6 w-6", isPinned && "text-amber-500")}
@@ -1059,7 +1060,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">{fmtDateShort(msg.date)}</span>
                   {/* Action buttons */}
                   <div className="flex items-center justify-end gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pl-1">
-                    <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} />
+                    <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} hidden={isPro && !isPinned && pinnedMessageIds.length >= PRO_PIN_MSG_LIMIT} />
                     {userPlan === "free" && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}>
                         <Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} />
@@ -1119,7 +1120,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               <span className="font-mono text-[10px] text-muted-foreground/70">{fmtDate(msg.date)}</span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} size="xs" />
+              <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} size="xs" hidden={isPro && !isPinned && pinnedMessageIds.length >= PRO_PIN_MSG_LIMIT} />
               <ChevronRight className="w-4 h-4 text-muted-foreground/70" />
             </div>
           </div>
@@ -1155,7 +1156,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 <td className="py-2 px-2 font-mono text-[10px] text-muted-foreground whitespace-nowrap">{fmtDateShort(msg.date)}</td>
                 <td className="py-2 pr-3">
                   <div className="flex items-center gap-1">
-                    <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} size="xs" />
+                    <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} size="xs" hidden={isPro && !isPinned && pinnedMessageIds.length >= PRO_PIN_MSG_LIMIT} />
                     <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px]" onClick={() => viewMessage(msg)}>{t("view")}</Button>
                     <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px] text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>{t("delete")}</Button>
                     {userPlan === "free" && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
@@ -1258,17 +1259,19 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
                 <span className="flex-1" />
 
-                {/* Pin inbox button — always visible for pinned, hover for rest */}
-                <button type="button" aria-label={isInboxPinned ? "Unpin inbox" : "Pin inbox"}
-                  onClick={(e) => togglePinInbox(he, e)}
-                  className={cn(
-                    "shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
-                    isInboxPinned
-                      ? "text-amber-500 hover:bg-amber-500/10"
-                      : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
-                  )}>
-                  <Pin className={cn("h-3 w-3", isInboxPinned && "fill-amber-500/50")} />
-                </button>
+                {/* Pin inbox button — hide for Pro when limit reached and not pinned */}
+                {!(isPro && !isInboxPinned && pinnedInboxes.length >= PRO_PIN_INBOX_LIMIT) && (
+                  <button type="button" aria-label={isInboxPinned ? "Unpin inbox" : "Pin inbox"}
+                    onClick={(e) => togglePinInbox(he, e)}
+                    className={cn(
+                      "shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
+                      isInboxPinned
+                        ? "text-amber-500 hover:bg-amber-500/10"
+                        : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
+                    )}>
+                    <Pin className={cn("h-3 w-3", isInboxPinned && "fill-amber-500/50")} />
+                  </button>
+                )}
 
                 {/* Note icon mobile */}
                 <button type="button" aria-label={note ? "Edit note" : "Add note"}
