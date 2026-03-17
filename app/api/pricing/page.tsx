@@ -17,6 +17,7 @@ import {
   SiVisa, SiMastercard, SiAmericanexpress,
   SiPaypal, SiApplepay, SiGooglepay,
 } from "react-icons/si";
+import { PaddleInit } from "@/components/paddle-init";
 
 // ─── Plan order + types ───────────────────────────────────────────────────────
 const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as const;
@@ -802,6 +803,8 @@ export default function ApiPricingPage() {
         onConfirm={confirmDowngrade}
         onClose={() => { setDowngradeTarget(null); setBusyPlanId(null); }}
       />
+      <PaddleInit />
+
     </>
   );
 }

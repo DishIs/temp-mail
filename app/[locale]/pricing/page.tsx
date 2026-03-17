@@ -21,6 +21,7 @@ import {
   SiVisa, SiMastercard, SiAmericanexpress,
   SiPaypal, SiApplepay, SiGooglepay,
 } from "react-icons/si";
+import { PaddleInit } from "@/components/paddle-init";
 
 type BillingCycle = "monthly" | "yearly";
 
@@ -687,6 +688,7 @@ export default function PricingPage() {
         </section>
 
       </div>
+      <PaddleInit />
     </ThemeProvider>
   );
 }
