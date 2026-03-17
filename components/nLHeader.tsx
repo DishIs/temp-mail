@@ -80,7 +80,7 @@ const NAV_LINKS =[
   { href: "/api", label: "API", mono: true },
 ];
 
-export function AppHeader({ initialSession }: { initialSession: Session | null; }) {
+export function AppHeader() {
   const { data: session, status } = useSession();
   const { theme, toggle } = useThemeRipple();
   const[menuOpen, setMenuOpen] = useState(false);

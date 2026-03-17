@@ -6,6 +6,9 @@ export const routing = defineRouting({
     'de',
     'ru',
     'es',
+    'hi',
+    'tr',
+    'zh',
     'fr',
     'pt', // Portuguese (high traffic)
     'id'  // Indonesian

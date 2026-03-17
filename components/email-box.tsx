@@ -1,3 +1,15 @@
+// components/email-box.tsx
+// COMPLETE CORRECTED FILE
+// Changes from the broken version:
+//   1. Removed initialSession, initialCustomDomains, initialInboxes, initialCurrentInbox props
+//   2. Added useSession() at the top — session is now client-side only
+//   3. Moved isSessionLoading skeleton AFTER all hooks (Rules of Hooks)
+//   4. Fixed email useState to use "" as initial value (no more initialCurrentInbox)
+//   5. Fixed emailHistory useState to use [] as initial value (no more initialInboxes)
+//   6. Fixed availableDomains useMemo — reads from customDomainsFromProfile state instead
+//   7. Added customDomainsFromProfile state to hold data fetched by fetchProfile effect
+//   8. Fixed init useEffect — no longer references removed props
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -26,11 +38,11 @@ import {
 import { useTranslations } from "next-intl";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Session } from "next-auth";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { AuthNeed, UpsellModal } from "./upsell-modal";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
-import { BrandAvatar } from "./brand-avatar"; // NEW
+import { BrandAvatar } from "./brand-avatar";
+import { useSession } from "next-auth/react";
 
 const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
 const FREE_NOTE_LIMIT = 20;
@@ -38,7 +50,6 @@ const PRO_NOTE_LIMIT = 500;
 const HISTORY_DEFAULT_SHOW = 3;
 const MESSAGES_PER_PAGE = 10;
 
-// Pin limits
 const PRO_PIN_MSG_LIMIT = 3;
 const PRO_PIN_INBOX_LIMIT = 2;
 const FREE_PIN_MSG_LIMIT = 1;
@@ -48,36 +59,16 @@ const DOMAIN_SEED: FetchedDomain[] = [
   { domain: "ditube.info", tier: "free", tags: [] }
 ];
 
-// ── Brand categorization map ──────────────────────────────────────────────────
-// Maps sender domain/name keywords → category label
 const BRAND_CATEGORY_MAP: Record<string, string> = {
-  "discord": "Discord",
-  "instagram": "Instagram",
-  "facebook": "Facebook",
-  "meta": "Facebook",
-  "twitter": "Twitter/X",
-  "x.com": "Twitter/X",
-  "google": "Google",
-  "github": "GitHub",
-  "netflix": "Netflix",
-  "spotify": "Spotify",
-  "amazon": "Amazon",
-  "apple": "Apple",
-  "microsoft": "Microsoft",
-  "linkedin": "LinkedIn",
-  "reddit": "Reddit",
-  "twitch": "Twitch",
-  "paypal": "PayPal",
-  "stripe": "Stripe",
-  "slack": "Slack",
-  "notion": "Notion",
-  "figma": "Figma",
-  "dropbox": "Dropbox",
-  "zoom": "Zoom",
-  "shopify": "Shopify",
-  "tiktok": "TikTok",
-  "snapchat": "Snapchat",
-  "whatsapp": "WhatsApp",
+  "discord": "Discord", "instagram": "Instagram", "facebook": "Facebook",
+  "meta": "Facebook", "twitter": "Twitter/X", "x.com": "Twitter/X",
+  "google": "Google", "github": "GitHub", "netflix": "Netflix",
+  "spotify": "Spotify", "amazon": "Amazon", "apple": "Apple",
+  "microsoft": "Microsoft", "linkedin": "LinkedIn", "reddit": "Reddit",
+  "twitch": "Twitch", "paypal": "PayPal", "stripe": "Stripe",
+  "slack": "Slack", "notion": "Notion", "figma": "Figma",
+  "dropbox": "Dropbox", "zoom": "Zoom", "shopify": "Shopify",
+  "tiktok": "TikTok", "snapchat": "Snapchat", "whatsapp": "WhatsApp",
   "telegram": "Telegram",
 };
 
@@ -118,22 +109,13 @@ function detectCategory(from: string): string | null {
   return null;
 }
 
-// ── Sender display name parser ────────────────────────────────────────────────
-// Handles all RFC 5322 formats:
-//   "SendTestEmail" <hello@test.com>  →  SendTestEmail
-//   SendTestEmail <hello@test.com>    →  SendTestEmail
-//   hello@test.com                    →  hello  (strips domain)
 export function parseSenderName(from: string): string {
   if (!from) return "?";
-  // Strip <email@domain> portion
   let name = from.replace(/<[^>]*>/g, "").trim();
-  // Strip surrounding quotes (single or double)
   name = name.replace(/^["'\u201C\u201D]+|["'\u201C\u201D]+$/g, "").trim();
-  // If nothing left, fall back to the local-part of the email
   if (!name) name = from.replace(/@.*$/, "").replace(/[<>]/g, "").trim();
   return name || from;
 }
-
 
 const PRO_ADJECTIVES = [
   "swift","lunar","neon","azure","ivory","onyx","amber","cobalt","sage",
@@ -164,7 +146,6 @@ export function generateRandomEmail(domain: string, isPro = false) {
   return `${adj}-${noun}${num}@${domain}`;
 }
 
-// ── Interfaces ────────────────────────────────────────────────────────────────
 interface Attachment { filename: string; contentType: string; content: string; size: number; }
 interface Message {
   id: string; from: string; to: string; subject: string; date: string;
@@ -210,7 +191,8 @@ const getExpiry = (dateStr: string, hours: number) => {
   return `Today ${timeStr}`;
 };
 
-// ── Sub-components (unchanged visuals) ────────────────────────────────────────
+// ── Sub-components — unchanged from original ──────────────────────────────────
+
 function NewEmailFlash({ from, subject, onDone }: { from: string; subject: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3400); return () => clearTimeout(t); }, [onDone]);
   return (
@@ -372,31 +354,28 @@ const SplitPaneMessageView = ({ message, token, apiEndpoint, isPro, onUpsell }: 
   );
 };
 
-// ── Pinned message chip ────────────────────────────────────────────────────────
 function PinButton({ isPinned, onClick, size = "sm", hidden }: { isPinned: boolean; onClick: (e: React.MouseEvent) => void; size?: "sm" | "xs"; hidden?: boolean }) {
   if (hidden) return null;
   return (
     <Button variant="ghost" size="icon"
       className={cn(size === "xs" ? "h-5 w-5" : "h-6 w-6", isPinned && "text-amber-500")}
-      onClick={onClick}
-      title={isPinned ? "Unpin" : "Pin"}
-    >
+      onClick={onClick} title={isPinned ? "Unpin" : "Pin"}>
       <Pin className={cn(size === "xs" ? "h-2.5 w-2.5" : "h-3 w-3", isPinned && "fill-amber-500")} />
     </Button>
   );
 }
 
-// ── Main Props ────────────────────────────────────────────────────────────────
-interface EmailBoxProps {
-  initialSession: Session | null;
-  initialCustomDomains: any[];
-  initialInboxes: string[];
-  initialCurrentInbox: string | null;
-}
+// ── Props — empty, all data is now client-side ────────────────────────────────
+interface EmailBoxProps {}
 
-export function EmailBox({ initialSession, initialCustomDomains, initialInboxes, initialCurrentInbox }: EmailBoxProps) {
+export function EmailBox({}: EmailBoxProps) {
   const t = useTranslations("EmailBox");
-  const [session] = useState(initialSession);
+
+  // FIX 1: useSession replaces initialSession prop entirely.
+  // Must be called at the top level, before any conditional returns.
+  const { data: session, status: sessionStatus } = useSession();
+  const isSessionLoading = sessionStatus === "loading";
+
   const isAuthenticated = !!session;
   // @ts-ignore
   const userPlan = session?.user?.plan || "none";
@@ -405,13 +384,22 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   const API_ENDPOINT = isAuthenticated ? "/api/private-mailbox" : "/api/public-mailbox";
 
+  // ── ALL STATE DECLARATIONS — must come before any conditional return ──────
+  // FIX 2: customDomainsFromProfile replaces initialCustomDomains prop.
+  // Populated by the fetchProfile effect after mount.
+  const [customDomainsFromProfile, setCustomDomainsFromProfile] = useState<{ domain: string; verified: boolean }[]>([]);
+
   const [fetchedDomains, setFetchedDomains] = useState<FetchedDomain[]>(DOMAIN_SEED);
   const [domainExpiry, setDomainExpiry] = useState<DomainExpiry | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-  const [email, setEmail] = useState(initialCurrentInbox || initialInboxes[0] || "");
+
+  // FIX 3: No more initialCurrentInbox or initialInboxes from props.
+  // Both start empty — populated by init useEffect from localStorage + fetchProfile.
+  const [email, setEmail] = useState("");
+  const [emailHistory, setEmailHistory] = useState<string[]>([]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [emailHistory, setEmailHistory] = useState<string[]>(initialInboxes);
   const [selectedDomain, setSelectedDomain] = useState("");
   const [primaryDomain, setPrimaryDomain] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -442,52 +430,47 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const [authNeedFeature, setAuthNeedFeature] = useState("LoggedIn Features");
   const [flashQueue, setFlashQueue] = useState<{ id: string; from: string; subject: string }[]>([]);
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set());
-
-  // Notes state
   const [inboxNotes, setInboxNotes] = useState<Record<string, string>>({});
   const [editingNoteInbox, setEditingNoteInbox] = useState<string | null>(null);
-  const [noteInputValue, setNoteInputValue] = useState('');
+  const [noteInputValue, setNoteInputValue] = useState("");
   const [noteHintDismissed, setNoteHintDismissed] = useState(true);
-
-  // History collapse state
   const [historyExpanded, setHistoryExpanded] = useState(false);
-
-  // Message list pagination
   const [visibleMessageCount, setVisibleMessageCount] = useState(MESSAGES_PER_PAGE);
-
-  // ── NEW: Pin state ─────────────────────────────────────────────────────────
-  // Pinned message IDs
   const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
-  // Pinned inbox addresses
   const [pinnedInboxes, setPinnedInboxes] = useState<string[]>([]);
-
-  // ── NEW: Settings new-feature pulse tracking ───────────────────────────────
-  // Track which settings features have been "discovered" (seen)
   const [unseenSettingsFeatures, setUnseenSettingsFeatures] = useState<Set<string>>(new Set());
 
+  // ── ALL REFS ──────────────────────────────────────────────────────────────
   const skipNextSettingsSave = useRef(false);
   const originalTitle = useRef(typeof document !== "undefined" ? document.title : "DITMail");
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const currentEmailRef = useRef("");
-  const sendNotificationRef = useRef<(t: string, b: string) => void>(() => { });
+  const sendNotificationRef = useRef<(t: string, b: string) => void>(() => {});
   const setMessagesRef = useRef(setMessages);
   const isRefreshingThrottleRef = useRef(false);
 
+  // ── ALL MEMOS ─────────────────────────────────────────────────────────────
   const openUpsell = (feature: string) => { setUpsellFeature(feature); setIsUpsellOpen(true); };
 
-  const freeDomainSet = useMemo(() => new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)), [fetchedDomains]);
+  const freeDomainSet = useMemo(() =>
+    new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)),
+  [fetchedDomains]);
 
+  // FIX 4: availableDomains now reads from customDomainsFromProfile state
+  // instead of the removed initialCustomDomains prop.
   const availableDomains = useMemo(() => {
-    const custom = initialCustomDomains?.filter((d: any) => d.verified).map((d: any) => d.domain) ?? [];
+    const custom = customDomainsFromProfile
+      .filter(d => d.verified)
+      .map(d => d.domain);
     const sortedFetched = [...fetchedDomains].sort((a, b) => {
       const score = (d: FetchedDomain) => {
         let s = 0;
-        if (d.tags.includes('featured')) s += 100;
-        if (d.tags.includes('popular')) s += 50;
-        if (d.tags.includes('new')) s += 25;
-        if (d.tier === 'pro') s += 10;
+        if (d.tags.includes("featured")) s += 100;
+        if (d.tags.includes("popular")) s += 50;
+        if (d.tags.includes("new")) s += 25;
+        if (d.tier === "pro") s += 10;
         return s;
       };
       const scoreDiff = score(b) - score(a);
@@ -495,9 +478,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       return a.domain.localeCompare(b.domain);
     }).map(d => d.domain);
     return [...new Set([...custom, ...sortedFetched])];
-  }, [initialCustomDomains, fetchedDomains]);
+  }, [customDomainsFromProfile, fetchedDomains]);
 
-  const hasNewDomain = useMemo(() => fetchedDomains.some(d => d.tags.includes('new')), [fetchedDomains]);
+  const hasNewDomain = useMemo(() =>
+    fetchedDomains.some(d => d.tags.includes("new")),
+  [fetchedDomains]);
 
   const checkDomainAllowed = useCallback((domain: string, domainsList: FetchedDomain[]) => {
     if (isPro) return true;
@@ -515,13 +500,11 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const isMobile = userSettings.layout === "mobile" && isPro;
   const isRetro = userSettings.layout === "retro" && isPro;
 
-  // ── Category detection (memoized per message) ─────────────────────────────
   const getMessageCategory = useCallback((msg: Message): string | null => {
     if (!userSettings.categorization) return null;
     return detectCategory(msg.from);
   }, [userSettings.categorization]);
 
-  // ── Pin helpers ───────────────────────────────────────────────────────────
   const getMsgPinLimit = () => isPro ? PRO_PIN_MSG_LIMIT : isAuthenticated ? FREE_PIN_MSG_LIMIT : 0;
   const getInboxPinLimit = () => isPro ? PRO_PIN_INBOX_LIMIT : isAuthenticated ? FREE_PIN_INBOX_LIMIT : 0;
 
@@ -545,7 +528,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       localStorage.setItem("pinnedMessages", JSON.stringify(next));
       return next;
     });
-  }, [isAuthenticated, isPro]);
+  }, [isAuthenticated, isPro]); // eslint-disable-line
 
   const togglePinInbox = useCallback((inbox: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -567,9 +550,8 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       localStorage.setItem("pinnedInboxes", JSON.stringify(next));
       return next;
     });
-  }, [isAuthenticated, isPro]);
+  }, [isAuthenticated, isPro]); // eslint-disable-line
 
-  // ── Render badges (OTP, verify, category) ────────────────────────────────
   const renderBadges = useCallback((msg: Message) => {
     const hasOtp = !!msg.otp;
     const hasVerify = !!msg.verificationLink;
@@ -589,7 +571,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         )}
       </span>
     );
-  }, [isPro, otpCopied, getMessageCategory]);
+  }, [isPro, otpCopied, getMessageCategory]); // eslint-disable-line
+
+  // ── ALL EFFECTS ───────────────────────────────────────────────────────────
 
   const connectWebSocket = useCallback(async (mailbox: string) => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
@@ -599,7 +583,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     try {
       const res = await fetch("/api/ws-ticket", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mailbox }) });
       if (res.ok) { const data = await res.json(); wsToken = data.token ?? ""; }
-    } catch { }
+    } catch {}
     const url = `wss://api2.freecustom.email/?mailbox=${encodeURIComponent(mailbox)}&token=${encodeURIComponent(wsToken)}`;
     const ws = new WebSocket(url); wsRef.current = ws;
     ws.onopen = () => { reconnectAttemptsRef.current = 0; };
@@ -616,9 +600,9 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         setFlashQueue(q => [...q, { id: msg.id, from: parseSenderName(msg.from), subject: msg.subject || "" }]);
         setNewRowIds(s => new Set(s).add(msg.id));
         setTimeout(() => setNewRowIds(s => { const n = new Set(s); n.delete(msg.id); return n; }), 1400);
-      } catch (_) { }
+      } catch (_) {}
     };
-    ws.onerror = () => { };
+    ws.onerror = () => {};
     ws.onclose = (ev) => {
       if (ev.code === 1000) return;
       const delay = Math.min(500 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
@@ -627,11 +611,52 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     };
   }, []);
 
+  // FIX 5: fetchProfile effect — populates customDomainsFromProfile and emailHistory
+  // from the API after mount. Replaces the server-side EmailBoxDataFetcher entirely.
+  useEffect(() => {
+    if (!isAuthenticated || !session?.user?.id) return;
+    const fetchProfile = async () => {
+      try {
+        const r = await fetch("/api/user/dashboard-data", {
+          headers: { "x-fce-client": "web-client" },
+        });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (data?.user) {
+          const { user } = data;
+          if (user.plan === "pro" && Array.isArray(user.customDomains)) {
+            // FIX: Set customDomainsFromProfile so availableDomains memo picks them up
+            setCustomDomainsFromProfile(user.customDomains);
+          }
+          if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
+            setEmailHistory(prev => {
+              const merged = [...new Set([...user.inboxes, ...prev])];
+              return merged;
+            });
+            // Only switch inbox if nothing has been set yet from localStorage
+            setEmail(current => {
+              if (!current) {
+                setSelectedDomain(user.inboxes[0].split("@")[1] || "");
+                return user.inboxes[0];
+              }
+              return current;
+            });
+          }
+        }
+      } catch {
+        // silent — guest experience is fully functional without profile data
+      }
+    };
+    fetchProfile();
+  }, [isAuthenticated, session?.user?.id]); // eslint-disable-line
+
   useEffect(() => () => {
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     const ws = wsRef.current; if (ws) { ws.onclose = null; ws.close(1000, "unmount"); }
   }, []);
 
+  // FIX 6: init useEffect — removed all references to initialInboxes,
+  // initialCurrentInbox, initialCustomDomains. Now reads only from localStorage.
   useEffect(() => {
     const init = async () => {
       await fetchToken();
@@ -648,7 +673,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
         .then(r => r.json())
         .then(d => { if (Array.isArray(d?.data)) { setFetchedDomains(d.data); sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() })); } })
-        .catch(() => { });
+        .catch(() => {});
       const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
       const allowedDomainsList = currentFetchedDomains.filter(d => checkDomainAllowed(d.domain, currentFetchedDomains)).map(d => d.domain);
       const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
@@ -658,38 +683,33 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
       setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
       setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
-      // Load pins from storage
       setPinnedMessageIds(safeJsonParse<string[]>(localStorage.getItem("pinnedMessages"), []));
       setPinnedInboxes(safeJsonParse<string[]>(localStorage.getItem("pinnedInboxes"), []));
-      // Load unseen settings features
       const seenFeatures = safeJsonParse<string[]>(localStorage.getItem("seenSettingsFeatures"), []);
-      const allNewFeatures = ["categorization"]; // add new feature keys here
+      const allNewFeatures = ["categorization"];
       const unseen = new Set(allNewFeatures.filter(f => !seenFeatures.includes(f)));
       setUnseenSettingsFeatures(unseen);
       setIsStorageLoaded(true);
-      if (initialInboxes.length > 0) {
-        const merged = [...new Set([...initialInboxes, ...localHistory])];
-        hist = userPlan === "free" ? merged.slice(0, 7) : merged;
-        initEmail = initialCurrentInbox || initialInboxes[0];
-        if (!checkDomainAllowed(initEmail.split("@")[1], currentFetchedDomains)) {
-          const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-          initEmail = generateRandomEmail(d, isPro);
-          hist = [initEmail, ...hist.filter(e => e !== initEmail)];
-        }
-      } else if (localHistory.length > 0) {
+
+      // FIX 7: No initialInboxes prop — use only localHistory
+      if (localHistory.length > 0) {
         hist = localHistory.slice(0, 5);
         const topDomain = hist[0].split("@")[1];
         if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
           const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
           initEmail = generateRandomEmail(d, isPro);
           hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
-        } else { initEmail = hist[0]; }
+        } else {
+          initEmail = hist[0];
+        }
       } else {
         const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
         initEmail = generateRandomEmail(d, isPro);
         hist = [initEmail];
       }
-      if (!email) setEmail(initEmail);
+
+      // Only set if fetchProfile hasn't already set an inbox
+      setEmail(current => current || initEmail);
       setEmailHistory(hist);
       setSelectedDomain(initEmail.split("@")[1] || "");
     };
@@ -705,7 +725,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           const d = await r.json();
           if (d.settings) { skipNextSettingsSave.current = true; setUserSettings(p => ({ ...p, ...d.settings })); localStorage.setItem("userSettings", JSON.stringify({ ...DEFAULT_SETTINGS, ...d.settings })); }
         }
-      } catch { }
+      } catch {}
     };
     if (isStorageLoaded) fetch_();
   }, [isAuthenticated, isStorageLoaded]);
@@ -719,13 +739,13 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       fetch("/api/user/inbox-notes")
         .then(r => r.json())
         .then(d => {
-          if (d.success && d.notes && typeof d.notes === 'object') {
+          if (d.success && d.notes && typeof d.notes === "object") {
             const merged = { ...local, ...d.notes };
             setInboxNotes(merged);
             localStorage.setItem("inboxNotes", JSON.stringify(merged));
           }
         })
-        .catch(() => { });
+        .catch(() => {});
     }
   }, [isStorageLoaded, isPro, isAuthenticated]); // eslint-disable-line
 
@@ -733,7 +753,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     if (!isStorageLoaded) return;
     if (skipNextSettingsSave.current) { skipNextSettingsSave.current = false; return; }
     localStorage.setItem("userSettings", JSON.stringify(userSettings));
-    if (isAuthenticated) fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => { });
+    if (isAuthenticated) fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => {});
   }, [userSettings, isStorageLoaded, isAuthenticated]);
 
   useEffect(() => {
@@ -745,7 +765,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   useEffect(() => { setVisibleMessageCount(MESSAGES_PER_PAGE); }, [email, activeTab]);
 
   const sendNotification = (title: string, body: string) => {
-    if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => { }); } catch { }
+    if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => {}); } catch {}
     if (userSettings.notifications && document.visibilityState !== "visible") new Notification(title, { body, icon: "/logo.webp" });
   };
   useEffect(() => { sendNotificationRef.current = sendNotification; });
@@ -755,7 +775,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
   useEffect(() => {
     if (!email) return;
-    if (isAuthenticated) fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => { });
+    if (isAuthenticated) fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => {});
     const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
     let next = [email, ...h.filter(e => e !== email)];
     if (userPlan === "free") next = next.slice(0, 7); else if (!isAuthenticated) next = next.slice(0, 5);
@@ -773,7 +793,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       if (!r.ok) return null;
       const d = await r.json() as { token?: string };
       if (d.token) { setToken(d.token); setCookie("authToken", d.token, { maxAge: 3600 }); return d.token; }
-    } catch { }
+    } catch {}
     return null;
   };
 
@@ -884,7 +904,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     setEmail(he); setSelectedDomain(domain); setOldEmailUsed(!oldEmailUsed); setDomainExpiry(null);
   };
 
-  // Notes callbacks
   const saveInboxNote = useCallback((inbox: string, note: string) => {
     const trimmed = note.trim().slice(0, noteCharLimit);
     const updated = { ...inboxNotes };
@@ -892,22 +911,22 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     setInboxNotes(updated);
     localStorage.setItem("inboxNotes", JSON.stringify(updated));
     setEditingNoteInbox(null);
-    setNoteInputValue('');
+    setNoteInputValue("");
     if (isPro && isAuthenticated) {
-      fetch('/api/user/inbox-notes', { method: trimmed ? 'POST' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inbox, note: trimmed }) }).catch(() => { });
+      fetch("/api/user/inbox-notes", { method: trimmed ? "POST" : "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inbox, note: trimmed }) }).catch(() => {});
     }
   }, [inboxNotes, noteCharLimit, isPro, isAuthenticated]);
 
   const handleDeleteInbox = useCallback(async (inbox: string) => {
     setEmailHistory(prev => prev.filter(e => e !== inbox));
     const updated = emailHistory.filter(e => e !== inbox);
-    localStorage.setItem('emailHistory', JSON.stringify(updated));
+    localStorage.setItem("emailHistory", JSON.stringify(updated));
     const updatedNotes = { ...inboxNotes };
     delete updatedNotes[inbox];
     setInboxNotes(updatedNotes);
-    localStorage.setItem('inboxNotes', JSON.stringify(updatedNotes));
+    localStorage.setItem("inboxNotes", JSON.stringify(updatedNotes));
     if (isAuthenticated) {
-      fetch('/api/user/inboxes', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inbox }) }).catch(() => { });
+      fetch("/api/user/inboxes", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inbox }) }).catch(() => {});
     }
   }, [emailHistory, inboxNotes, isAuthenticated]);
 
@@ -915,10 +934,10 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     e.stopPropagation();
     if (!isAuthenticated) { setAuthNeedFeature("Inbox Notes"); setIsAuthNeedOpen(true); return; }
     setEditingNoteInbox(inbox);
-    setNoteInputValue(inboxNotes[inbox] ?? '');
+    setNoteInputValue(inboxNotes[inbox] ?? "");
   }, [inboxNotes, isAuthenticated]);
 
-  const cancelEditingNote = useCallback(() => { setEditingNoteInbox(null); setNoteInputValue(''); }, []);
+  const cancelEditingNote = useCallback(() => { setEditingNoteInbox(null); setNoteInputValue(""); }, []);
 
   const handleProShortcut = (fn: () => void, name: string) => { if (isPro) fn(); else openUpsell(`Keyboard Shortcut: ${name}`); };
   const handleAuthShortcut = (fn: () => void, name: string) => { if (isAuthenticated) fn(); else { setAuthNeedFeature(`Keyboard Shortcut: ${name}`); setIsAuthNeedOpen(true); } };
@@ -934,7 +953,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const filteredMessages = useMemo(() => {
     if (activeTab === "dismissed") return messages.filter(m => dismissedMessageIds.has(m.id));
     const base = messages.filter(m => !dismissedMessageIds.has(m.id));
-    // Pinned messages float to top
     const pinned = base.filter(m => pinnedMessageIds.includes(m.id));
     const unpinned = base.filter(m => !pinnedMessageIds.includes(m.id));
     return [...pinned, ...unpinned];
@@ -948,9 +966,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     return () => { if (typeof document !== "undefined") document.body.removeAttribute("data-fce-layout"); };
   }, [userSettings.layout]);
 
-  // ── History helpers ────────────────────────────────────────────────────────
   const canHaveMoreHistory = emailHistory.length > HISTORY_DEFAULT_SHOW;
-  // Pinned inboxes always at top
   const sortedHistory = useMemo(() => {
     const pinned = emailHistory.filter(e => pinnedInboxes.includes(e));
     const rest = emailHistory.filter(e => !pinnedInboxes.includes(e));
@@ -959,7 +975,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
   const visibleHistory = canHaveMoreHistory && !historyExpanded ? sortedHistory.slice(0, HISTORY_DEFAULT_SHOW) : sortedHistory;
   const hiddenHistoryCount = emailHistory.length - HISTORY_DEFAULT_SHOW;
 
-  // ── Handle settings open — mark categorization feature as seen ─────────────
   const handleOpenSettings = () => {
     setIsSettingsOpen(true);
     if (unseenSettingsFeatures.size > 0) {
@@ -969,7 +984,49 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
     }
   };
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  // ── CONDITIONAL RENDER: skeleton ──────────────────────────────────────────
+  // FIX 8: isSessionLoading check is now AFTER all hooks — Rules of Hooks compliant.
+  // The skeleton renders while NextAuth resolves the session from the cookie.
+  // This is the LCP element — visible within ~100ms of navigation.
+  if (isSessionLoading) {
+    return (
+      <div className="rounded-lg border border-border bg-background overflow-hidden">
+        <div className="border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500/40 animate-pulse" />
+            <div className="h-3 w-32 rounded bg-muted animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 flex-1 rounded-md bg-muted animate-pulse" />
+            <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
+            <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
+            <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
+          </div>
+        </div>
+        <div className="border-b border-border grid grid-cols-4 gap-px bg-border">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-background h-9 flex items-center justify-center">
+              <div className="h-3 w-12 rounded bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="py-14 flex flex-col items-center text-center px-6">
+          <div className="h-3 w-36 rounded bg-muted animate-pulse mb-2" />
+          <div className="h-3 w-52 rounded bg-muted/60 animate-pulse" />
+        </div>
+        <div className="border-t border-border px-4 py-4">
+          <div className="h-3 w-20 rounded bg-muted animate-pulse mb-3" />
+          <div className="space-y-2">
+            <div className="h-3 w-48 rounded bg-muted/60 animate-pulse" />
+            <div className="h-3 w-40 rounded bg-muted/60 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── RENDER HELPERS — identical to original ────────────────────────────────
+
   const renderEmptyState = () => (
     <div className="py-14 flex flex-col items-center text-center px-6">
       <button onClick={() => setIsCliModalOpen(true)}
@@ -1004,7 +1061,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
         <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70 text-right">Time</span>
         <span />
       </div>
-
       {filteredMessages.length === 0 ? renderEmptyState() : (
         <>
           <div className="divide-y divide-border/50">
@@ -1030,10 +1086,7 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   </span>
                   <div className="min-w-0 flex flex-col gap-0.5 pl-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      {!isCompact && (
-                        // ── Brand avatar (lazy-loaded icon or initial fallback) ──
-                        <BrandAvatar from={msg.from} size={20} className="shrink-0" />
-                      )}
+                      {!isCompact && <BrandAvatar from={msg.from} size={20} className="shrink-0" />}
                       <span className={cn("font-mono text-xs truncate", isRead ? "text-muted-foreground" : "text-foreground font-semibold")}>
                         {parseSenderName(msg.from)}
                       </span>
@@ -1058,7 +1111,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     )}
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground/70 text-right tabular-nums">{fmtDateShort(msg.date)}</span>
-                  {/* Action buttons */}
                   <div className="flex items-center justify-end gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pl-1">
                     <PinButton isPinned={isPinned} onClick={(e) => togglePinMessage(msg.id, e)} hidden={isPro && !isPinned && pinnedMessageIds.length >= PRO_PIN_MSG_LIMIT} />
                     {userPlan === "free" && (
@@ -1077,7 +1129,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               );
             })}
           </div>
-
           {hiddenCount > 0 && (
             <div className="border-t border-border/50 px-3 py-2 flex items-center justify-between bg-muted/5">
               <span className="font-mono text-[10px] text-muted-foreground/50 tabular-nums">{visibleMessages.length} of {filteredMessages.length}</span>
@@ -1207,7 +1258,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           </button>
         )}
       </div>
-
       <ul className="space-y-0 divide-y divide-border/30">
         {visibleHistory.map((he, i) => {
           const note = inboxNotes[he];
@@ -1218,24 +1268,16 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           const isActive = he === email;
           const isInboxPinned = pinnedInboxes.includes(he);
           const showHint = i === 0 && !note && !isEditingThis && !noteHintDismissed;
-
           const dismissHint = (e: React.MouseEvent) => {
             localStorage.setItem("noteHintSeen", "1");
             setNoteHintDismissed(true);
             startEditingNote(he, e);
           };
-
           return (
             <li key={i} className="group py-2 first:pt-0 last:pb-0">
               <div className="flex items-center gap-2 min-w-0">
-                {/* Pin indicator for inbox */}
                 {isInboxPinned && <Pin className="h-2.5 w-2.5 text-amber-500/60 fill-amber-500/30 shrink-0" />}
-                <span className={cn(
-                  "font-mono text-[11px] min-w-0 truncate transition-colors shrink-0",
-                  isActive ? "text-foreground font-medium" : "text-muted-foreground/80 group-hover:text-muted-foreground",
-                )}>{he}</span>
-
-                {/* Desktop inline note */}
+                <span className={cn("font-mono text-[11px] min-w-0 truncate transition-colors shrink-0", isActive ? "text-foreground font-medium" : "text-muted-foreground/80 group-hover:text-muted-foreground")}>{he}</span>
                 {!isEditingThis && !note && !showHint && (
                   <button type="button" onClick={(e) => startEditingNote(he, e)} title="Add note" aria-label="Add note"
                     className="hidden md:flex shrink-0 items-center gap-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/60 transition-colors opacity-0 group-hover:opacity-100">
@@ -1256,39 +1298,24 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                     <span className="font-mono text-[11px] text-muted-foreground/55 italic truncate group-hover/note:text-muted-foreground transition-colors">{note}</span>
                   </button>
                 )}
-
                 <span className="flex-1" />
-
-                {/* Pin inbox button — hide for Pro when limit reached and not pinned */}
                 {!(isPro && !isInboxPinned && pinnedInboxes.length >= PRO_PIN_INBOX_LIMIT) && (
                   <button type="button" aria-label={isInboxPinned ? "Unpin inbox" : "Pin inbox"}
                     onClick={(e) => togglePinInbox(he, e)}
-                    className={cn(
-                      "shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
-                      isInboxPinned
-                        ? "text-amber-500 hover:bg-amber-500/10"
-                        : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
-                    )}>
+                    className={cn("shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all", isInboxPinned ? "text-amber-500 hover:bg-amber-500/10" : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60")}>
                     <Pin className={cn("h-3 w-3", isInboxPinned && "fill-amber-500/50")} />
                   </button>
                 )}
-
-                {/* Note icon mobile */}
                 <button type="button" aria-label={note ? "Edit note" : "Add note"}
                   onClick={(e) => { if (isEditingThis) return; startEditingNote(he, e); }}
-                  className={cn(
-                    "md:hidden shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all",
-                    note ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10" : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60",
-                  )}>
+                  className={cn("md:hidden shrink-0 h-6 w-6 flex items-center justify-center rounded transition-all", note ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10" : "opacity-0 group-hover:opacity-100 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/60")}>
                   <FileText className="h-3 w-3" />
                 </button>
-
                 <button onClick={() => handleUseHistoryEmail(he)}
                   className="font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors whitespace-nowrap shrink-0 underline underline-offset-2 decoration-border hover:decoration-foreground">
                   {t("history_use")}
                 </button>
               </div>
-
               {showHint && (
                 <button type="button" onClick={dismissHint} aria-label="Try adding a note"
                   className="md:hidden mt-1 flex items-center gap-1.5 w-full text-left">
@@ -1296,7 +1323,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   <span className="font-mono text-[11px] text-amber-500/60 italic border-b border-dashed border-amber-500/30 hover:text-amber-500 transition-colors">click me to edit ✏</span>
                 </button>
               )}
-
               {isEditingThis && (
                 <div className="mt-1.5 space-y-1.5">
                   <div className="flex gap-1.5 items-start">
@@ -1304,12 +1330,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                       onChange={(e) => setNoteInputValue(e.target.value.slice(0, noteCharLimit))}
                       placeholder="Type your note… (Enter to save, Esc to cancel)"
                       rows={1} autoFocus
-                      onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; }}
+                      onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveInboxNote(he, noteInputValue); }
-                        if (e.key === 'Escape') cancelEditingNote();
+                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveInboxNote(he, noteInputValue); }
+                        if (e.key === "Escape") cancelEditingNote();
                       }}
-                      style={{ minHeight: '28px', overflow: 'hidden' }}
+                      style={{ minHeight: "28px", overflow: "hidden" }}
                       className="flex-1 resize-none rounded-md border bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/35 focus:outline-none focus:ring-1 focus:border-foreground/25 focus:ring-foreground/10 transition-all duration-150 border-border leading-relaxed"
                     />
                     <div className="flex flex-col gap-1 shrink-0">
@@ -1337,19 +1363,17 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                   </div>
                 </div>
               )}
-
               {!isEditingThis && note && (
                 <div className="md:hidden mt-1 flex items-center gap-1.5 group/note cursor-pointer"
                   onClick={(e) => startEditingNote(he, e as any)} role="button" aria-label="Edit note">
                   <FileText className="h-2.5 w-2.5 text-amber-500/50 shrink-0" />
                   <span className="font-mono text-[11px] text-muted-foreground/55 italic flex-1 leading-relaxed line-clamp-2 group-hover/note:text-muted-foreground transition-colors">{note}</span>
-                  <button type="button" aria-label="Remove note" onClick={(e) => { e.stopPropagation(); saveInboxNote(he, ''); }}
+                  <button type="button" aria-label="Remove note" onClick={(e) => { e.stopPropagation(); saveInboxNote(he, ""); }}
                     className="shrink-0 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive">
                     <X className="h-2.5 w-2.5" />
                   </button>
                 </div>
               )}
-
               {!note && !isEditingThis && (
                 <button type="button" onClick={(e) => startEditingNote(he, e)}
                   className="md:hidden mt-1 font-mono text-[10px] text-muted-foreground/25 hover:text-muted-foreground/50 flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100">
@@ -1360,15 +1384,12 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
           );
         })}
       </ul>
-
       {canHaveMoreHistory && (
         <button type="button" onClick={() => setHistoryExpanded(v => !v)}
           className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 font-mono text-[10px] text-muted-foreground/50 hover:text-muted-foreground border border-dashed border-border/50 hover:border-border rounded-md transition-all">
           {historyExpanded ? (<><ChevronUp className="h-2.5 w-2.5" />Show less</>) : (<><ChevronDown className="h-2.5 w-2.5" />{hiddenHistoryCount} more inbox{hiddenHistoryCount !== 1 ? "es" : ""}</>)}
         </button>
       )}
-
-      {/* Pin limits hint */}
       {(pinnedInboxes.length > 0 || pinnedMessageIds.length > 0) && (
         <p className="mt-2 font-mono text-[9px] text-muted-foreground/30 text-center">
           {pinnedInboxes.length}/{getInboxPinLimit()} inboxes · {pinnedMessageIds.length}/{getMsgPinLimit()} msgs pinned
@@ -1395,8 +1416,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
       {flashQueue.length > 0 && <NewEmailFlash key={flashQueue[0].id} from={flashQueue[0].from} subject={flashQueue[0].subject} onDone={() => setFlashQueue(q => q.slice(1))} />}
 
       <div className={cn("rounded-lg border border-border bg-background overflow-hidden", isZen && "border-0 bg-transparent")}>
-
-        {/* ── Header ── */}
         <div className="border-b border-border">
           <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
             <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isRefreshing ? "bg-amber-500 animate-pulse" : "bg-emerald-500 animate-pulse")} />
@@ -1404,7 +1423,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             <div className="flex-1" />
             <span className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">{messages.length} msg{messages.length !== 1 ? "s" : ""}</span>
           </div>
-
           <div className="flex items-start gap-2 px-4 pb-3 pt-0.5">
             {isEditing ? (
               <div className="flex flex-1 items-center gap-2">
@@ -1492,7 +1510,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 )}
               </div>
             )}
-
             <TooltipProvider delayDuration={200}>
               <div className="flex gap-1.5 shrink-0">
                 <Tooltip>
@@ -1507,7 +1524,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
                 <Button aria-label="Show QR Code" variant="outline" size="icon" className="h-9 w-9 hidden sm:flex" onClick={() => setIsQRModalOpen(true)} disabled={blockButtons}>
                   <QrCode className="h-3.5 w-3.5" />
                 </Button>
-                {/* Settings button with new-feature pulse */}
                 <div className="relative">
                   <Button aria-label="Open settings" variant="outline" size="icon" className="h-9 w-9" onClick={handleOpenSettings} disabled={blockButtons}>
                     <Settings className="h-3.5 w-3.5" />
@@ -1520,7 +1536,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               </div>
             </TooltipProvider>
           </div>
-
           {!isZen && (
             <div className="flex gap-px border-t border-border" style={{ background: "var(--border)" }}>
               {([
@@ -1541,7 +1556,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
               ))}
             </div>
           )}
-
           {!isZen && (
             <div className="flex gap-px border-t border-border" style={{ background: "var(--border)" }}>
               {(["all", "dismissed"] as const).map(tab => {
@@ -1562,7 +1576,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
 
         {domainExpiry && <DomainExpiryBanner expiry={domainExpiry} isPro={isPro} onUpsell={openUpsell} />}
 
-        {/* ── Message list ── */}
         {isSplit ? (
           <div className="grid grid-cols-1 md:grid-cols-2 h-[560px]">
             <div className="border-r border-border overflow-y-auto">{renderInboxList()}</div>
@@ -1578,7 +1591,6 @@ export function EmailBox({ initialSession, initialCustomDomains, initialInboxes,
             : renderInboxList()
         }
 
-        {/* ── Footer ── */}
         {!isZen && (
           <div className="border-t border-border">
             <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border">
