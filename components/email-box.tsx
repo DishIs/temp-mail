@@ -792,8 +792,13 @@ export function EmailBox({ }: EmailBoxProps) {
 
   useEffect(() => {
     if (!email) return; if (isAuthenticated && !token) return;
-    currentEmailRef.current = email; connectWebSocket(email); refreshInbox();
-  }, [email, token, isAuthenticated, connectWebSocket]); // eslint-disable-line
+    currentEmailRef.current = email; 
+    connectWebSocket(email); 
+    
+    // Reset the throttle so the automatic fetch isn't swallowed by a previous guest fetch
+    isRefreshingThrottleRef.current = false; 
+    refreshInbox();
+  },[email, token, isAuthenticated, connectWebSocket]); // eslint-disable-line
 
   const fetchToken = async () => {
     try {
