@@ -11,12 +11,6 @@
     "dev": "next dev",
     "postbuild": "next-sitemap"
   },
-  "browserslist": [
-    "Chrome >= 92",
-    "Firefox >= 90",
-    "Safari >= 15",
-    "Edge >= 92"
-  ],
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250705.0",
     "@dishistech/blogs-sdk": "^1.0.4",

@@ -185,7 +185,7 @@ export default async function Page({ params }: Props) {
               */}
               <EmailBox />
 
-              <div className="mt-3"><Status /></div>
+              <Status />
 
               <div
                 className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground"
