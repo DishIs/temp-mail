@@ -73,32 +73,32 @@ const BRAND_CATEGORY_MAP: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "Discord":    "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-  "Instagram":  "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
-  "Facebook":   "bg-blue-600/10 text-blue-700 dark:text-blue-400 border-blue-600/20",
-  "Twitter/X":  "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
-  "Google":     "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-  "GitHub":     "bg-zinc-800/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
-  "Netflix":    "bg-red-600/10 text-red-700 dark:text-red-400 border-red-600/20",
-  "Spotify":    "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  "Amazon":     "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
-  "Apple":      "bg-zinc-400/10 text-zinc-600 dark:text-zinc-400 border-zinc-400/20",
-  "Microsoft":  "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-  "LinkedIn":   "bg-sky-600/10 text-sky-700 dark:text-sky-400 border-sky-600/20",
-  "Reddit":     "bg-orange-600/10 text-orange-600 dark:text-orange-400 border-orange-600/20",
-  "Twitch":     "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-  "PayPal":     "bg-blue-700/10 text-blue-700 dark:text-blue-400 border-blue-700/20",
-  "Stripe":     "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
-  "Slack":      "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
-  "Notion":     "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
-  "Figma":      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-  "Dropbox":    "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-  "Zoom":       "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-  "Shopify":    "bg-green-600/10 text-green-700 dark:text-green-400 border-green-600/20",
-  "TikTok":     "bg-zinc-800/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
-  "Snapchat":   "bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 border-yellow-400/20",
-  "WhatsApp":   "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
-  "Telegram":   "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  "Discord": "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  "Instagram": "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
+  "Facebook": "bg-blue-600/10 text-blue-700 dark:text-blue-400 border-blue-600/20",
+  "Twitter/X": "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+  "Google": "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+  "GitHub": "bg-zinc-800/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
+  "Netflix": "bg-red-600/10 text-red-700 dark:text-red-400 border-red-600/20",
+  "Spotify": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  "Amazon": "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  "Apple": "bg-zinc-400/10 text-zinc-600 dark:text-zinc-400 border-zinc-400/20",
+  "Microsoft": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  "LinkedIn": "bg-sky-600/10 text-sky-700 dark:text-sky-400 border-sky-600/20",
+  "Reddit": "bg-orange-600/10 text-orange-600 dark:text-orange-400 border-orange-600/20",
+  "Twitch": "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  "PayPal": "bg-blue-700/10 text-blue-700 dark:text-blue-400 border-blue-700/20",
+  "Stripe": "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+  "Slack": "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
+  "Notion": "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
+  "Figma": "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  "Dropbox": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  "Zoom": "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+  "Shopify": "bg-green-600/10 text-green-700 dark:text-green-400 border-green-600/20",
+  "TikTok": "bg-zinc-800/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
+  "Snapchat": "bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 border-yellow-400/20",
+  "WhatsApp": "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+  "Telegram": "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
 };
 
 function detectCategory(from: string): string | null {
@@ -118,14 +118,14 @@ export function parseSenderName(from: string): string {
 }
 
 const PRO_ADJECTIVES = [
-  "swift","lunar","neon","azure","ivory","onyx","amber","cobalt","sage",
-  "frost","ember","cedar","jade","slate","opal","raven","dusk","dawn",
-  "prism","echo","apex","nova","zenith","cipher","velvet","obsidian",
+  "swift", "lunar", "neon", "azure", "ivory", "onyx", "amber", "cobalt", "sage",
+  "frost", "ember", "cedar", "jade", "slate", "opal", "raven", "dusk", "dawn",
+  "prism", "echo", "apex", "nova", "zenith", "cipher", "velvet", "obsidian",
 ];
 const PRO_NOUNS = [
-  "circuit","horizon","nexus","beacon","cipher","vortex","lattice",
-  "phantom","zenith","solstice","catalyst","vertex","quasar","delta",
-  "aurora","prism","haven","vector","summit","atlas","orbit","pulse",
+  "circuit", "horizon", "nexus", "beacon", "cipher", "vortex", "lattice",
+  "phantom", "zenith", "solstice", "catalyst", "vertex", "quasar", "delta",
+  "aurora", "prism", "haven", "vector", "summit", "atlas", "orbit", "pulse",
 ];
 
 export function generateProEmail(domain: string) {
@@ -135,8 +135,8 @@ export function generateProEmail(domain: string) {
   return `${adj}.${noun}${num}@${domain}`;
 }
 
-const adjectives = ["rapid","silent","cosmic","bright","frozen","wild","golden"];
-const nouns = ["river","tiger","cloud","pixel","storm","forest","wolf"];
+const adjectives = ["rapid", "silent", "cosmic", "bright", "frozen", "wild", "golden"];
+const nouns = ["river", "tiger", "cloud", "pixel", "storm", "forest", "wolf"];
 
 export function generateRandomEmail(domain: string, isPro = false) {
   if (isPro) return generateProEmail(domain);
@@ -308,7 +308,7 @@ const SplitPaneMessageView = ({ message, token, apiEndpoint, isPro, onUpsell }: 
     } catch (e) { console.error(e); } finally { setIsLoading(false); }
   }, [message.to, token, apiEndpoint]);
   useEffect(() => { setFullMessage(null); fetchFull(message.id); }, [message.id, fetchFull]);
-  const fmt = (b: number) => { if (!b) return "0 B"; const s = ["B","KB","MB","GB"]; const i = Math.floor(Math.log(b)/Math.log(1024)); return `${(b/Math.pow(1024,i)).toFixed(1)} ${s[i]}`; };
+  const fmt = (b: number) => { if (!b) return "0 B"; const s = ["B", "KB", "MB", "GB"]; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(1)} ${s[i]}`; };
   const m = fullMessage || message;
   return (
     <div className="flex flex-col h-full bg-background">
@@ -366,16 +366,24 @@ function PinButton({ isPinned, onClick, size = "sm", hidden }: { isPinned: boole
 }
 
 // ── Props — empty, all data is now client-side ────────────────────────────────
-interface EmailBoxProps {}
+interface EmailBoxProps { }
 
-export function EmailBox({}: EmailBoxProps) {
+export function EmailBox({ }: EmailBoxProps) {
   const t = useTranslations("EmailBox");
 
   // FIX 1: useSession replaces initialSession prop entirely.
   // Must be called at the top level, before any conditional returns.
   const { data: session, status: sessionStatus } = useSession();
+
+  // FIX: Don't block render on session loading.
+  // Render immediately as guest, upgrade to authenticated state when session resolves.
+  // This eliminates the skeleton → full-inbox flash that was causing CLS 0.271.
+  //
+  // isSessionLoading is now only used to show a subtle loading indicator
+  // inside the already-rendered inbox, not to gate the entire component.
   const isSessionLoading = sessionStatus === "loading";
 
+  // Use session data if available, fall back to guest state immediately
   const isAuthenticated = !!session;
   // @ts-ignore
   const userPlan = session?.user?.plan || "none";
@@ -447,7 +455,7 @@ export function EmailBox({}: EmailBoxProps) {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const currentEmailRef = useRef("");
-  const sendNotificationRef = useRef<(t: string, b: string) => void>(() => {});
+  const sendNotificationRef = useRef<(t: string, b: string) => void>(() => { });
   const setMessagesRef = useRef(setMessages);
   const isRefreshingThrottleRef = useRef(false);
 
@@ -456,7 +464,7 @@ export function EmailBox({}: EmailBoxProps) {
 
   const freeDomainSet = useMemo(() =>
     new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)),
-  [fetchedDomains]);
+    [fetchedDomains]);
 
   // FIX 4: availableDomains now reads from customDomainsFromProfile state
   // instead of the removed initialCustomDomains prop.
@@ -482,7 +490,7 @@ export function EmailBox({}: EmailBoxProps) {
 
   const hasNewDomain = useMemo(() =>
     fetchedDomains.some(d => d.tags.includes("new")),
-  [fetchedDomains]);
+    [fetchedDomains]);
 
   const checkDomainAllowed = useCallback((domain: string, domainsList: FetchedDomain[]) => {
     if (isPro) return true;
@@ -583,7 +591,7 @@ export function EmailBox({}: EmailBoxProps) {
     try {
       const res = await fetch("/api/ws-ticket", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mailbox }) });
       if (res.ok) { const data = await res.json(); wsToken = data.token ?? ""; }
-    } catch {}
+    } catch { }
     const url = `wss://api2.freecustom.email/?mailbox=${encodeURIComponent(mailbox)}&token=${encodeURIComponent(wsToken)}`;
     const ws = new WebSocket(url); wsRef.current = ws;
     ws.onopen = () => { reconnectAttemptsRef.current = 0; };
@@ -600,9 +608,9 @@ export function EmailBox({}: EmailBoxProps) {
         setFlashQueue(q => [...q, { id: msg.id, from: parseSenderName(msg.from), subject: msg.subject || "" }]);
         setNewRowIds(s => new Set(s).add(msg.id));
         setTimeout(() => setNewRowIds(s => { const n = new Set(s); n.delete(msg.id); return n; }), 1400);
-      } catch (_) {}
+      } catch (_) { }
     };
-    ws.onerror = () => {};
+    ws.onerror = () => { };
     ws.onclose = (ev) => {
       if (ev.code === 1000) return;
       const delay = Math.min(500 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
@@ -673,7 +681,7 @@ export function EmailBox({}: EmailBoxProps) {
       fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
         .then(r => r.json())
         .then(d => { if (Array.isArray(d?.data)) { setFetchedDomains(d.data); sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() })); } })
-        .catch(() => {});
+        .catch(() => { });
       const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
       const allowedDomainsList = currentFetchedDomains.filter(d => checkDomainAllowed(d.domain, currentFetchedDomains)).map(d => d.domain);
       const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
@@ -725,7 +733,7 @@ export function EmailBox({}: EmailBoxProps) {
           const d = await r.json();
           if (d.settings) { skipNextSettingsSave.current = true; setUserSettings(p => ({ ...p, ...d.settings })); localStorage.setItem("userSettings", JSON.stringify({ ...DEFAULT_SETTINGS, ...d.settings })); }
         }
-      } catch {}
+      } catch { }
     };
     if (isStorageLoaded) fetch_();
   }, [isAuthenticated, isStorageLoaded]);
@@ -745,7 +753,7 @@ export function EmailBox({}: EmailBoxProps) {
             localStorage.setItem("inboxNotes", JSON.stringify(merged));
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [isStorageLoaded, isPro, isAuthenticated]); // eslint-disable-line
 
@@ -753,7 +761,7 @@ export function EmailBox({}: EmailBoxProps) {
     if (!isStorageLoaded) return;
     if (skipNextSettingsSave.current) { skipNextSettingsSave.current = false; return; }
     localStorage.setItem("userSettings", JSON.stringify(userSettings));
-    if (isAuthenticated) fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => {});
+    if (isAuthenticated) fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userSettings) }).catch(() => { });
   }, [userSettings, isStorageLoaded, isAuthenticated]);
 
   useEffect(() => {
@@ -765,7 +773,7 @@ export function EmailBox({}: EmailBoxProps) {
   useEffect(() => { setVisibleMessageCount(MESSAGES_PER_PAGE); }, [email, activeTab]);
 
   const sendNotification = (title: string, body: string) => {
-    if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => {}); } catch {}
+    if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => { }); } catch { }
     if (userSettings.notifications && document.visibilityState !== "visible") new Notification(title, { body, icon: "/logo.webp" });
   };
   useEffect(() => { sendNotificationRef.current = sendNotification; });
@@ -775,7 +783,7 @@ export function EmailBox({}: EmailBoxProps) {
 
   useEffect(() => {
     if (!email) return;
-    if (isAuthenticated) fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => {});
+    if (isAuthenticated) fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => { });
     const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
     let next = [email, ...h.filter(e => e !== email)];
     if (userPlan === "free") next = next.slice(0, 7); else if (!isAuthenticated) next = next.slice(0, 5);
@@ -793,7 +801,7 @@ export function EmailBox({}: EmailBoxProps) {
       if (!r.ok) return null;
       const d = await r.json() as { token?: string };
       if (d.token) { setToken(d.token); setCookie("authToken", d.token, { maxAge: 3600 }); return d.token; }
-    } catch {}
+    } catch { }
     return null;
   };
 
@@ -913,7 +921,7 @@ export function EmailBox({}: EmailBoxProps) {
     setEditingNoteInbox(null);
     setNoteInputValue("");
     if (isPro && isAuthenticated) {
-      fetch("/api/user/inbox-notes", { method: trimmed ? "POST" : "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inbox, note: trimmed }) }).catch(() => {});
+      fetch("/api/user/inbox-notes", { method: trimmed ? "POST" : "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inbox, note: trimmed }) }).catch(() => { });
     }
   }, [inboxNotes, noteCharLimit, isPro, isAuthenticated]);
 
@@ -926,7 +934,7 @@ export function EmailBox({}: EmailBoxProps) {
     setInboxNotes(updatedNotes);
     localStorage.setItem("inboxNotes", JSON.stringify(updatedNotes));
     if (isAuthenticated) {
-      fetch("/api/user/inboxes", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inbox }) }).catch(() => {});
+      fetch("/api/user/inboxes", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inbox }) }).catch(() => { });
     }
   }, [emailHistory, inboxNotes, isAuthenticated]);
 
@@ -983,47 +991,6 @@ export function EmailBox({}: EmailBoxProps) {
       setUnseenSettingsFeatures(new Set());
     }
   };
-
-  // ── CONDITIONAL RENDER: skeleton ──────────────────────────────────────────
-  // FIX 8: isSessionLoading check is now AFTER all hooks — Rules of Hooks compliant.
-  // The skeleton renders while NextAuth resolves the session from the cookie.
-  // This is the LCP element — visible within ~100ms of navigation.
-  if (isSessionLoading) {
-    return (
-      <div className="rounded-lg border border-border bg-background overflow-hidden">
-        <div className="border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500/40 animate-pulse" />
-            <div className="h-3 w-32 rounded bg-muted animate-pulse" />
-          </div>
-          <div className="flex gap-2">
-            <div className="h-9 flex-1 rounded-md bg-muted animate-pulse" />
-            <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
-            <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
-            <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
-          </div>
-        </div>
-        <div className="border-b border-border grid grid-cols-4 gap-px bg-border">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-background h-9 flex items-center justify-center">
-              <div className="h-3 w-12 rounded bg-muted animate-pulse" />
-            </div>
-          ))}
-        </div>
-        <div className="py-14 flex flex-col items-center text-center px-6">
-          <div className="h-3 w-36 rounded bg-muted animate-pulse mb-2" />
-          <div className="h-3 w-52 rounded bg-muted/60 animate-pulse" />
-        </div>
-        <div className="border-t border-border px-4 py-4">
-          <div className="h-3 w-20 rounded bg-muted animate-pulse mb-3" />
-          <div className="space-y-2">
-            <div className="h-3 w-48 rounded bg-muted/60 animate-pulse" />
-            <div className="h-3 w-40 rounded bg-muted/60 animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ── RENDER HELPERS — identical to original ────────────────────────────────
 
@@ -1408,7 +1375,8 @@ export function EmailBox({}: EmailBoxProps) {
 
   return (
     <div className={cn("relative", isZen && "")}>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         body[data-fce-layout="zen"] header, body[data-fce-layout="zen"] footer, body[data-fce-layout="zen"] nav { display: none !important; }
         body[data-fce-layout="minimal"] footer { display: none !important; }
       ` }} />
@@ -1494,7 +1462,15 @@ export function EmailBox({}: EmailBoxProps) {
                 <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 group hover:border-foreground/30 transition-colors cursor-text"
                   onClick={isAuthenticated ? () => { setIsEditing(true); setDiscoveredUpdates({ newDomains: true }); } : undefined}>
                   <span className="font-mono text-[10px] text-muted-foreground/70 shrink-0 select-none">TO</span>
-                  <span className="font-mono text-sm text-foreground flex-1 truncate">{email || t("loading")}</span>
+                  {/*
+      Show email if we have one, or show a subtle pulse if still initializing.
+      This never causes layout shift because the container height is fixed.
+    */}
+                  {email ? (
+                    <span className="font-mono text-sm text-foreground flex-1 truncate">{email}</span>
+                  ) : (
+                    <div className="h-3 flex-1 rounded bg-muted/60 animate-pulse max-w-[200px]" />
+                  )}
                   {isAuthenticated && (
                     <div className="relative flex items-center justify-center">
                       <Edit className="h-3 w-3 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

@@ -38,32 +38,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <head>
         {/*
-          Preconnect hints — these open TCP+TLS connections early.
-          profitwell saves 550ms on pages that load it.
-          Even though we're moving Paddle to pricing-only, preconnecting
-          here costs ~0ms and helps on first navigation to pricing.
-        */}
-        <link rel="preconnect" href="https://www.googletagmanager.com" />
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    NO preconnect to GTM — we don't load GTM until consent.
+    Preconnecting to a domain we won't use wastes a TCP connection slot.
+    
+    The only preconnect worth keeping is for resources that load
+    unconditionally on page load.
+  */}
 
         {/*
-          Consent Mode v2 — MUST run before ANY Google script.
-          beforeInteractive = inlined into HTML, runs before hydration.
-          This correctly blocks GA from firing until user consents.
-        */}
+    Consent Mode v2 stub — must exist before any gtag call.
+    Since we're not loading GTM until consent, this just sets up
+    the dataLayer so gtag() calls don't throw errors.
+  */}
         <Script id="consent-default" strategy="beforeInteractive">{`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){ dataLayer.push(arguments); }
-          gtag('consent', 'default', {
-            analytics_storage:  'denied',
-            ad_storage:         'denied',
-            ad_user_data:       'denied',
-            ad_personalization: 'denied',
-            wait_for_update: 500
-          });
-          gtag('js', new Date());
-          gtag('config', 'G-RXTEEVC8C4', { send_page_view: false });
-        `}</Script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+  `}</Script>
 
         <meta name="impact-site-verification" content="7df37ce6-8617-4606-8ba2-9a78bf367429" />
       </head>
@@ -88,10 +78,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Previously @next/third-parties/google loaded this in the critical path.
           Now it loads after LCP has already painted.
         */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-RXTEEVC8C4"
-          strategy="lazyOnload"
-        />
+        <Script id="gtag-loader" strategy="lazyOnload">{`
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  
+  window.loadGtag = function() {
+    if (window._gtagLoaded) return;
+    window._gtagLoaded = true;
+    var s = document.createElement('script');
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-RXTEEVC8C4';
+    s.async = true;
+    document.head.appendChild(s);
+    s.onload = function() {
+      gtag('js', new Date());
+      gtag('config', 'G-RXTEEVC8C4', { send_page_view: true });
+    };
+  };
+  
+  // If user already consented in a previous session, load immediately
+  var alreadyConsented = localStorage.getItem('silktideCookieChoice_analytics') === 'true';
+  if (alreadyConsented) {
+    window.loadGtag();
+  }
+`}</Script>
 
         {/*
           Cookie banner script — lazyOnload is correct.
@@ -135,22 +144,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   required: true
                 },
                 {
-                  id: 'analytics',
-                  name: 'Analytics',
-                  description: '<p>Help us understand how visitors use the site so we can improve it.</p>',
-                  required: false,
-                  defaultValue: false,
-                  onAccept: function () {
-                    if (typeof gtag === 'function') {
-                      gtag('consent', 'update', { analytics_storage: 'granted' });
-                    }
-                  },
-                  onReject: function () {
-                    if (typeof gtag === 'function') {
-                      gtag('consent', 'update', { analytics_storage: 'denied' });
-                    }
-                  }
-                }
+  id: 'analytics',
+  name: 'Analytics',
+  description: '<p>Help us understand how visitors use the site so we can improve it.</p>',
+  required: false,
+  defaultValue: false,
+  onAccept: function () {
+    // Load GTM now that user has consented
+    if (typeof window.loadGtag === 'function') {
+      window.loadGtag();
+    }
+  },
+  onReject: function () {
+    // GTM was never loaded — nothing to clean up
+    window._gtagLoaded = false;
+  }
+}
               ],
               text: {
                 banner: {
