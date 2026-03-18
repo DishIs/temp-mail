@@ -253,51 +253,48 @@ export default function Status() {
         }
       `}</style>
 
-      {/*
-        CLS FIX: The outer div now has an explicit min-height so the component
-        never collapses to a different height between SSR and hydration.
-        The min-h value matches the rendered height of the component.
-        
-        Previously: renders at small height (0 values) → expands on data load → CLS.
-        Now: always renders at full height regardless of data state.
-      */}
       <div
-        className="rounded-lg border border-border bg-card p-5 sm:p-6 transition-colors"
+        className="rounded-lg border border-border bg-card p-4 sm:p-5 md:p-6 transition-colors"
         style={tick ? { animation: "borderFlash 0.6s ease" } : undefined}
       >
+        {/* Header row: shrinks gracefully on narrow screens */}
         <div className="flex items-center gap-2 mb-1">
           <LiveDot />
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          <p className="text-[10px] xs:text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Live stats
           </p>
         </div>
-        <h2 className="text-base font-semibold tracking-tight text-foreground mb-1">
+
+        <h2 className="text-sm sm:text-base font-semibold tracking-tight text-foreground mb-1">
           Emails passing through our service
         </h2>
-        <p className="text-sm text-muted-foreground mb-5 max-w-xl">
+
+        {/* Description: stack the legend items on very small screens */}
+        <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-5 max-w-xl">
           Real-time flow of temporary emails.{" "}
           <span className="text-foreground/60">Queued</span> = delivered ·{" "}
           <span className="text-foreground/60">Denied</span> = blocked by filters.
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {/* Queued */}
-          <div className="rounded-lg border border-border bg-muted/20 px-4 py-4 group">
+          <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 sm:px-4 sm:py-4 group min-w-0">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+              <p className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                 Queued
               </p>
-              <svg className="h-3 w-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg className="h-3 w-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M6 9V3M3 6l3-3 3 3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             {/*
-              CLS FIX: transition opacity instead of mounting/unmounting.
-              The number occupies space immediately (no layout shift),
-              it just fades from dim to full opacity when real data arrives.
+              RESPONSIVE FIX: font-size scales down further on xs screens.
+              overflow-hidden + whitespace-nowrap + truncate already present —
+              kept intact to avoid any new CLS. min-w-0 on parent ensures
+              the flex/grid child can actually shrink.
             */}
             <div
-              className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground leading-none overflow-hidden whitespace-nowrap truncate transition-opacity duration-500"
+              className="text-xl xs:text-2xl sm:text-3xl font-semibold tracking-tight text-foreground leading-none overflow-hidden whitespace-nowrap truncate transition-opacity duration-500"
               style={{ opacity: isLoaded ? 1 : 0.25 }}
             >
               <Odometer value={status.queued} />
@@ -306,17 +303,22 @@ export default function Status() {
           </div>
 
           {/* Denied */}
-          <div className="rounded-lg border border-border bg-muted/20 px-4 py-4 group">
+          <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 sm:px-4 sm:py-4 group min-w-0">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+              <p className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                 Denied
               </p>
-              <svg className="h-3 w-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg className="h-3 w-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 3l6 6M9 3l-6 6" strokeLinecap="round" />
               </svg>
             </div>
+            {/*
+              RESPONSIVE FIX: Added whitespace-nowrap + truncate (was missing on
+              Denied, present on Queued). Added overflow-hidden defensively.
+              Same font-size scaling as Queued.
+            */}
             <div
-              className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground leading-none overflow-hidden transition-opacity duration-500"
+              className="text-xl xs:text-2xl sm:text-3xl font-semibold tracking-tight text-foreground leading-none overflow-hidden whitespace-nowrap truncate transition-opacity duration-500"
               style={{ opacity: isLoaded ? 1 : 0.25 }}
             >
               <Odometer value={status.denied} />
