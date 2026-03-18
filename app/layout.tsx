@@ -56,6 +56,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   `}</Script>
 
         <meta name="impact-site-verification" content="7df37ce6-8617-4606-8ba2-9a78bf367429" />
+        <script src="https://code.market/widget.min.js" async></script>
+
       </head>
 
       <body>

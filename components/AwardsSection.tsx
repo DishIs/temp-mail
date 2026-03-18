@@ -75,6 +75,12 @@ export function AwardsSection() {
       src: 'https://viesearch.com/blue.png',
       alt: 'Listed on Viesearch - The Human-curated Search Engine',
     },
+    {
+      href: 'https://fazier.com',
+      title: 'Featured on Fazier',
+      src: 'https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light',
+      alt: 'Fazier badge',
+    },
   ];
 
   return (
@@ -132,6 +138,29 @@ export function AwardsSection() {
               </a>
             ))}
           </div>
+        </div>
+
+        {/* code.market verified widget */}
+        <div
+          data-codemarket-widget="temp-mail-free-temporary-email-no-signup-freecustomemail"
+          data-theme-bg="#ffffff"
+          data-theme-text="slate-600"
+          data-layout="grid"
+          data-show-branding="false"
+          className="mt-6"
+        >
+          <a
+            href="https://code.market?code.market=verified"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="ai tools code.market"
+          >
+            <img
+              src="https://code.market/assets/manage-product/featured-logo-bright.svg"
+              alt="ai tools code.market"
+              loading="lazy"
+            />
+          </a>
         </div>
 
         {/* Footnote — same text-[11px] font-mono muted style as table footnote in pricing */}
