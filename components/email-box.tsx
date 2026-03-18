@@ -467,24 +467,31 @@ export function EmailBox({ }: EmailBoxProps) {
     [fetchedDomains]);
 
   // FIX 4: availableDomains now reads from customDomainsFromProfile state
-  // instead of the removed initialCustomDomains prop.
+  // Replace the availableDomains useMemo:
+
   const availableDomains = useMemo(() => {
+    // Custom (verified) domains always first — these are the user's own domains
     const custom = customDomainsFromProfile
       .filter(d => d.verified)
       .map(d => d.domain);
+
+    // Sort platform domains by score
     const sortedFetched = [...fetchedDomains].sort((a, b) => {
       const score = (d: FetchedDomain) => {
         let s = 0;
-        if (d.tags.includes("featured")) s += 100;
-        if (d.tags.includes("popular")) s += 50;
-        if (d.tags.includes("new")) s += 25;
-        if (d.tier === "pro") s += 10;
+        if (d.tags.includes('featured')) s += 100;
+        if (d.tags.includes('popular')) s += 50;
+        if (d.tags.includes('new')) s += 25;
+        if (d.tier === 'pro') s += 10;
         return s;
       };
       const scoreDiff = score(b) - score(a);
       if (scoreDiff !== 0) return scoreDiff;
       return a.domain.localeCompare(b.domain);
     }).map(d => d.domain);
+
+    // Deduplicate — custom domains take precedence, platform domains fill the rest
+    // This exactly matches the pre-migration behavior where server passed initialCustomDomains
     return [...new Set([...custom, ...sortedFetched])];
   }, [customDomainsFromProfile, fetchedDomains]);
 
@@ -619,42 +626,61 @@ export function EmailBox({ }: EmailBoxProps) {
     };
   }, []);
 
-  // FIX 5: fetchProfile effect — populates customDomainsFromProfile and emailHistory
-  // from the API after mount. Replaces the server-side EmailBoxDataFetcher entirely.
+  // Replace ONLY the fetchProfile useEffect — nothing else changes.
+
   useEffect(() => {
     if (!isAuthenticated || !session?.user?.id) return;
+
     const fetchProfile = async () => {
       try {
-        const r = await fetch("/api/user/dashboard-data", {
-          headers: { "x-fce-client": "web-client" },
+        /*
+          Single source of truth: /api/user/me
+          Returns: { success: true, user: { inboxes: string[], customDomains: [...], plan: string, ... } }
+          
+          This is exactly what the old server-side EmailBoxDataFetcher called via
+          fetchFromServiceAPI(`/user/profile/${session.user.id}`)
+          
+          Previously broken because:
+          - fetchProfile called /api/user/dashboard-data which has NO inboxes
+          - read data.user.customDomains but dashboard-data returns data.customDomains (no user wrapper)
+          Both issues are now fixed by using /api/user/me which has the correct shape.
+        */
+        const res = await fetch('/api/user/me', {
+          headers: { 'x-fce-client': 'web-client' },
         });
-        if (!r.ok) return;
-        const data = await r.json();
-        if (data?.user) {
-          const { user } = data;
-          if (user.plan === "pro" && Array.isArray(user.customDomains)) {
-            // FIX: Set customDomainsFromProfile so availableDomains memo picks them up
-            setCustomDomainsFromProfile(user.customDomains);
+
+        if (!res.ok) return;
+        const { user } = await res.json();
+        if (!user) return;
+
+        // ── Custom domains — filter to verified only, put on top of domain picker ──
+        if (Array.isArray(user.customDomains) && user.customDomains.length > 0) {
+          const verified = user.customDomains.filter((d: any) => d.verified === true);
+          if (verified.length > 0) {
+            setCustomDomainsFromProfile(verified);
           }
-          if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
-            setEmailHistory(prev => {
-              const merged = [...new Set([...user.inboxes, ...prev])];
-              return merged;
-            });
-            // Only switch inbox if nothing has been set yet from localStorage
-            setEmail(current => {
-              if (!current) {
-                setSelectedDomain(user.inboxes[0].split("@")[1] || "");
-                return user.inboxes[0];
-              }
-              return current;
-            });
-          }
+        }
+
+        // ── Saved inboxes — restore history and set active inbox ──────────────
+        if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
+          setEmailHistory(prev => {
+            const merged = [...new Set([...user.inboxes, ...prev])];
+            return merged;
+          });
+          setEmail(current => {
+            // Only switch to saved inbox if nothing was set yet from localStorage
+            if (!current || !current.includes('@')) {
+              setSelectedDomain(user.inboxes[0].split('@')[1] || '');
+              return user.inboxes[0];
+            }
+            return current;
+          });
         }
       } catch {
         // silent — guest experience is fully functional without profile data
       }
     };
+
     fetchProfile();
   }, [isAuthenticated, session?.user?.id]); // eslint-disable-line
 
@@ -790,15 +816,15 @@ export function EmailBox({ }: EmailBoxProps) {
     localStorage.setItem("emailHistory", JSON.stringify(next)); setEmailHistory(next);
   }, [email, session, userPlan, isAuthenticated]);
 
+  // This useEffect also stays as fixed in the previous session:
   useEffect(() => {
-    if (!email) return; if (isAuthenticated && !token) return;
-    currentEmailRef.current = email; 
-    connectWebSocket(email); 
-    
-    // Reset the throttle so the automatic fetch isn't swallowed by a previous guest fetch
-    isRefreshingThrottleRef.current = false; 
+    if (!email || !email.includes('@')) return;
+    if (isAuthenticated && !token) return;
+    currentEmailRef.current = email;
+    connectWebSocket(email);
+    isRefreshingThrottleRef.current = false;
     refreshInbox();
-  },[email, token, isAuthenticated, connectWebSocket]); // eslint-disable-line
+  }, [email, token, isAuthenticated, connectWebSocket]); // eslint-disable-line
 
   const fetchToken = async () => {
     try {
