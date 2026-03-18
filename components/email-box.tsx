@@ -643,147 +643,228 @@ export function EmailBox({ }: EmailBoxProps) {
   // It sets the email in localStorage history but marks it as "tentative"
   // via userHasInteractedRef = false. fetchProfile will override it.
 
-  useEffect(() => {
-    const init = async () => {
-      await fetchToken();
-      const cacheKey = `domains_v2_${isPro ? "pro" : isAuthenticated ? "free" : "anon"}`;
-      const cached = sessionStorage.getItem(cacheKey);
-      let currentFetchedDomains = DOMAIN_SEED;
-      if (cached) {
-        try {
-          const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < 5 * 60 * 1000) { setFetchedDomains(data); currentFetchedDomains = data; }
-          else throw new Error("stale");
-        } catch { sessionStorage.removeItem(cacheKey); }
-      }
-      fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
-        .then(r => r.json())
-        .then(d => { if (Array.isArray(d?.data)) { setFetchedDomains(d.data); sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() })); } })
-        .catch(() => { });
+  // components/email-box.tsx
+// FOUR targeted changes
 
-      const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
-      const allowedDomainsList = currentFetchedDomains.filter(d => checkDomainAllowed(d.domain, currentFetchedDomains)).map(d => d.domain);
-      const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
-      const lastDomain = localStorage.getItem("lastUsedDomain");
+// ── CHANGE 1: Add a ref to track server inboxes ───────────────────────────
+// Place with other refs. This stores the authoritative server inbox list
+// so the email-save effect can use it without stale closure issues.
 
-      const savedSettings = safeJsonParse<UserSettings | null>(localStorage.getItem("userSettings"), null);
-      if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
-      setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
-      setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
-      setPinnedMessageIds(safeJsonParse<string[]>(localStorage.getItem("pinnedMessages"), []));
-      setPinnedInboxes(safeJsonParse<string[]>(localStorage.getItem("pinnedInboxes"), []));
-      const seenFeatures = safeJsonParse<string[]>(localStorage.getItem("seenSettingsFeatures"), []);
-      const allNewFeatures = ["categorization"];
-      const unseen = new Set(allNewFeatures.filter(f => !seenFeatures.includes(f)));
-      setUnseenSettingsFeatures(unseen);
-      setIsStorageLoaded(true);
+const serverInboxesRef = useRef<string[]>([]);
 
-      /*
-        For guest users: use localStorage history as before.
-        For authenticated users: generate a temporary random email as placeholder —
-        fetchProfile will override it with the real last-used inbox from the server.
-        We do NOT set userHasInteractedRef = true here so fetchProfile can override.
-      */
-      if (!isAuthenticated) {
-        // Guest: use localStorage history exactly as before
-        let initEmail: string;
-        let hist: string[];
+// ── CHANGE 2: Replace the init useEffect completely ───────────────────────
+// For authenticated users: do NOT set any email or history at all.
+// fetchProfile is fully responsible for authenticated state.
+// This eliminates the race that caused 3 phantom save requests.
 
-        if (localHistory.length > 0) {
-          hist = localHistory.slice(0, 5);
-          const topDomain = hist[0].split("@")[1];
-          if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
-            const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-            initEmail = generateRandomEmail(d, false);
-            hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
-          } else {
-            initEmail = hist[0];
-          }
-        } else {
-          const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-          initEmail = generateRandomEmail(d, false);
-          hist = [initEmail];
-        }
-
-        setEmail(initEmail);
-        setEmailHistory(hist);
-        setSelectedDomain(initEmail.split("@")[1] || "");
-      } else {
-        /*
-          Authenticated: set a temporary placeholder email while we wait for
-          fetchProfile to return the real last-used inbox.
-          Use localStorage history if available for instant display,
-          fetchProfile will correct it to the server's recency-ordered inbox.
-        */
-        if (localHistory.length > 0) {
-          const topDomain = localHistory[0].split("@")[1];
-          if (topDomain && checkDomainAllowed(topDomain, currentFetchedDomains)) {
-            // Use localStorage as instant placeholder — fetchProfile may override
-            setEmail(localHistory[0]);
-            setEmailHistory(localHistory.slice(0, 7));
-            setSelectedDomain(topDomain);
-          }
-        }
-        // If no localStorage, leave email="" — fetchProfile will set it
-      }
-    };
-    init();
-  }, []); // eslint-disable-line
-
-  // ── CHANGE 3: Replace the fetchProfile useEffect ─────────────────────────
-  // For authenticated users, /api/user/me is authoritative.
-  // inboxes[0] is always the most recently used — backend maintains recency order.
-
-  useEffect(() => {
-    if (!isAuthenticated || !session?.user?.id) return;
-
-    const fetchProfile = async () => {
+useEffect(() => {
+  const init = async () => {
+    await fetchToken();
+    const cacheKey = `domains_v2_${isPro ? "pro" : isAuthenticated ? "free" : "anon"}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    let currentFetchedDomains = DOMAIN_SEED;
+    if (cached) {
       try {
-        const res = await fetch('/api/user/me', {
-          headers: { 'x-fce-client': 'web-client' },
-        });
-        if (!res.ok) return;
-        const { user } = await res.json();
-        if (!user) return;
-
-        // ── Custom domains ────────────────────────────────────────────────────
-        if (Array.isArray(user.customDomains) && user.customDomains.length > 0) {
-          const verified = user.customDomains.filter((d: any) => d.verified === true);
-          if (verified.length > 0) {
-            setCustomDomainsFromProfile(verified);
-          }
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < 5 * 60 * 1000) {
+          setFetchedDomains(data);
+          currentFetchedDomains = data;
+        } else throw new Error("stale");
+      } catch { sessionStorage.removeItem(cacheKey); }
+    }
+    fetch("/api/domains", { headers: { "x-fce-client": "web-client" } })
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d?.data)) {
+          setFetchedDomains(d.data);
+          sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() }));
         }
+      })
+      .catch(() => {});
 
-        // ── Saved inboxes — server is authoritative for authenticated users ───
-        if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
-          // Merge server inboxes with any localStorage inboxes,
-          // server order (recency) takes priority at the front
-          const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
-          const merged = [...new Set([...user.inboxes, ...localHistory])];
-          setEmailHistory(merged);
+    const currentFreeSet = new Set(
+      currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain)
+    );
+    const allowedDomainsList = currentFetchedDomains
+      .filter(d => checkDomainAllowed(d.domain, currentFetchedDomains))
+      .map(d => d.domain);
+    const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
+    const lastDomain = localStorage.getItem("lastUsedDomain");
 
-          /*
-            RESTORE LAST USED INBOX:
-            inboxes[0] from the server is always the most recently used.
-            We override whatever init set UNLESS the user has already
-            manually interacted (clicked an inbox, typed an email, etc.).
-            
-            userHasInteractedRef starts false on mount, so on a fresh
-            page load/refresh this always restores the correct inbox.
-          */
-          if (!userHasInteractedRef.current) {
-            const lastUsed = user.inboxes[0];
-            setEmail(lastUsed);
-            setSelectedDomain(lastUsed.split('@')[1] || '');
-          }
+    // Load all non-email state from localStorage regardless of auth state
+    const savedSettings = safeJsonParse<UserSettings | null>(localStorage.getItem("userSettings"), null);
+    if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
+    setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
+    setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
+    setPinnedMessageIds(safeJsonParse<string[]>(localStorage.getItem("pinnedMessages"), []));
+    setPinnedInboxes(safeJsonParse<string[]>(localStorage.getItem("pinnedInboxes"), []));
+    const seenFeatures = safeJsonParse<string[]>(localStorage.getItem("seenSettingsFeatures"), []);
+    const allNewFeatures = ["categorization"];
+    setUnseenSettingsFeatures(new Set(allNewFeatures.filter(f => !seenFeatures.includes(f))));
+    setIsStorageLoaded(true);
+
+    if (isAuthenticated) {
+      /*
+        AUTHENTICATED: Do NOT set email or emailHistory here at all.
+        fetchProfile is the sole authority for authenticated users.
+        Setting anything here causes the email-save useEffect to fire
+        with temporary/wrong values before the real inbox arrives.
+        
+        We only set a brief localStorage-based placeholder for instant
+        visual display IF we have a valid local history AND fetchProfile
+        hasn't resolved yet. We track this with serverInboxesRef.
+      */
+      if (localHistory.length > 0) {
+        const topDomain = localHistory[0].split("@")[1];
+        if (topDomain && checkDomainAllowed(topDomain, currentFetchedDomains)) {
+          // Show local history instantly as visual placeholder only.
+          // We set emailHistory (for the sidebar list) but NOT email itself.
+          // email stays "" until fetchProfile resolves — this prevents
+          // the email-save useEffect from firing with a wrong address.
+          setEmailHistory(localHistory.slice(0, 7));
         }
-      } catch {
-        // silent
       }
-    };
+      // email remains "" — fetchProfile will set it
+      return;
+    }
 
-    fetchProfile();
-  }, [isAuthenticated, session?.user?.id]); // eslint-disable-line
+    // GUEST: use localStorage as before, server has no saved state
+    let initEmail: string;
+    let hist: string[];
+
+    if (localHistory.length > 0) {
+      hist = localHistory.slice(0, 5);
+      const topDomain = hist[0].split("@")[1];
+      if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
+        const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
+        initEmail = generateRandomEmail(d, false);
+        hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
+      } else {
+        initEmail = hist[0];
+      }
+    } else {
+      const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
+      initEmail = generateRandomEmail(d, false);
+      hist = [initEmail];
+    }
+
+    setEmail(initEmail);
+    setEmailHistory(hist);
+    setSelectedDomain(initEmail.split("@")[1] || "");
+  };
+  init();
+}, []); // eslint-disable-line
+
+// ── CHANGE 3: Replace the fetchProfile useEffect ─────────────────────────
+// Single authoritative source for authenticated users.
+// Sets ALL history from server, then sets the active inbox.
+
+useEffect(() => {
+  if (!isAuthenticated || !session?.user?.id) return;
+
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch('/api/user/me', {
+        headers: { 'x-fce-client': 'web-client' },
+      });
+      if (!res.ok) return;
+      const { user } = await res.json();
+      if (!user) return;
+
+      // ── Custom domains ────────────────────────────────────────────────────
+      if (Array.isArray(user.customDomains)) {
+        const verified = user.customDomains.filter((d: any) => d.verified === true);
+        if (verified.length > 0) {
+          setCustomDomainsFromProfile(verified);
+        }
+      }
+
+      // ── Inboxes — server is the complete authoritative list ───────────────
+      if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
+        // Store server inboxes in ref so the email-save effect can read them
+        serverInboxesRef.current = user.inboxes;
+
+        /*
+          Full history = server inboxes (recency-ordered) merged with any
+          local inboxes that aren't in the server list yet (just generated,
+          not yet saved). Server order is preserved at the front.
+        */
+        const localHistory = safeJsonParse<string[]>(
+          localStorage.getItem("emailHistory"), []
+        );
+        const serverSet = new Set(user.inboxes);
+        const localOnly = localHistory.filter(e => !serverSet.has(e));
+        const fullHistory = [...user.inboxes, ...localOnly];
+
+        setEmailHistory(fullHistory);
+
+        // Update localStorage to match the full merged list
+        localStorage.setItem("emailHistory", JSON.stringify(fullHistory));
+
+        // Set active inbox only if user hasn't interacted yet
+        if (!userHasInteractedRef.current) {
+          const lastUsed = user.inboxes[0]; // server stores in recency order
+          setEmail(lastUsed);
+          setSelectedDomain(lastUsed.split('@')[1] || '');
+        }
+      } else {
+        // User has no saved inboxes — generate a fresh one
+        // (happens on first login before any inbox is used)
+        if (!userHasInteractedRef.current && !email) {
+          const fallbackDomain = "ditube.info";
+          const freshEmail = generateRandomEmail(fallbackDomain, isPro);
+          setEmail(freshEmail);
+          setSelectedDomain(fallbackDomain);
+          setEmailHistory([freshEmail]);
+        }
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  fetchProfile();
+}, [isAuthenticated, session?.user?.id]); // eslint-disable-line
+
+// ── CHANGE 4: Replace the email-save useEffect ───────────────────────────
+// Previously fired on every email change including "" and placeholder values.
+// Now guards against saving empty, invalid, or server-already-knows inboxes.
+
+useEffect(() => {
+  // Never save empty or invalid emails
+  if (!email || !email.includes('@')) return;
+
+  if (isAuthenticated) {
+    /*
+      Only POST to /api/user/inboxes if this inbox isn't already in the
+      server's list. If the user just refreshed and we restored their
+      last-used inbox from the server, there's no need to re-save it —
+      that's what was causing the phantom save requests.
+    */
+    const alreadyOnServer = serverInboxesRef.current.includes(email);
+    if (!alreadyOnServer) {
+      fetch("/api/user/inboxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inboxName: email }),
+      }).catch(() => {});
+    }
+  }
+
+  // Update localStorage history
+  const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
+  let next = [email, ...h.filter(e => e !== email)];
+  if (userPlan === "free") next = next.slice(0, 7);
+  else if (!isAuthenticated) next = next.slice(0, 5);
+  localStorage.setItem("emailHistory", JSON.stringify(next));
+
+  // Only update React state if the history actually changed
+  setEmailHistory(prev => {
+    const newFirst = next[0];
+    if (prev[0] === newFirst && prev.length === next.length) return prev;
+    return next;
+  });
+}, [email, isAuthenticated, userPlan]); // removed `session` — was causing extra fires
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -842,14 +923,6 @@ export function EmailBox({ }: EmailBoxProps) {
   useEffect(() => { if (isStorageLoaded) localStorage.setItem("dismissedMessageIds", JSON.stringify([...dismissedMessageIds])); }, [dismissedMessageIds, isStorageLoaded]);
   useEffect(() => { if (selectedDomain) localStorage.setItem("lastUsedDomain", selectedDomain); }, [selectedDomain]);
 
-  useEffect(() => {
-    if (!email) return;
-    if (isAuthenticated) fetch("/api/user/inboxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inboxName: email }) }).catch(() => { });
-    const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
-    let next = [email, ...h.filter(e => e !== email)];
-    if (userPlan === "free") next = next.slice(0, 7); else if (!isAuthenticated) next = next.slice(0, 5);
-    localStorage.setItem("emailHistory", JSON.stringify(next)); setEmailHistory(next);
-  }, [email, session, userPlan, isAuthenticated]);
 
   // This useEffect also stays as fixed in the previous session:
   useEffect(() => {
