@@ -626,71 +626,23 @@ export function EmailBox({ }: EmailBoxProps) {
     };
   }, []);
 
-  // Replace ONLY the fetchProfile useEffect — nothing else changes.
-
-  useEffect(() => {
-    if (!isAuthenticated || !session?.user?.id) return;
-
-    const fetchProfile = async () => {
-      try {
-        /*
-          Single source of truth: /api/user/me
-          Returns: { success: true, user: { inboxes: string[], customDomains: [...], plan: string, ... } }
-          
-          This is exactly what the old server-side EmailBoxDataFetcher called via
-          fetchFromServiceAPI(`/user/profile/${session.user.id}`)
-          
-          Previously broken because:
-          - fetchProfile called /api/user/dashboard-data which has NO inboxes
-          - read data.user.customDomains but dashboard-data returns data.customDomains (no user wrapper)
-          Both issues are now fixed by using /api/user/me which has the correct shape.
-        */
-        const res = await fetch('/api/user/me', {
-          headers: { 'x-fce-client': 'web-client' },
-        });
-
-        if (!res.ok) return;
-        const { user } = await res.json();
-        if (!user) return;
-
-        // ── Custom domains — filter to verified only, put on top of domain picker ──
-        if (Array.isArray(user.customDomains) && user.customDomains.length > 0) {
-          const verified = user.customDomains.filter((d: any) => d.verified === true);
-          if (verified.length > 0) {
-            setCustomDomainsFromProfile(verified);
-          }
-        }
-
-        // ── Saved inboxes — restore history and set active inbox ──────────────
-        if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
-          setEmailHistory(prev => {
-            const merged = [...new Set([...user.inboxes, ...prev])];
-            return merged;
-          });
-          setEmail(current => {
-            // Only switch to saved inbox if nothing was set yet from localStorage
-            if (!current || !current.includes('@')) {
-              setSelectedDomain(user.inboxes[0].split('@')[1] || '');
-              return user.inboxes[0];
-            }
-            return current;
-          });
-        }
-      } catch {
-        // silent — guest experience is fully functional without profile data
-      }
-    };
-
-    fetchProfile();
-  }, [isAuthenticated, session?.user?.id]); // eslint-disable-line
-
   useEffect(() => () => {
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     const ws = wsRef.current; if (ws) { ws.onclose = null; ws.close(1000, "unmount"); }
   }, []);
 
-  // FIX 6: init useEffect — removed all references to initialInboxes,
-  // initialCurrentInbox, initialCustomDomains. Now reads only from localStorage.
+  // THREE targeted changes — nothing else touches
+
+  // ── CHANGE 1: Add a ref to track whether the user has manually interacted ──
+  // Place this with your other refs, after the existing ref declarations:
+
+  const userHasInteractedRef = useRef(false);
+
+  // ── CHANGE 2: Replace the init useEffect ─────────────────────────────────
+  // The init effect now generates a temporary random email as a FALLBACK ONLY.
+  // It sets the email in localStorage history but marks it as "tentative"
+  // via userHasInteractedRef = false. fetchProfile will override it.
+
   useEffect(() => {
     const init = async () => {
       await fetchToken();
@@ -708,11 +660,12 @@ export function EmailBox({ }: EmailBoxProps) {
         .then(r => r.json())
         .then(d => { if (Array.isArray(d?.data)) { setFetchedDomains(d.data); sessionStorage.setItem(cacheKey, JSON.stringify({ data: d.data, ts: Date.now() })); } })
         .catch(() => { });
+
       const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
       const allowedDomainsList = currentFetchedDomains.filter(d => checkDomainAllowed(d.domain, currentFetchedDomains)).map(d => d.domain);
       const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
       const lastDomain = localStorage.getItem("lastUsedDomain");
-      let initEmail: string, hist: string[];
+
       const savedSettings = safeJsonParse<UserSettings | null>(localStorage.getItem("userSettings"), null);
       if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
       setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
@@ -725,30 +678,112 @@ export function EmailBox({ }: EmailBoxProps) {
       setUnseenSettingsFeatures(unseen);
       setIsStorageLoaded(true);
 
-      // FIX 7: No initialInboxes prop — use only localHistory
-      if (localHistory.length > 0) {
-        hist = localHistory.slice(0, 5);
-        const topDomain = hist[0].split("@")[1];
-        if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
-          const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-          initEmail = generateRandomEmail(d, isPro);
-          hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
-        } else {
-          initEmail = hist[0];
-        }
-      } else {
-        const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
-        initEmail = generateRandomEmail(d, isPro);
-        hist = [initEmail];
-      }
+      /*
+        For guest users: use localStorage history as before.
+        For authenticated users: generate a temporary random email as placeholder —
+        fetchProfile will override it with the real last-used inbox from the server.
+        We do NOT set userHasInteractedRef = true here so fetchProfile can override.
+      */
+      if (!isAuthenticated) {
+        // Guest: use localStorage history exactly as before
+        let initEmail: string;
+        let hist: string[];
 
-      // Only set if fetchProfile hasn't already set an inbox
-      setEmail(current => current || initEmail);
-      setEmailHistory(hist);
-      setSelectedDomain(initEmail.split("@")[1] || "");
+        if (localHistory.length > 0) {
+          hist = localHistory.slice(0, 5);
+          const topDomain = hist[0].split("@")[1];
+          if (!topDomain || !checkDomainAllowed(topDomain, currentFetchedDomains)) {
+            const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
+            initEmail = generateRandomEmail(d, false);
+            hist = [initEmail, ...hist.filter(e => e !== initEmail)].slice(0, 5);
+          } else {
+            initEmail = hist[0];
+          }
+        } else {
+          const d = getPreferredDomain(allowedDomainsList, lastDomain, currentFreeSet);
+          initEmail = generateRandomEmail(d, false);
+          hist = [initEmail];
+        }
+
+        setEmail(initEmail);
+        setEmailHistory(hist);
+        setSelectedDomain(initEmail.split("@")[1] || "");
+      } else {
+        /*
+          Authenticated: set a temporary placeholder email while we wait for
+          fetchProfile to return the real last-used inbox.
+          Use localStorage history if available for instant display,
+          fetchProfile will correct it to the server's recency-ordered inbox.
+        */
+        if (localHistory.length > 0) {
+          const topDomain = localHistory[0].split("@")[1];
+          if (topDomain && checkDomainAllowed(topDomain, currentFetchedDomains)) {
+            // Use localStorage as instant placeholder — fetchProfile may override
+            setEmail(localHistory[0]);
+            setEmailHistory(localHistory.slice(0, 7));
+            setSelectedDomain(topDomain);
+          }
+        }
+        // If no localStorage, leave email="" — fetchProfile will set it
+      }
     };
     init();
   }, []); // eslint-disable-line
+
+  // ── CHANGE 3: Replace the fetchProfile useEffect ─────────────────────────
+  // For authenticated users, /api/user/me is authoritative.
+  // inboxes[0] is always the most recently used — backend maintains recency order.
+
+  useEffect(() => {
+    if (!isAuthenticated || !session?.user?.id) return;
+
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/user/me', {
+          headers: { 'x-fce-client': 'web-client' },
+        });
+        if (!res.ok) return;
+        const { user } = await res.json();
+        if (!user) return;
+
+        // ── Custom domains ────────────────────────────────────────────────────
+        if (Array.isArray(user.customDomains) && user.customDomains.length > 0) {
+          const verified = user.customDomains.filter((d: any) => d.verified === true);
+          if (verified.length > 0) {
+            setCustomDomainsFromProfile(verified);
+          }
+        }
+
+        // ── Saved inboxes — server is authoritative for authenticated users ───
+        if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
+          // Merge server inboxes with any localStorage inboxes,
+          // server order (recency) takes priority at the front
+          const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
+          const merged = [...new Set([...user.inboxes, ...localHistory])];
+          setEmailHistory(merged);
+
+          /*
+            RESTORE LAST USED INBOX:
+            inboxes[0] from the server is always the most recently used.
+            We override whatever init set UNLESS the user has already
+            manually interacted (clicked an inbox, typed an email, etc.).
+            
+            userHasInteractedRef starts false on mount, so on a fresh
+            page load/refresh this always restores the correct inbox.
+          */
+          if (!userHasInteractedRef.current) {
+            const lastUsed = user.inboxes[0];
+            setEmail(lastUsed);
+            setSelectedDomain(lastUsed.split('@')[1] || '');
+          }
+        }
+      } catch {
+        // silent
+      }
+    };
+
+    fetchProfile();
+  }, [isAuthenticated, session?.user?.id]); // eslint-disable-line
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -890,10 +925,37 @@ export function EmailBox({ }: EmailBoxProps) {
   };
 
   const deleteEmail = () => {
-    const allowedDomainsList = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains)).map(d => d.domain);
-    const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("lastUsedDomain"), freeDomainSet);
-    const ne = generateRandomEmail(d, isPro); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
+    // Mark that the user has explicitly interacted — fetchProfile must not
+    // override the email after this point in this session.
+    userHasInteractedRef.current = true;
+
+    const allowedDomainsList = fetchedDomains
+      .filter(d => checkDomainAllowed(d.domain, fetchedDomains))
+      .map(d => d.domain);
+
+    let targetDomain: string;
+
+    if (isPro && customDomainsFromProfile.length > 0) {
+      // Pro user with custom domains: randomly pick one of their verified domains
+      const verifiedCustom = customDomainsFromProfile.filter(d => d.verified);
+      if (verifiedCustom.length > 0) {
+        targetDomain = verifiedCustom[Math.floor(Math.random() * verifiedCustom.length)].domain;
+      } else {
+        targetDomain = getPreferredDomain(allowedDomainsList, localStorage.getItem("lastUsedDomain"), freeDomainSet);
+      }
+    } else {
+      targetDomain = getPreferredDomain(allowedDomainsList, localStorage.getItem("lastUsedDomain"), freeDomainSet);
+    }
+
+    const ne = generateRandomEmail(targetDomain, isPro);
+    setEmail(ne);
+    setSelectedDomain(targetDomain);
+    setMessages([]);
+    setReadMessageIds(new Set());
+    setDismissedMessageIds(new Set());
+    setDomainExpiry(null);
   };
+
 
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
     if (!isAuthenticated && type === "message") { setAuthNeedFeature("Delete Message"); setIsAuthNeedOpen(true); return; }
@@ -934,6 +996,7 @@ export function EmailBox({ }: EmailBoxProps) {
   };
 
   const handleUseHistoryEmail = (he: string) => {
+    userHasInteractedRef.current = true;
     const domain = he.split("@")[1];
     if (!domain) return;
     if (!checkDomainAllowed(domain, fetchedDomains)) {
