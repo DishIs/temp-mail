@@ -811,21 +811,30 @@ export function EmailBox({ }: EmailBoxProps) {
     if (!email || !email.includes('@')) return;
 
     if (isAuthenticated) {
-      // Read server inboxes from localStorage (kept in sync by fetchProfile)
-      const serverHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
-      const alreadyExists = serverHistory.includes(email);
-
-      if (!alreadyExists) {
-        // Genuinely new inbox — save it to the server
-        fetch("/api/user/inboxes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ inboxName: email }),
-        }).catch(() => { });
-      }
+      /*
+        Always POST when the active inbox changes for authenticated users.
+        
+        The backend addInboxHandler does an upsert:
+        - If inbox is new → adds it to inboxes[]
+        - If inbox exists → moves it to inboxes[0] (marks as most recently used)
+        
+        This is what makes "Use" from history work correctly on reload —
+        the server reorders inboxes[] so inboxes[0] is the one the user
+        just switched to, and fetchProfile on next load restores that one.
+        
+        We previously guarded this with alreadyExists to prevent phantom saves
+        on page load, but that's already prevented by email starting as ""
+        and fetchProfile being the only thing that sets it for auth users.
+        By the time this effect fires with a real email, it's always intentional.
+      */
+      fetch("/api/user/inboxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inboxName: email }),
+      }).catch(() => { });
     }
 
-    // Always update localStorage with email at front
+    // Update localStorage with email at front
     const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
     let next = [email, ...h.filter(e => e !== email)];
     if (userPlan === "free") next = next.slice(0, 7);
@@ -833,6 +842,7 @@ export function EmailBox({ }: EmailBoxProps) {
     localStorage.setItem("emailHistory", JSON.stringify(next));
     setEmailHistory(next);
   }, [email, isAuthenticated, userPlan]); // eslint-disable-line
+
 
   useEffect(() => {
     const fetch_ = async () => {
