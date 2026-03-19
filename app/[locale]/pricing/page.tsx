@@ -279,9 +279,9 @@ export default function PricingPage() {
     setBusy(false);
   };
 
-  const prices = { monthly: { price: "$3.99", sub: "/ month" }, yearly: { price: "$19.99", sub: "/ year" } };
+  const prices = { monthly: { price: "$3.99", sub: "/ month" }, yearly: { price: "$29.99", sub: "/ year" } };
   const { price, sub } = prices[cycle];
-  const ctaLabel = busy ? "Processing…" : isMonthly ? "Start 3-day free trial" : "Get Pro for $1.66/mo";
+  const ctaLabel = busy ? "Processing…" : isMonthly ? "Start 3-day free trial" : "Get Pro for $2.50/mo";
   const T = isPro ? 3 : 4;
 
   return (
@@ -353,7 +353,7 @@ export default function PricingPage() {
                       "font-mono text-[9px] uppercase tracking-widest border rounded-sm px-1.5 py-px transition-colors",
                       cycle === c ? "border-border text-muted-foreground" : "border-border/50 text-muted-foreground/50"
                     )}>
-                      {c === "monthly" ? "Popular" : "−58%"}
+                      {c === "monthly" ? "Popular" : "−37%"}
                     </span>
                   </button>
                 ))}
@@ -367,11 +367,11 @@ export default function PricingPage() {
                       </span></>
                   : <><Star className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span className="text-xs text-muted-foreground">
-                        <span className="font-mono font-semibold text-foreground">$1.66/mo</span>
+                        <span className="font-mono font-semibold text-foreground">$2.50/mo</span>
                         <span className="mx-1.5 text-border">·</span>
                         <span className="line-through opacity-40 font-mono">$3.99</span>
                         <span className="mx-1.5 text-border">·</span>
-                        <span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px">58% off</span>
+                        <span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px">37% off</span>
                       </span></>
                 }
               </div>
@@ -390,7 +390,7 @@ export default function PricingPage() {
 
               {!isPro && (
                 <p className="text-xs text-muted-foreground">
-                  {isMonthly ? "No card charged today · Cancel anytime" : "Billed as $19.99/year · Cancel anytime"}
+                  {isMonthly ? "No card charged today · Cancel anytime" : "Billed as $29.99/year · Cancel anytime"}
                 </p>
               )}
 
@@ -442,10 +442,10 @@ export default function PricingPage() {
                           </div>
                           {isMonthly
                             ? <><span className="font-mono text-[10px] font-semibold text-foreground">3 days free</span><span className="font-mono text-[10px] text-muted-foreground">then {price}{sub}</span></>
-                            : <><span className="font-mono text-[10px] font-semibold text-foreground">$1.66/mo</span><span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px text-muted-foreground">Save 58%</span></>
+                            : <><span className="font-mono text-[10px] font-semibold text-foreground">$2.50/mo</span><span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px text-muted-foreground">Save 37%</span></>
                           }
                           <Button size="sm" className="mt-1.5 h-6 px-2 text-[10px] font-mono" onClick={() => upgrade("pro")} disabled={busy || isPro}>
-                            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : isPro ? "Current ✓" : isMonthly ? "Try free →" : "$1.66/mo →"}
+                            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : isPro ? "Current ✓" : isMonthly ? "Try free →" : "$2.50/mo →"}
                           </Button>
                         </div>
                       </th>
@@ -512,7 +512,7 @@ export default function PricingPage() {
                       </td>
                       <td className="py-5 px-4 border-l border-border text-center">
                         <Button size="sm" className="text-[10px] font-mono" onClick={() => upgrade("pro")} disabled={busy || isPro}>
-                          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : isPro ? "Current ✓" : isMonthly ? "Try free →" : "$1.66/mo →"}
+                          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : isPro ? "Current ✓" : isMonthly ? "Try free →" : "$2.50/mo →"}
                         </Button>
                       </td>
                     </tr>
@@ -535,7 +535,7 @@ export default function PricingPage() {
               <FadeIn>
                 <SectionMarker index={3} total={T} label="Upgrade" />
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3 leading-tight">
-                  {isMonthly ? "Try Pro free for 3 days" : "Go Pro for $1.66 a month"}
+                  {isMonthly ? "Try Pro free for 3 days" : "Go Pro for $2.50 a month"}
                 </h2>
                 <p className="text-sm text-muted-foreground mb-14 max-w-lg leading-relaxed">
                   Most users upgrade when they receive an important verification email.
@@ -567,15 +567,15 @@ export default function PricingPage() {
                       ) : (
                         <>
                           <div className="flex items-baseline gap-2 mb-2">
-                            <span className="text-6xl font-bold font-mono text-foreground leading-none">$1.66</span>
+                            <span className="text-6xl font-bold font-mono text-foreground leading-none">$2.50</span>
                             <div>
                               <p className="text-base text-muted-foreground font-medium leading-snug">/ month</p>
-                              <p className="font-mono text-xs text-muted-foreground">billed as $19.99/year</p>
+                              <p className="font-mono text-xs text-muted-foreground">billed as $29.99/year</p>
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground mt-4">
-                            Save 58% vs monthly. Same full Pro access.{" "}
-                            <span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px">58% off</span>
+                            Save 37% vs monthly. Same full Pro access.{" "}
+                            <span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px">37% off</span>
                           </p>
                         </>
                       )}
