@@ -10,6 +10,7 @@ export const LANDING_PAGES: LandingPageConfig[] = [
   { slug: 'free-temp-mail', translationKey: 'freeTempMail', priority: 'high' },
   { slug: 'temporary-email', translationKey: 'temporaryEmail', priority: 'high' },
   { slug: 'disposable-email', translationKey: 'disposableEmail', priority: 'high' },
+  { slug: 'disposable-email-address', translationKey: 'disposableEmailAddress', priority: 'high' },
   { slug: 'anonymous-email', translationKey: 'anonymousEmail', priority: 'high' },
 
   // 2. Feature-Based Pages
@@ -46,6 +47,11 @@ export const LANDING_PAGES: LandingPageConfig[] = [
   { slug: 'secure-temp-mail', translationKey: 'secureTempMail', priority: 'low' },
   { slug: 'private-temp-mail', translationKey: 'privateTempMail', priority: 'low' },
   { slug: 'temporary-email-generator', translationKey: 'temporaryEmailGenerator', priority: 'low' },
+
+  // 7. New Pages (linked from homepage Explore section)
+  { slug: 'throwaway-email', translationKey: 'throwawayEmail', priority: 'medium' },
+  { slug: 'receive-email-online', translationKey: 'receiveEmailOnline', priority: 'medium' },
+  { slug: 'fake-email-generator', translationKey: 'fakeEmailGenerator', priority: 'medium' },
 ];
 
 export const LANDING_PAGE_SLUGS = LANDING_PAGES.map(p => p.slug);
