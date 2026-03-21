@@ -93,6 +93,12 @@ export function AwardsSection() {
       src: 'https://indiehunt.io/badges/indiehunt-badge-light.svg',
       alt: 'IndieHunt badge',
     },
+    {
+      href: 'https://earlyhunt.com/project/freecustom-email-disposable-email',
+      title: 'Featured on EarlyHunt',
+      src: 'https://earlyhunt.com/badges/earlyhunt-badge-light.svg',
+      alt: 'EarlyHunt badge',
+    },
   ];
 
   return (
