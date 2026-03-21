@@ -87,6 +87,12 @@ export function AwardsSection() {
       src: 'https://auraplusplus.com/images/badges/featured-on-light.svg',
       alt: 'Aura++ badge',
     },
+    {
+      href: 'https://indiehunt.io/project/temp-mail-free-temporary-email-address-no-signup-no-ads',
+      title: 'Featured on IndieHunt',
+      src: 'https://indiehunt.io/badges/indiehunt-badge-light.svg',
+      alt: 'IndieHunt badge',
+    },
   ];
 
   return (
