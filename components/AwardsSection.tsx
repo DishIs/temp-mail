@@ -81,6 +81,12 @@ export function AwardsSection() {
       src: 'https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light',
       alt: 'Fazier badge',
     },
+    {
+      href: 'https://auraplusplus.com/projects/freecustom-email-disposable-temp-mail',
+      title: 'Featured on Aura++',
+      src: 'https://auraplusplus.com/images/badges/featured-on-light.svg',
+      alt: 'Aura++ badge',
+    },
   ];
 
   return (
