@@ -1,11 +1,11 @@
 // app/api/user/api-custom-domains/[domain]/verify/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { callInternalAPI } from '@/lib/api';
 import { auth } from '@/auth';
-import { fetchFromServiceAPIWithStatus } from '@/lib/api';
 
 export async function POST(
-  _req: NextRequest,
-  { params }: { params: { domain: string } },
+  request: Request,
+  { params }: { params: { domain: string } }
 ) {
   const session = await auth();
 
@@ -13,10 +13,18 @@ export async function POST(
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { status, data } = await fetchFromServiceAPIWithStatus(
-    `/user/api-custom-domains/${encodeURIComponent(params.domain)}/verify?wyiUserId=${encodeURIComponent(session.user.id)}`,
-    { method: 'POST' },
-  );
-
-  return NextResponse.json(data, { status });
+  try {
+    const data = await callInternalAPI(
+        request,
+        `/user/api-custom-domains/${encodeURIComponent(params.domain)}/verify?wyiUserId=${encodeURIComponent(session.user.id)}`,
+        { method: 'POST' },
+        { id: session.user.id }
+    );
+    return NextResponse.json(data);
+  } catch (err: any) {
+    if (err.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
+    }
+    return NextResponse.json({ success: false, message: err?.message ?? 'Server error' }, { status: 500 });
+  }
 }

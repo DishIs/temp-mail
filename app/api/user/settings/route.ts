@@ -1,60 +1,56 @@
+// app/api/user/settings/route.ts
 import { NextResponse } from 'next/server';
-import { fetchFromServiceAPI } from '@/lib/api';
-import { auth } from '@/auth'; // 👈 replaces getToken from next-auth/jwt
+import { callInternalAPI } from '@/lib/api';
+import { auth } from '@/auth';
 
 export async function POST(request: Request) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-      { status: 401 }
-    );
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const settings = await request.json();
-
-    if (typeof settings !== 'object') {
-      return NextResponse.json({ error: 'Invalid settings format' }, { status: 400 });
+    const body = await request.clone().json();
+    const data = await callInternalAPI(
+        request,
+        '/user/settings', 
+        {
+            method: 'POST',
+            body: JSON.stringify({ ...body, wyiUserId: session.user.id }),
+        },
+        { id: session.user.id }
+    );
+    return NextResponse.json(data);
+  } catch (error: any) {
+    if (error.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
     }
-
-    await fetchFromServiceAPI('/user/settings', {
-      method: 'POST',
-      body: JSON.stringify({
-        wyiUserId: session.user.id, // 👈 was token.id
-        settings,
-      }),
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Failed to sync settings:', error);
-    return NextResponse.json({ error: 'Failed to sync settings' }, { status: 500 });
+    return NextResponse.json({ success: false, message: error.message || 'Server error' }, { status: 500 });
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await auth();
-
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-      { status: 401 }
-    );
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const res = await fetchFromServiceAPI('/user/get-settings', {
-      method: 'POST',
-      body: JSON.stringify({
-        wyiUserId: session.user.id,
-      }),
-    });
-
-    return NextResponse.json(res);
-  } catch (error) {
-    console.error('Failed to get settings:', error);
-    return NextResponse.json({ error: 'Failed to get settings' }, { status: 500 });
+    const data = await callInternalAPI(
+        request,
+        '/user/get-settings',
+        {
+            method: 'POST',
+            body: JSON.stringify({ wyiUserId: session.user.id }),
+        },
+        { id: session.user.id }
+    );
+    return NextResponse.json(data);
+  } catch (error: any) {
+    if (error.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
+    }
+    return NextResponse.json({ success: false, message: error.message || 'Server error' }, { status: 500 });
   }
 }

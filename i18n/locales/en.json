@@ -163,8 +163,7 @@
 
     "faq15_q": "Is my data private when using temp mail?",
     "faq15_a": "We don't sell or share your data. Emails are processed only to deliver them to your temp mail inbox and, for Pro users, to extract OTPs and verification links automatically. We use minimal cookies and don't track you across the web. See our Privacy Policy for full details."
-  }
-,
+  },
   "Dashboard": {
     "title": "Privacy Control Center",
     "subtitle_pro": "Manage your advanced privacy settings, custom domains, and block lists.",

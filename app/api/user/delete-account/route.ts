@@ -1,34 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
+// app/api/user/delete-account/route.ts
+import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { fetchFromServiceAPIWithStatus } from "@/lib/api";
+import { callInternalAPI } from "@/lib/api";
 
-/**
- * POST /api/user/delete-account
- * Schedules account deletion (7-day cooldown). Body: { ip?: string }.
- * Forwards to backend POST /user/delete-account.
- */
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-  }
-  let body: { ip?: string } = {};
-  try {
-    body = await request.json().catch(() => ({}));
-  } catch {
-    // no body is ok
-  }
-  const ip =
-    body?.ip ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    undefined;
-  const payload: { wyiUserId: string; ip?: string } = { wyiUserId: session.user.id };
-  if (ip) payload.ip = ip;
 
-  const { status, data } = await fetchFromServiceAPIWithStatus("/user/delete-account", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return NextResponse.json(data ?? { success: true }, { status });
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { success: false, message: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const data = await callInternalAPI(
+        request,
+        "/user/delete-account",
+        {
+            method: "POST",
+            body: JSON.stringify({ wyiUserId: session.user.id }),
+        },
+        { id: session.user.id }
+    );
+    return NextResponse.json(data);
+  } catch (err: any) {
+    if (err.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
+    }
+    return NextResponse.json(
+      { success: false, message: err?.message ?? "Server error." },
+      { status: 500 }
+    );
+  }
 }

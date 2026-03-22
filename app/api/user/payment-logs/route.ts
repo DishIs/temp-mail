@@ -1,9 +1,7 @@
 // app/api/user/payment-logs/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchFromServiceAPI } from '@/lib/api';
+import { callInternalAPI } from '@/lib/api';
 import { auth } from '@/auth';
-
-const VALID_TYPES = ['app', 'api', 'credits'] as const;
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -15,29 +13,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const wyiUserId = session.user.id;
   const { searchParams } = new URL(request.url);
-  const limit = searchParams.get('limit');
-  const offset = searchParams.get('offset');
-  const type = searchParams.get('type');
+  const page = searchParams.get('page') || '1';
+  const limit = searchParams.get('limit') || '10';
 
-  const params = new URLSearchParams();
-  if (limit != null && limit !== '') params.set('limit', limit);
-  if (offset != null && offset !== '') params.set('offset', offset);
-  if (type != null && type !== '' && VALID_TYPES.includes(type as typeof VALID_TYPES[number])) {
-    params.set('type', type);
-  }
-  const query = params.toString();
-  const path = `/user/payment-logs/${wyiUserId}${query ? `?${query}` : ''}`;
+  const path = `/user/${session.user.id}/payment-logs?page=${page}&limit=${limit}`;
 
   try {
-    const data = await fetchFromServiceAPI(path);
+    const data = await callInternalAPI(request, path, { method: 'GET' }, { id: session.user.id });
     return NextResponse.json(data);
-  } catch (error: unknown) {
-    console.error('API Error calling service from /user/payment-logs:', error);
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : 'Internal Server Error' },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    if (error.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
+    }
+    return NextResponse.json({ success: false, message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

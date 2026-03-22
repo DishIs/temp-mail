@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { fetchFromServiceAPIWithStatus } from "@/lib/api";
+import { callInternalAPI } from "@/lib/api";
 
 export async function POST(req: NextRequest) {
   // 1. Verify session
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   // If forceCleanup is requested, we first look for existing keys with the same name and delete them
   if (forceCleanup) {
     try {
-      const { status: listStatus, data: listData } = await fetchFromServiceAPIWithStatus(`/user/api-keys/${userId}`);
+      const listData = await callInternalAPI(req,`/user/api-keys/${userId}`);
       
       // Handle response structure correctly: data is usually the object { success, data: keys[] }
       const keys = (listData as any)?.data || [];
@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
       
       for (const k of keysToCleanup) {
         // Use keyId as expected by the DELETE route in app/api/user/api-keys/route.ts
-        await fetchFromServiceAPIWithStatus("/user/api-keys", {
+        await callInternalAPI(req,"/user/api-keys", {
           method: "DELETE",
-          body: JSON.stringify({ keyId: k.id, wyiUserId: userId }),
+          body: JSON.stringify({ id: k.id, wyiUserId: userId }),
         });
       }
     } catch (e) {
@@ -37,31 +37,29 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Call internal service API to create the key
-  const { status, data } = await fetchFromServiceAPIWithStatus("/user/api-keys", {
-    method: "POST",
-    body: JSON.stringify({
-      wyiUserId: userId,
-      name: name,
-    }),
-  });
+  try {
+    const responseData = await callInternalAPI(req, "/user/api-keys", {
+        method: "POST",
+        body: JSON.stringify({
+          wyiUserId: userId,
+          name: name,
+        }),
+      });
 
-  const responseData = data as any;
-
-  if (status !== 200 && status !== 201) {
+    // 3. Return the key data
+    return NextResponse.json({
+      key: responseData?.data?.key,
+      prefix: responseData?.data?.prefix,
+      createdAt: responseData?.data?.createdAt,
+    });
+  } catch (error: any) {
     // If at max keys, return a specific error that the frontend can handle
-    if (responseData?.message?.includes("Maximum")) {
-      return NextResponse.json(
-        { error: "max_keys", message: responseData.message },
-        { status: 400 },
-      );
+    if (error?.message?.includes("Maximum")) {
+        return NextResponse.json(
+            { error: "max_keys", message: error.message },
+            { status: 400 },
+        );
     }
-    return NextResponse.json({ error: "create_failed", message: responseData?.message }, { status });
+    return NextResponse.json({ error: "create_failed", message: error?.message }, { status: 500 });
   }
-
-  // 3. Return the key data
-  return NextResponse.json({
-    key: responseData?.data?.key,
-    prefix: responseData?.data?.prefix,
-    createdAt: responseData?.data?.createdAt,
-  });
 }

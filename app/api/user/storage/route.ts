@@ -1,9 +1,9 @@
-// app/api/user/me/route.ts
+// app/api/user/storage/route.ts
 import { NextResponse } from 'next/server';
-import { fetchFromServiceAPI } from '@/lib/api';
+import { callInternalAPI } from '@/lib/api';
 import { auth } from '@/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -14,18 +14,17 @@ export async function GET() {
   }
 
   try {
-    const serviceResponse = await fetchFromServiceAPI(`/user/${session.user.id}/storage`);
-
-    if (serviceResponse.success) {
-      return NextResponse.json({ ...serviceResponse });
-    } else {
-      return NextResponse.json(
-        { message: serviceResponse.message || 'User not found in backend service.' },
-        { status: 404 }
-      );
-    }
+    const serviceResponse = await callInternalAPI(
+        request, 
+        `/user/${session.user.id}/storage`,
+        { method: 'GET' },
+        { id: session.user.id }
+    );
+    return NextResponse.json(serviceResponse);
   } catch (error: any) {
-    console.error('API Error calling service from /user/me:', error);
-    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
+    if (error.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
+    }
+    return NextResponse.json({ success: false, message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

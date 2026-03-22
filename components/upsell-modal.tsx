@@ -172,3 +172,31 @@ export function AuthNeed({
     />
   );
 }
+
+export function RateLimitModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const { data: session } = useSession();
+
+  return (
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      icon={<Zap className="h-4 w-4 text-amber-500" />}
+      sectionLabel="Free Tier Limit"
+      title="You've reached your limit"
+      description="You're hitting Free tier limits. Upgrade to Developer plan for instant, high-speed API access."
+      bullets={PRO_BULLETS}
+      ctaLabel={session ? "Upgrade to Developer Plan" : "Sign up to Upgrade"}
+      onCta={() => {
+        onClose();
+        router.push(session ? "/pricing" : `/auth?callbackUrl=${encodeURIComponent("/pricing")}`);
+      }}
+    />
+  );
+}

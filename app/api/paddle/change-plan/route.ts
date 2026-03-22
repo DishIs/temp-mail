@@ -1,7 +1,7 @@
 // app/api/paddle/change-plan/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { fetchFromServiceAPIWithStatus } from '@/lib/api';
+import { callInternalAPI } from '@/lib/api';
 
 const PLAN_ORDER = ['free', 'developer', 'startup', 'growth', 'enterprise'] as const;
 type ApiPlanName = typeof PLAN_ORDER[number];
@@ -36,18 +36,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { ok, status, data } = await fetchFromServiceAPIWithStatus(
-    '/user/api-plan/change',
-    {
+  try {
+    const data = await callInternalAPI(req, '/user/api-plan/change', {
       method: 'POST',
       body: JSON.stringify({
-        userId:     session.user.id,
+        userId: session.user.id,
         targetPlan,
-        reason:  reason  ?? null,
+        reason: reason ?? null,
         comment: comment ?? null,
       }),
-    }
-  );
-
-  return NextResponse.json(data, { status });
+    });
+    return NextResponse.json(data, { status: 200 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
 }

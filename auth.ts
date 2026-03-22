@@ -36,7 +36,7 @@ function upsertUser(user: { id: string; email?: string | null; name?: string | n
   fetchFromServiceAPI('/auth/upsert-user', {
     method: 'POST',
     body: JSON.stringify({ wyiUserId: user.id, email: resolvedEmail, name: resolvedName, plan: 'free' }),
-  }).catch(e => console.error('Upsert failed:', e));
+  }, { id: user.id }).catch(e => console.error('Upsert failed:', e));
 }
 
 const config: NextAuthConfig = {
@@ -94,7 +94,7 @@ const config: NextAuthConfig = {
             method: 'POST',
             body: JSON.stringify({ userId: token.id }),
             cache: 'no-store' // <--- CRITICAL FIX: Disables Next.js fetch caching
-          });
+          }, { id: token.id });
           
           if (updatedUser?.plan) token.plan = updatedUser.plan;
           token.deletion_status = updatedUser?.deletion_status ?? 'none';

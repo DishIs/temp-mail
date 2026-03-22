@@ -46,7 +46,7 @@ const ASCII_FRAGS = [
 ];
 
 export default async function Page({ params }: Props) {
-  const { locale } = params;
+  const { locale } = await params;
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: 'PageContent' });
@@ -145,7 +145,7 @@ export default async function Page({ params }: Props) {
         id="json-ld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify([organizationJsonLd, softwareJsonLd, faqJsonLd, breadcrumbJsonLd, websiteJsonLd]),
+          __html: JSON.stringify([organizationJsonLd, softwareJsonLd, breadcrumbJsonLd, websiteJsonLd]),
         }}
       />
 
@@ -221,7 +221,7 @@ export default async function Page({ params }: Props) {
                 <Link href="/disposable-email" className="text-foreground/70 hover:text-foreground transition-colors underline underline-offset-2 decoration-border">disposable email</Link>
                 {' '}to receive{' '}
                 <Link href="/temp-mail-for-otp" className="text-foreground/70 hover:text-foreground transition-colors underline underline-offset-2 decoration-border">OTP and verification codes</Link>
-                {', signups, and test registrations — without exposing your real inbox. No registration, forever free, zero ads.'}
+                {t('p1')}
               </p>
             </div>
           </section>
@@ -241,13 +241,13 @@ export default async function Page({ params }: Props) {
                 <div className="grid gap-px bg-border rounded-lg overflow-hidden lg:grid-cols-[1fr_360px]">
                   <div className="bg-background px-8 py-10">
                     <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-4 leading-snug">{t('h1')}</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed mb-3" dangerouslySetInnerHTML={{ __html: t.raw('p1') }} />
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-3">{t('p1')}</p>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      {t.rich('p2_part1', { strong: (chunks) => <strong className="text-foreground">{chunks}</strong> })}
+                      {t('p2_part1')}
                       <Link className="text-foreground underline underline-offset-2 hover:no-underline" href="/blog/forever-free-and-ad-free">{t('p2_link1')}</Link>
-                      {t.rich('p2_part2')}
+                      {t('p2_part2')}
                       <Link className="text-foreground underline underline-offset-2 hover:no-underline" href="/blog/why-we-are-fastest">{t('p2_link2')}</Link>
-                      {t.rich('p2_part3')}
+                      {t('p2_part3')}
                     </p>
                   </div>
                   <div className="bg-background px-8 py-10 border-l border-border">
@@ -272,7 +272,7 @@ export default async function Page({ params }: Props) {
               </div>
             </section>
 
-            <section className="relative border-b border-border px-4 sm:px-6 py-16 sm:py-20" style={DOT_BG} aria-labelledby="landing-faq-heading">
+            <section className="relative border-b border-border px-4 sm:px-6 py-16 sm:py-20" style={DOT_BG} aria-labelledby="land-faq-heading">
               <div className="absolute inset-y-0 left-[max(0px,calc(50%-40rem))] w-px bg-border/60" aria-hidden />
               <div className="absolute inset-y-0 right-[max(0px,calc(50%-40rem))] w-px bg-border/60" aria-hidden />
               <div className="relative z-10 max-w-5xl mx-auto">
@@ -330,23 +330,15 @@ export default async function Page({ params }: Props) {
                   <span className="text-muted-foreground/50 text-xs">·</span>
                   <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Explore</span>
                 </div>
-                {/* ── CHANGE 2: Keyword-rich anchor text in Explore section ─────────── */}
-              {/* Replace your existing Explore section grid entirely: */}
-
+                
                 <div className="rounded-lg border border-border overflow-hidden mb-8">
                   <div className="grid gap-px bg-border md:grid-cols-2">
 
-                    {/* Guides column — core authority pages with keyword anchors */}
+                    
                     <div className="bg-background px-8 py-8">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Guides</p>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 list-none">
-                        {/*
-                          ANCHOR TEXT FIX: Each anchor now uses the exact keyword
-                          phrase that the target page is trying to rank for.
-                          Previously these were generic title-case labels.
-                          Google uses anchor text as a strong ranking signal for
-                          the destination page.
-                        */}
+                        
                         <li><Link href="/temp-mail" className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">Free temp mail</Link></li>
                         <li><Link href="/temporary-email" className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">Temporary email address</Link></li>
                         <li><Link href="/disposable-email" className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">Disposable email</Link></li>
@@ -356,7 +348,7 @@ export default async function Page({ params }: Props) {
                       </ul>
                     </div>
 
-                    {/* Popular column — feature + use-case pages */}
+                    
                     <div className="bg-background px-8 py-8 border-l border-border">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Popular</p>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 list-none">
@@ -371,7 +363,7 @@ export default async function Page({ params }: Props) {
 
                   </div>
 
-                  {/* Second row — competitor alternatives + new high-volume pages */}
+                  
                   <div className="grid gap-px bg-border md:grid-cols-3 border-t border-border">
                     <div className="bg-background px-8 py-6">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Alternatives</p>
@@ -392,12 +384,7 @@ export default async function Page({ params }: Props) {
                     <div className="bg-background px-8 py-6 border-l border-border">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Tools</p>
                       <ul className="space-y-1.5 list-none">
-                        {/*
-                          NEW PAGES from point 6.
-                          These don't exist yet — add them to landing-pages-config.ts below.
-                          Linking to them now means Google will crawl them the moment
-                          you create them.
-                        */}
+                        
                         <li><Link href="/throwaway-email" className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block">Throwaway email</Link></li>
                         <li><Link href="/receive-email-online" className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block">Receive email online</Link></li>
                         <li><Link href="/fake-email-generator" className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block">Fake email generator</Link></li>

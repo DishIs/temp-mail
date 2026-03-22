@@ -1,6 +1,6 @@
 // app/api/public-mailbox/route.ts
 import { NextResponse } from 'next/server';
-import { fetchFromServiceAPI, authenticateRequest } from '@/lib/api';
+import { callInternalAPI, authenticateRequest } from '@/lib/api';
 import { headers } from 'next/headers';
 import { rateLimit, isValidPublicRequest } from '@/lib/rate-limit';
 import { SignJWT } from 'jose';
@@ -22,7 +22,7 @@ async function signServiceToken(plan: string): Promise<string> {
 
 export async function GET(request: Request) {
   const reqHeaders = await headers();
-  const ip = reqHeaders.get('x-forwarded-for') || 'guest';
+  const ip = reqHeaders.get('cf-connecting-ip') || reqHeaders.get('x-forwarded-for') || 'guest';
 
   // ── 1. Reject requests not coming through your own frontend ──────────────
   if (!isValidPublicRequest(reqHeaders as any)) {
@@ -30,8 +30,6 @@ export async function GET(request: Request) {
   }
 
   // ── 2. Require a valid client-issued JWT (from /api/auth) ────────────────
-  //    This blocks any caller that hasn't gone through your app first.
-  //    No session check — just proof the request came from your frontend.
   const clientPayload = await authenticateRequest(request);
   if (!clientPayload) {
     return NextResponse.json({ error: 'Missing or invalid token' }, { status: 401 });
@@ -44,8 +42,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  // ── 4. Sign a downstream service token (no auth() call needed anymore) ───
-  //    Plan is always 'free' for unauthenticated public requests.
+  // ── 4. Sign a downstream service token ──────────────────────────────────
   const signedToken = await signServiceToken('free');
 
   const { searchParams } = new URL(request.url);
@@ -57,13 +54,23 @@ export async function GET(request: Request) {
   }
 
   try {
-    const options = { headers: { Authorization: `Bearer ${signedToken}` } };
-    const data = messageId
-      ? await fetchFromServiceAPI(`/mailbox/${mailbox}/message/${messageId}`, options)
-      : await fetchFromServiceAPI(`/mailbox/${mailbox}`, options);
+    const options = { 
+        method: 'GET',
+        headers: { Authorization: `Bearer ${signedToken}` } 
+    };
+    
+    const path = messageId
+      ? `/mailbox/${mailbox}/message/${messageId}`
+      : `/mailbox/${mailbox}`;
+
+    // Proxies to internal backend with full security signatures
+    const data = await callInternalAPI(request, path, options);
 
     return NextResponse.json(data);
-  } catch {
+  } catch (error: any) {
+    if (error.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
     return NextResponse.json({ error: 'Service error' }, { status: 500 });
   }
 }

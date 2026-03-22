@@ -1,9 +1,9 @@
 // app/api/user/me/route.ts
 import { NextResponse } from 'next/server';
-import { fetchFromServiceAPI } from '@/lib/api';
+import { callInternalAPI } from '@/lib/api';
 import { auth } from '@/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -14,7 +14,12 @@ export async function GET() {
   }
 
   try {
-    const serviceResponse = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
+    const serviceResponse = await callInternalAPI(
+        request,
+        `/user/profile/${session.user.id}`,
+        { method: 'GET' },
+        { id: session.user.id }
+    );
 
     if (serviceResponse.success && serviceResponse.user) {
       return NextResponse.json({ success: true, user: serviceResponse.user });
@@ -26,6 +31,9 @@ export async function GET() {
     }
   } catch (error: any) {
     console.error('API Error calling service from /user/me:', error);
+    if (error.message === 'TOO_MANY_REQUESTS') {
+        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
+    }
     return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

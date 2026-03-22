@@ -40,7 +40,7 @@ const ASCII_FRAGS = [
 ];
 
 export async function generateMetadata({ params }: Props) {
-  const { slug } = params;
+  const { slug } = await params;
 
   const pageConfig = getPageConfig(slug);
   if (!pageConfig) return {};
@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function LandingPage({ params }: Props) {
-  const { slug } = params;
+  const { slug } = await params;
   
   // Set locale for any Server Components relying on next-intl
   setRequestLocale('en');
@@ -82,28 +82,6 @@ export default async function LandingPage({ params }: Props) {
   if (!pageConfig) notFound();
 
   const session = await auth();
-
-  let customDomains: any[] = [];
-  let userInboxes: string[] = [];
-  let currentInbox: string | null = null;
-
-  if (session?.user?.id) {
-    try {
-      const profileData = await fetchFromServiceAPI(`/user/profile/${session.user.id}`);
-      if (profileData.success && profileData.user) {
-        const { user } = profileData;
-        if (user.plan === "pro" && Array.isArray(user.customDomains)) {
-          customDomains = user.customDomains;
-        }
-        if (Array.isArray(user.inboxes)) {
-          userInboxes = user.inboxes;
-          if (userInboxes.length > 0) currentInbox = userInboxes[0];
-        }
-      }
-    } catch (error) {
-      console.error("Profile fetch failed:", error);
-    }
-  }
 
   const translations = (enMessages.LandingPages as any)[pageConfig.translationKey] || {};
 
@@ -121,12 +99,7 @@ export default async function LandingPage({ params }: Props) {
   };
 
   const emailBox = (
-    <EmailBox
-      initialSession={session}
-      initialCustomDomains={customDomains}
-      initialInboxes={userInboxes}
-      initialCurrentInbox={currentInbox}
-    />
+    <EmailBox />
   );
 
   return (
@@ -153,7 +126,7 @@ export default async function LandingPage({ params }: Props) {
               ))}
             </div>
 
-            <AppHeader initialSession={session} />
+            <AppHeader />
 
             <main className="relative z-10">
               <LandingPageTemplate

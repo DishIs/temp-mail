@@ -1,15 +1,3 @@
-// components/email-box.tsx
-// COMPLETE CORRECTED FILE
-// Changes from the broken version:
-//   1. Removed initialSession, initialCustomDomains, initialInboxes, initialCurrentInbox props
-//   2. Added useSession() at the top — session is now client-side only
-//   3. Moved isSessionLoading skeleton AFTER all hooks (Rules of Hooks)
-//   4. Fixed email useState to use "" as initial value (no more initialCurrentInbox)
-//   5. Fixed emailHistory useState to use [] as initial value (no more initialInboxes)
-//   6. Fixed availableDomains useMemo — reads from customDomainsFromProfile state instead
-//   7. Added customDomainsFromProfile state to hold data fetched by fetchProfile effect
-//   8. Fixed init useEffect — no longer references removed props
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -191,7 +179,7 @@ const getExpiry = (dateStr: string, hours: number) => {
   return `Today ${timeStr}`;
 };
 
-// ── Sub-components — unchanged from original ──────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function NewEmailFlash({ from, subject, onDone }: { from: string; subject: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3400); return () => clearTimeout(t); }, [onDone]);
@@ -365,25 +353,15 @@ function PinButton({ isPinned, onClick, size = "sm", hidden }: { isPinned: boole
   );
 }
 
-// ── Props — empty, all data is now client-side ────────────────────────────────
 interface EmailBoxProps { }
 
 export function EmailBox({ }: EmailBoxProps) {
   const t = useTranslations("EmailBox");
 
-  // FIX 1: useSession replaces initialSession prop entirely.
-  // Must be called at the top level, before any conditional returns.
   const { data: session, status: sessionStatus } = useSession();
 
-  // FIX: Don't block render on session loading.
-  // Render immediately as guest, upgrade to authenticated state when session resolves.
-  // This eliminates the skeleton → full-inbox flash that was causing CLS 0.271.
-  //
-  // isSessionLoading is now only used to show a subtle loading indicator
-  // inside the already-rendered inbox, not to gate the entire component.
   const isSessionLoading = sessionStatus === "loading";
 
-  // Use session data if available, fall back to guest state immediately
   const isAuthenticated = !!session;
   // @ts-ignore
   const userPlan = session?.user?.plan || "none";
@@ -392,20 +370,13 @@ export function EmailBox({ }: EmailBoxProps) {
 
   const API_ENDPOINT = isAuthenticated ? "/api/private-mailbox" : "/api/public-mailbox";
 
-  // ── ALL STATE DECLARATIONS — must come before any conditional return ──────
-  // FIX 2: customDomainsFromProfile replaces initialCustomDomains prop.
-  // Populated by the fetchProfile effect after mount.
+  // ── STATE ──────────────────────────────────────────────────────────────────
   const [customDomainsFromProfile, setCustomDomainsFromProfile] = useState<{ domain: string; verified: boolean }[]>([]);
-
   const [fetchedDomains, setFetchedDomains] = useState<FetchedDomain[]>(DOMAIN_SEED);
   const [domainExpiry, setDomainExpiry] = useState<DomainExpiry | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-
-  // FIX 3: No more initialCurrentInbox or initialInboxes from props.
-  // Both start empty — populated by init useEffect from localStorage + fetchProfile.
   const [email, setEmail] = useState("");
   const [emailHistory, setEmailHistory] = useState<string[]>([]);
-
   const [isEditing, setIsEditing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedDomain, setSelectedDomain] = useState("");
@@ -419,6 +390,9 @@ export function EmailBox({ }: EmailBoxProps) {
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // FIX 1: New state to expose throttle status to the UI so the button
+  // gives real feedback instead of silently dropping clicks.
+  const [isThrottled, setIsThrottled] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: "email" | "message"; id?: string } | null>(null);
   const [blockButtons, setBlockButtons] = useState(false);
@@ -448,7 +422,7 @@ export function EmailBox({ }: EmailBoxProps) {
   const [pinnedInboxes, setPinnedInboxes] = useState<string[]>([]);
   const [unseenSettingsFeatures, setUnseenSettingsFeatures] = useState<Set<string>>(new Set());
 
-  // ── ALL REFS ──────────────────────────────────────────────────────────────
+  // ── REFS ───────────────────────────────────────────────────────────────────
   const skipNextSettingsSave = useRef(false);
   const originalTitle = useRef(typeof document !== "undefined" ? document.title : "DITMail");
   const wsRef = useRef<WebSocket | null>(null);
@@ -459,23 +433,18 @@ export function EmailBox({ }: EmailBoxProps) {
   const setMessagesRef = useRef(setMessages);
   const isRefreshingThrottleRef = useRef(false);
 
-  // ── ALL MEMOS ─────────────────────────────────────────────────────────────
+  // ── MEMOS ──────────────────────────────────────────────────────────────────
   const openUpsell = (feature: string) => { setUpsellFeature(feature); setIsUpsellOpen(true); };
 
   const freeDomainSet = useMemo(() =>
     new Set(fetchedDomains.filter(d => d.tier === "free").map(d => d.domain)),
     [fetchedDomains]);
 
-  // FIX 4: availableDomains now reads from customDomainsFromProfile state
-  // Replace the availableDomains useMemo:
-
   const availableDomains = useMemo(() => {
-    // Custom (verified) domains always first — these are the user's own domains
     const custom = customDomainsFromProfile
       .filter(d => d.verified)
       .map(d => d.domain);
 
-    // Sort platform domains by score
     const sortedFetched = [...fetchedDomains].sort((a, b) => {
       const score = (d: FetchedDomain) => {
         let s = 0;
@@ -490,8 +459,6 @@ export function EmailBox({ }: EmailBoxProps) {
       return a.domain.localeCompare(b.domain);
     }).map(d => d.domain);
 
-    // Deduplicate — custom domains take precedence, platform domains fill the rest
-    // This exactly matches the pre-migration behavior where server passed initialCustomDomains
     return [...new Set([...custom, ...sortedFetched])];
   }, [customDomainsFromProfile, fetchedDomains]);
 
@@ -588,7 +555,7 @@ export function EmailBox({ }: EmailBoxProps) {
     );
   }, [isPro, otpCopied, getMessageCategory]); // eslint-disable-line
 
-  // ── ALL EFFECTS ───────────────────────────────────────────────────────────
+  // ── EFFECTS ────────────────────────────────────────────────────────────────
 
   const connectWebSocket = useCallback(async (mailbox: string) => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
@@ -633,12 +600,7 @@ export function EmailBox({ }: EmailBoxProps) {
 
   const userHasInteractedRef = useRef(false);
 
-  // ── EFFECT 1: init useEffect ──────────────────────────────────────────────
-  // KEY CHANGE: For authenticated users, do NOT set email at all during init.
-  // Do NOT call setEmailHistory with a generated email.
-  // Do NOT trigger the email-save effect with a fake address.
-  // Just load non-email state from localStorage and wait for fetchProfile.
-
+  // EFFECT 1: init
   useEffect(() => {
     const init = async () => {
       await fetchToken();
@@ -664,7 +626,6 @@ export function EmailBox({ }: EmailBoxProps) {
         })
         .catch(() => { });
 
-      // Load all non-email state from localStorage — safe for all users
       const savedSettings = safeJsonParse<UserSettings | null>(localStorage.getItem("userSettings"), null);
       if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
       setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
@@ -675,24 +636,14 @@ export function EmailBox({ }: EmailBoxProps) {
       setUnseenSettingsFeatures(new Set(["categorization"].filter(f => !seenFeatures.includes(f))));
       setIsStorageLoaded(true);
 
-      // ── AUTHENTICATED: let fetchProfile handle inbox completely ──────────
-      // We must NOT set email here. Setting any email — even from localStorage —
-      // triggers the email-save useEffect which POSTs to /api/user/inboxes,
-      // which prepends that address to user.inboxes[] on the server.
-      // Then fetchProfile reads inboxes[0] and finds our fake address — not the
-      // real last-used inbox. This was the root cause of all the UX bugs.
       if (isAuthenticated) {
-        // Only pre-populate the history sidebar (no active inbox yet)
-        // so the user sees their history list immediately while fetchProfile loads.
         const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
         if (localHistory.length > 0) {
           setEmailHistory(localHistory);
         }
-        // email stays "" — fetchProfile will set it correctly
         return;
       }
 
-      // ── GUEST: use localStorage as authoritative source ──────────────────
       const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
       const allowedDomainsList = currentFetchedDomains
         .filter(d => checkDomainAllowed(d.domain, currentFetchedDomains))
@@ -725,12 +676,7 @@ export function EmailBox({ }: EmailBoxProps) {
     init();
   }, []); // eslint-disable-line
 
-  // ── EFFECT 2: fetchProfile useEffect ─────────────────────────────────────
-  // This is the SOLE authority for authenticated users.
-  // It calls /api/user/me which calls getUserProfileHandler which returns
-  // { success: true, user: { inboxes: string[], customDomains: [...], plan, ... } }
-  // user.inboxes is recency-ordered — inboxes[0] is always the last used.
-
+  // EFFECT 2: fetchProfile
   useEffect(() => {
     if (!isAuthenticated || !session?.user?.id) return;
 
@@ -743,7 +689,6 @@ export function EmailBox({ }: EmailBoxProps) {
         const { user } = await res.json();
         if (!user) return;
 
-        // ── Custom domains — pro users only ──────────────────────────────
         if (isPro && Array.isArray(user.customDomains) && user.customDomains.length > 0) {
           const verified = user.customDomains.filter((d: any) => d.verified === true);
           if (verified.length > 0) {
@@ -751,29 +696,19 @@ export function EmailBox({ }: EmailBoxProps) {
           }
         }
 
-        // ── Full inbox history from server ────────────────────────────────
-        // user.inboxes is the complete, recency-ordered list from the server.
-        // inboxes[0] = last used. This is what the old EmailBoxDataFetcher used.
         if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
-          // Merge: server order first (recency), then any local-only entries
           const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
           const serverSet = new Set(user.inboxes);
           const localOnly = localHistory.filter(e => !serverSet.has(e));
           const fullHistory = [...user.inboxes, ...localOnly];
 
-          // Update both state and localStorage with the complete merged list
           setEmailHistory(fullHistory);
           localStorage.setItem("emailHistory", JSON.stringify(fullHistory));
 
-          // Set the active inbox to the most recently used (inboxes[0])
-          // email is still "" at this point because init deliberately didn't set it
-          // so this always runs and always sets the correct inbox
           const lastUsed = user.inboxes[0];
           setEmail(lastUsed);
           setSelectedDomain(lastUsed.split('@')[1] || '');
         } else {
-          // No saved inboxes yet (brand new account) — generate a fresh one
-          // This is the only case where we generate a random email for auth users
           const domains = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains));
           const freeDomains = domains.filter(d => d.tier === 'free').map(d => d.domain);
           const allDomains = domains.map(d => d.domain);
@@ -791,42 +726,20 @@ export function EmailBox({ }: EmailBoxProps) {
           setEmail(freshEmail);
           setSelectedDomain(targetDomain);
           setEmailHistory([freshEmail]);
-          // This will be saved to server by the email-save useEffect below
         }
       } catch {
-        // silent — fall through to guest behavior if API fails
-        // The email-save effect won't fire because email is still ""
+        // silent — fall through to guest behavior
       }
     };
 
     fetchProfile();
   }, [isAuthenticated, session?.user?.id]); // eslint-disable-line
 
-  // ── EFFECT 3: email-save useEffect ───────────────────────────────────────
-  // Only fires when email has a real value (includes @).
-  // For authenticated users: only POSTs if this inbox isn't already in their
-  // server history — prevents phantom saves on restore.
-
+  // EFFECT 3: email-save
   useEffect(() => {
     if (!email || !email.includes('@')) return;
 
     if (isAuthenticated) {
-      /*
-        Always POST when the active inbox changes for authenticated users.
-        
-        The backend addInboxHandler does an upsert:
-        - If inbox is new → adds it to inboxes[]
-        - If inbox exists → moves it to inboxes[0] (marks as most recently used)
-        
-        This is what makes "Use" from history work correctly on reload —
-        the server reorders inboxes[] so inboxes[0] is the one the user
-        just switched to, and fetchProfile on next load restores that one.
-        
-        We previously guarded this with alreadyExists to prevent phantom saves
-        on page load, but that's already prevented by email starting as ""
-        and fetchProfile being the only thing that sets it for auth users.
-        By the time this effect fires with a real email, it's always intentional.
-      */
       fetch("/api/user/inboxes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -834,7 +747,6 @@ export function EmailBox({ }: EmailBoxProps) {
       }).catch(() => { });
     }
 
-    // Update localStorage with email at front
     const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
     let next = [email, ...h.filter(e => e !== email)];
     if (userPlan === "free") next = next.slice(0, 7);
@@ -842,7 +754,6 @@ export function EmailBox({ }: EmailBoxProps) {
     localStorage.setItem("emailHistory", JSON.stringify(next));
     setEmailHistory(next);
   }, [email, isAuthenticated, userPlan]); // eslint-disable-line
-
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -901,14 +812,13 @@ export function EmailBox({ }: EmailBoxProps) {
   useEffect(() => { if (isStorageLoaded) localStorage.setItem("dismissedMessageIds", JSON.stringify([...dismissedMessageIds])); }, [dismissedMessageIds, isStorageLoaded]);
   useEffect(() => { if (selectedDomain) localStorage.setItem("lastUsedDomain", selectedDomain); }, [selectedDomain]);
 
-
-  // This useEffect also stays as fixed in the previous session:
   useEffect(() => {
     if (!email || !email.includes('@')) return;
     if (isAuthenticated && !token) return;
     currentEmailRef.current = email;
     connectWebSocket(email);
     isRefreshingThrottleRef.current = false;
+    setIsThrottled(false); // FIX 1: reset throttle state on inbox change
     refreshInbox();
   }, [email, token, isAuthenticated, connectWebSocket]); // eslint-disable-line
 
@@ -926,6 +836,7 @@ export function EmailBox({ }: EmailBoxProps) {
     if (isRefreshingThrottleRef.current) return;
     if (isAuthenticated && !token) return;
     isRefreshingThrottleRef.current = true;
+    setIsThrottled(true); // FIX 1: mirror throttle ref into state so UI reacts
     setIsRefreshing(true);
     try {
       const headers: Record<string, string> = { "x-fce-client": "web-client" };
@@ -943,7 +854,10 @@ export function EmailBox({ }: EmailBoxProps) {
       }
     } catch (e) { console.error(e); } finally {
       setIsRefreshing(false);
-      setTimeout(() => { isRefreshingThrottleRef.current = false; }, 1000);
+      setTimeout(() => {
+        isRefreshingThrottleRef.current = false;
+        setIsThrottled(false); // FIX 1: unblock button visually after cooldown
+      }, 1000);
     }
   };
 
@@ -976,8 +890,6 @@ export function EmailBox({ }: EmailBoxProps) {
   };
 
   const deleteEmail = () => {
-    // Mark that the user has explicitly interacted — fetchProfile must not
-    // override the email after this point in this session.
     userHasInteractedRef.current = true;
 
     const allowedDomainsList = fetchedDomains
@@ -987,7 +899,6 @@ export function EmailBox({ }: EmailBoxProps) {
     let targetDomain: string;
 
     if (isPro && customDomainsFromProfile.length > 0) {
-      // Pro user with custom domains: randomly pick one of their verified domains
       const verifiedCustom = customDomainsFromProfile.filter(d => d.verified);
       if (verifiedCustom.length > 0) {
         targetDomain = verifiedCustom[Math.floor(Math.random() * verifiedCustom.length)].domain;
@@ -1006,7 +917,6 @@ export function EmailBox({ }: EmailBoxProps) {
     setDismissedMessageIds(new Set());
     setDomainExpiry(null);
   };
-
 
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
     if (!isAuthenticated && type === "message") { setAuthNeedFeature("Delete Message"); setIsAuthNeedOpen(true); return; }
@@ -1032,6 +942,9 @@ export function EmailBox({ }: EmailBoxProps) {
     setIsDeleteModalOpen(false); setItemToDelete(null);
   };
 
+  // FIX 2: changeEmail now always resets blockButtons when exiting edit mode,
+  // preventing the button from staying stuck disabled after the user clears
+  // the input and then exits editing via any path.
   const changeEmail = () => {
     if (!isAuthenticated) { setIsAuthNeedOpen(true); setAuthNeedFeature("Update Email"); return; }
     if (isEditing) {
@@ -1041,7 +954,12 @@ export function EmailBox({ }: EmailBoxProps) {
           openUpsell(!fetchedDomains.some(d => d.domain === selectedDomain) ? "Custom Domains" : "Pro Domains");
           return;
         }
-        setEmail(`${p}@${selectedDomain}`); setIsEditing(false); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
+        setEmail(`${p}@${selectedDomain}`);
+        setIsEditing(false);
+        setBlockButtons(false); // FIX 2: always clear on successful save
+        setReadMessageIds(new Set());
+        setDismissedMessageIds(new Set());
+        setDomainExpiry(null);
       } else setError("Enter a valid email prefix.");
     } else setIsEditing(true);
   };
@@ -1137,7 +1055,7 @@ export function EmailBox({ }: EmailBoxProps) {
     }
   };
 
-  // ── RENDER HELPERS — identical to original ────────────────────────────────
+  // ── RENDER HELPERS ────────────────────────────────────────────────────────
 
   const renderEmptyState = () => (
     <div className="py-14 flex flex-col items-center text-center px-6">
@@ -1541,8 +1459,21 @@ export function EmailBox({ }: EmailBoxProps) {
               <div className="flex flex-1 items-center gap-2">
                 <Input
                   value={email.split("@")[0]}
-                  onChange={(e) => { const v = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""); setEmail(`${v}@${selectedDomain}`); setBlockButtons(v.length === 0); }}
-                  className="flex-1 font-mono text-sm h-9" placeholder={t("placeholder_username")}
+                  onChange={(e) => {
+                    const v = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "");
+                    setEmail(`${v}@${selectedDomain}`);
+                    setBlockButtons(v.length === 0);
+                  }}
+                  // FIX 2: Escape key exits editing and always clears blockButtons,
+                  // so Refresh can never be stuck disabled after the user bails.
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setIsEditing(false);
+                      setBlockButtons(false);
+                    }
+                  }}
+                  className="flex-1 font-mono text-sm h-9"
+                  placeholder={t("placeholder_username")}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1607,10 +1538,6 @@ export function EmailBox({ }: EmailBoxProps) {
                 <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 group hover:border-foreground/30 transition-colors cursor-text"
                   onClick={isAuthenticated ? () => { setIsEditing(true); setDiscoveredUpdates({ newDomains: true }); } : undefined}>
                   <span className="font-mono text-[10px] text-muted-foreground/70 shrink-0 select-none">TO</span>
-                  {/*
-      Show email if we have one, or show a subtle pulse if still initializing.
-      This never causes layout shift because the container height is fixed.
-    */}
                   {email ? (
                     <span className="font-mono text-sm text-foreground flex-1 truncate">{email}</span>
                   ) : (
@@ -1660,8 +1587,24 @@ export function EmailBox({ }: EmailBoxProps) {
           {!isZen && (
             <div className="flex gap-px border-t border-border" style={{ background: "var(--border)" }}>
               {([
-                { icon: <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />, label: isRefreshing ? t("refreshing") : t("refresh"), hint: "R", disabled: blockButtons || isRefreshing, onClick: refreshInbox },
-                { icon: isEditing ? <CheckCheck className="h-3 w-3" /> : <Edit className="h-3 w-3" />, label: isEditing ? t("save") : t("change"), hint: "N", disabled: blockButtons, onClick: () => { changeEmail(); setDiscoveredUpdates({ newDomains: true }); }, hasBadge: hasNewDomain && !discoveredUpdates.newDomains && !isEditing },
+                {
+                  icon: <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />,
+                  label: isRefreshing ? t("refreshing") : isThrottled ? "wait…" : t("refresh"),
+                  hint: "R",
+                  // FIX 1: disable on isThrottled too, so users see the button
+                  // is actively cooling down rather than appearing interactive
+                  // but silently no-op-ing on click.
+                  disabled: blockButtons || isRefreshing || isThrottled,
+                  onClick: refreshInbox,
+                },
+                {
+                  icon: isEditing ? <CheckCheck className="h-3 w-3" /> : <Edit className="h-3 w-3" />,
+                  label: isEditing ? t("save") : t("change"),
+                  hint: "N",
+                  disabled: blockButtons,
+                  onClick: () => { changeEmail(); setDiscoveredUpdates({ newDomains: true }); },
+                  hasBadge: hasNewDomain && !discoveredUpdates.newDomains && !isEditing,
+                },
                 { icon: <Trash2 className="h-3 w-3" />, label: t("delete"), hint: "D", disabled: blockButtons, onClick: () => handleDeleteAction("inbox") },
                 { icon: <ListOrdered className="h-3 w-3" />, label: "Manage", hint: "", disabled: false, onClick: () => { if (isPro) setIsManageModalOpen(true); else openUpsell("Inbox Management"); } },
               ] as const).map(({ icon, label, hint, disabled, onClick, hasBadge }) => (

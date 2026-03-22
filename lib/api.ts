@@ -1,83 +1,169 @@
 import { verify } from '@/lib/jwt';
+import crypto from 'crypto';
+import { headers as nextHeaders, cookies as nextCookies } from 'next/headers';
 
 // These environment variables point to your *SERVICE API*, not the Next.js app itself.
-const SERVICE_API_URL = process.env.SERVICE_API_URL; // e.g., https://api.freecustom.email
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY; // The *same* key as in your service API
+const SERVICE_API_URL = process.env.SERVICE_API_URL;
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
 
-if (!SERVICE_API_URL || !INTERNAL_API_KEY) {
-    throw new Error("SERVICE_API_URL and INTERNAL_API_KEY must be defined in .env.local");
+if (!SERVICE_API_URL || !INTERNAL_API_KEY || !INTERNAL_API_SECRET) {
+    if (process.env.NODE_ENV === 'development') {
+        console.warn("⚠️ SERVICE_API_URL, INTERNAL_API_KEY, or INTERNAL_API_SECRET missing in .env. Falling back to dummy values for development.");
+    } else {
+        throw new Error("SERVICE_API_URL, INTERNAL_API_KEY, and INTERNAL_API_SECRET must be defined in .env.local");
+    }
 }
 
-/**
- * A secure server-side function to fetch data from your internal Service API.
- * This should ONLY be called from your Next.js API routes (`/api/*`).
- * @param path The path of the service endpoint (e.g., `/health`).
- * @param options The standard Fetch API options object.
- * @returns The JSON response from the service.
- */
-export async function fetchFromServiceAPI(path: string, options: RequestInit = {}) {
-    const url = `${SERVICE_API_URL}${path}`;
+const API_URL = SERVICE_API_URL || "http://localhost:3000";
+const API_KEY = INTERNAL_API_KEY || "dummy_key";
+const API_SECRET = INTERNAL_API_SECRET || "dummy_secret";
 
-    // Securely add the internal API key to the request headers.
-    const headers = {
-        'Content-Type': 'application/json',
-        'x-internal-api-key': INTERNAL_API_KEY!,
-        ...options.headers,
-    };
+/**
+ * Signs and executes a request to the Maildrop Internal API.
+ * This should ONLY be called from server-side code (API routes, Server Actions, Middleware).
+ */
+export async function callInternalAPI(
+    pathOrReq: string | Request,
+    pathOrOptions?: string | RequestInit,
+    optionsOrUser?: RequestInit | { id?: string },
+    userParam?: { id?: string }
+) {
+    let path: string;
+    let options: RequestInit;
+    let user: { id?: string } | undefined;
+
+    if (typeof pathOrReq !== 'string') {
+        // Style: callInternalAPI(req, path, options, user)
+        path = pathOrOptions as string;
+        options = (optionsOrUser as RequestInit) || {};
+        user = userParam;
+    } else {
+        // Style: callInternalAPI(path, options, user)
+        path = pathOrReq;
+        options = (pathOrOptions as RequestInit) || {};
+        user = optionsOrUser as { id?: string };
+    }
+
+    const url = `${API_URL}${path}`;
+    const method = (options.method || 'GET').toUpperCase();
+    
+    // 1. Extract Identity Context from incoming request
+    let cookieId = '';
+    let ip = 'unknown-ip';
+    let ua = '';
+    let lang = '';
+    let tz = '';
 
     try {
-        const response = await fetch(url, { ...options, headers });
+        const h = await nextHeaders();
+        const c = await nextCookies();
+        cookieId = c.get('fp_id')?.value || h.get('x-cookie-id') || '';
+        ip = h.get('cf-connecting-ip') || h.get('x-forwarded-for') || 'unknown-ip';
+        ua = h.get('user-agent') || '';
+        lang = h.get('accept-language') || '';
+        tz = h.get('x-timezone') || '';
+    } catch (e) {
+        // May fail if called outside of request context (e.g., static generation)
+    }
+
+    if (!cookieId) {
+        cookieId = crypto.randomUUID();
+    }
+
+    // 2. Generate Fingerprint
+    // hash(cookieId + ip_prefix + ua + tz + lang)
+    // We mask the IP to a /24 subnet (e.g., 192.168.1.0)
+    let ipPrefix = 'unknown-ip';
+    if (ip !== 'unknown-ip') {
+        if (ip.includes('.')) {
+            // IPv4: 1.2.3.4 -> 1.2.3.0
+            ipPrefix = ip.split('.').slice(0, 3).join('.') + '.0';
+        } else if (ip.includes(':')) {
+            // IPv6: mask to /48 or something similar. For simplicity, we'll just take the first 3 groups.
+            ipPrefix = ip.split(':').slice(0, 3).join(':') + '::';
+        }
+    }
+
+    const fpString = `${cookieId}|${ipPrefix}|${ua}|${tz}|${lang}`;
+    const fp = crypto.createHash('sha256').update(fpString).digest('hex');
+
+    // 3. Prepare for Signing
+    const timestamp = Date.now().toString();
+    const nonce = crypto.randomUUID();
+    const bodyStr = options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : '';
+    
+    // Format: timestamp.METHOD.path.body
+    const payload = `${timestamp}.${method}.${path}.${bodyStr}`;
+    const signature = crypto.createHmac('sha256', API_SECRET!)
+        .update(payload)
+        .digest('hex');
+
+    // 4. Prepare Headers
+    const reqHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        // Authentication
+        'x-internal-api-key': API_KEY!,
+        'x-signature': signature,
+        'x-timestamp': timestamp,
+        'x-nonce': nonce,
+        
+        // Identity & Context (for backend-side fingerprinting)
+        'x-fp': fp,
+        'x-cookie-id': cookieId,
+        'x-user-id': user?.id || '',
+        'x-forwarded-for': ip,
+        'user-agent': ua,
+        'accept-language': lang,
+        'x-timezone': tz,
+    };
+
+    if (options.headers) {
+        Object.entries(options.headers).forEach(([key, val]) => {
+            reqHeaders[key.toLowerCase()] = String(val);
+        });
+    }
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: reqHeaders,
+            // Account for Progressive Friction (latency up to 1.5s usually, so 5-10s is safe)
+            signal: AbortSignal.timeout(10000),
+        });
+
+        if (response.status === 429) {
+            throw new Error('TOO_MANY_REQUESTS');
+        }
         
         // Handle non-ok responses
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
-            // Re-throw an error with a message from the service API if available
             throw new Error(errorData.message || `Service API request failed with status ${response.status}`);
         }
         
-        // Handle successful but empty responses (e.g., for a DELETE request)
+        // Handle successful but empty responses
         if (response.status === 204 || response.headers.get('content-length') === '0') {
             return { success: true };
         }
 
         return await response.json();
     } catch (error) {
-        console.error(`Service API fetch error for path ${path}:`, error);
-        // Ensure we always throw an Error object
+        console.error(`Internal API call error for ${path}:`, error);
         throw error instanceof Error ? error : new Error('A network or parsing error occurred.');
     }
 }
 
 /**
- * Same as fetchFromServiceAPI but returns { ok, status, data } instead of throwing on non-ok.
- * Use this in API routes that should forward the backend's exact status code and error body to the frontend.
+ * Legacy support for fetchFromServiceAPI, now routed through callInternalAPI.
  */
-export async function fetchFromServiceAPIWithStatus(path: string, options: RequestInit = {}): Promise<{ ok: boolean; status: number; data: unknown }> {
-    const url = `${SERVICE_API_URL}${path}`;
-    const headers = {
-        'Content-Type': 'application/json',
-        'x-internal-api-key': INTERNAL_API_KEY!,
-        ...options.headers,
-    };
-
-    const response = await fetch(url, { ...options, headers });
-
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
-        return { ok: false, status: response.status, data };
-    }
-    if (response.status === 204 || response.headers.get('content-length') === '0') {
-        return { ok: true, status: response.status, data: { success: true } };
-    }
-    const data = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
-    return { ok: true, status: response.status, data };
+export async function fetchFromServiceAPI(path: string, options: RequestInit = {}, user?: { id?: string }) {
+    return callInternalAPI(path, options, user);
 }
 
 /**
  * Verifies the JWT from the user's browser.
  * This is used to protect the Next.js API routes themselves.
- * @param request The incoming Next.js API request.
- * @returns The decoded JWT payload or null if invalid.
  */
 export async function authenticateRequest(request: Request): Promise<any | null> {
     let token = request.headers.get('Authorization')?.split('Bearer ')[1];
