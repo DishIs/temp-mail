@@ -558,40 +558,82 @@ export function EmailBox({ }: EmailBoxProps) {
   // ── EFFECTS ────────────────────────────────────────────────────────────────
 
   const connectWebSocket = useCallback(async (mailbox: string) => {
-    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+
     const prev = wsRef.current;
-    if (prev) { prev.onclose = null; if (prev.readyState < 2) prev.close(1000, "mailbox_change"); }
-    let wsToken = "";
+    if (prev) {
+      prev.onclose = null;
+      if (prev.readyState < 2) prev.close(1000, 'mailbox_change');
+    }
+
+    // Always fetch a fresh token
+    let wsToken = '';
     try {
-      const res = await fetch("/api/ws-ticket", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mailbox }) });
-      if (res.ok) { const data = await res.json(); wsToken = data.token ?? ""; }
+      const res = await fetch('/api/ws-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mailbox }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        wsToken = data.token ?? '';
+      }
     } catch { }
+
+    if (!wsToken) {
+      // Back off and retry token fetch if it fails
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
+      reconnectAttemptsRef.current++;
+      reconnectTimerRef.current = setTimeout(
+        () => { if (currentEmailRef.current) connectWebSocket(currentEmailRef.current); },
+        delay
+      );
+      return;
+    }
+
     const url = `wss://api2.freecustom.email/?mailbox=${encodeURIComponent(mailbox)}&token=${encodeURIComponent(wsToken)}`;
-    const ws = new WebSocket(url); wsRef.current = ws;
-    ws.onopen = () => { reconnectAttemptsRef.current = 0; };
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      reconnectAttemptsRef.current = 0;
+    };
+
     ws.onmessage = (ev) => {
       try {
         const d = JSON.parse(ev.data);
-        if (d.type !== "new_mail" || d.mailbox !== currentEmailRef.current) return;
-        const msg: Message = { id: d.id, from: d.from, to: d.to, subject: d.subject, date: d.date, hasAttachments: d.hasAttachment, otp: d.otp ?? null, verificationLink: d.verificationLink ?? null };
+        if (d.type !== 'new_mail' || d.mailbox !== currentEmailRef.current) return;
+        const msg: Message = {
+          id: d.id, from: d.from, to: d.to, subject: d.subject,
+          date: d.date, hasAttachments: d.hasAttachment,
+          otp: d.otp ?? null, verificationLink: d.verificationLink ?? null,
+        };
         setMessagesRef.current(prev => {
           if (prev.some(m => m.id === msg.id)) return prev;
-          sendNotificationRef.current(`New Email from ${parseSenderName(msg.from)}`, msg.subject || "(No Subject)");
+          sendNotificationRef.current(`New Email from ${parseSenderName(msg.from)}`, msg.subject || '(No Subject)');
           return [msg, ...prev];
         });
-        setFlashQueue(q => [...q, { id: msg.id, from: parseSenderName(msg.from), subject: msg.subject || "" }]);
+        setFlashQueue(q => [...q, { id: msg.id, from: parseSenderName(msg.from), subject: msg.subject || '' }]);
         setNewRowIds(s => new Set(s).add(msg.id));
         setTimeout(() => setNewRowIds(s => { const n = new Set(s); n.delete(msg.id); return n; }), 1400);
-      } catch (_) { }
+      } catch { }
     };
+
     ws.onerror = () => { };
+
     ws.onclose = (ev) => {
-      if (ev.code === 1000) return;
+      if (ev.code === 1000) return; // intentional close, don't reconnect
       const delay = Math.min(500 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
       reconnectAttemptsRef.current++;
-      reconnectTimerRef.current = setTimeout(() => { if (currentEmailRef.current) connectWebSocket(currentEmailRef.current); }, delay);
+      reconnectTimerRef.current = setTimeout(
+        () => { if (currentEmailRef.current) connectWebSocket(currentEmailRef.current); },
+        delay
+      );
     };
-  }, []);
+  }, []); // eslint-disable-line
 
   useEffect(() => () => {
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
@@ -1132,7 +1174,7 @@ export function EmailBox({ }: EmailBoxProps) {
                     </div>
                     {!isCompact && !isPro && (
                       <button type="button"
-                        onClick={(e) => { e.stopPropagation(); openUpsell("Permanent Email Storage"); }}
+                        
                         className="font-mono text-[10px] text-muted-foreground/35 hover:text-amber-500/80 flex items-center gap-1 pl-0 sm:pl-7 transition-colors text-left"
                         title="Upgrade to Pro — emails never expire">
                         <Clock className="h-2.5 w-2.5 shrink-0" />

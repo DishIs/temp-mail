@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const token = await new SignJWT({ mailbox, plan, sub: userId })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('60s') // Only needs to last long enough to open the socket
+    .setExpirationTime('8h') // Only needs to last long enough to open the socket
     .sign(jwtSecret);
 
   return NextResponse.json({ token });
