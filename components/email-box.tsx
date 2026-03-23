@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { setCookie } from "cookies-next";
+import toast from "react-hot-toast";
 import {
   Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck,
   Star, ListOrdered, Clock, Archive, ArchiveRestore,
   Settings, Crown, ChevronRight, Loader, Paperclip, ShieldCheck,
   Lock, ExternalLink, Globe, Zap, Link2, ChevronDown, Terminal, Download,
-  FileText, X, Cloud, ChevronUp, Pin, PinOff,
+  FileText, X, Cloud, ChevronUp, Pin, PinOff, AlertTriangle, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,6 @@ import { QRCodeModal } from "./qr-code-modal";
 import { CliModal } from "./cli-modal";
 import { cn } from "@/lib/utils";
 import { MessageModal } from "./message-modal";
-import { ErrorPopup } from "./error-popup";
 import { DeleteConfirmationModal } from "./delete-confirmation-modal";
 import { ShareDropdown } from "./ShareDropdown";
 import {
@@ -31,6 +31,7 @@ import { AuthNeed, UpsellModal } from "./upsell-modal";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 import { BrandAvatar } from "./brand-avatar";
 import { useSession } from "next-auth/react";
+import type { ServerProfile } from "@/app/[locale]/page";
 
 const PHONE_AFFILIATE_URL = "https://v-numbers.com/?ref=freecustomemail";
 const FREE_NOTE_LIMIT = 20;
@@ -178,6 +179,131 @@ const getExpiry = (dateStr: string, hours: number) => {
   if (d.getDate() !== now.getDate()) return `Tomorrow ${timeStr}`;
   return `Today ${timeStr}`;
 };
+
+// ── Toast helpers ─────────────────────────────────────────────────────────────
+// Centralised error display. All API errors go through here instead of setError().
+
+type ToastErrorKind =
+  | "rate_limit_free"       // 429 on a free/anon user → show upgrade CTA
+  | "rate_limit_pro"        // 429 on a pro user → just "slow down" with retry time
+  | "quota_exceeded"        // inbox / feature quota hit → upgrade CTA
+  | "network"               // fetch/timeout → plain error
+  | "auth"                  // 401 → sign in prompt
+  | "generic"               // anything else
+
+function showApiError(kind: ToastErrorKind, message?: string, retryAfterSec?: number) {
+  const duration = 5000;
+
+  if (kind === "rate_limit_free") {
+    toast.custom(
+      (t) => (
+        <div className={cn(
+          "flex items-start gap-3 rounded-lg border border-amber-500/30 bg-background px-4 py-3 shadow-lg max-w-sm",
+          t.visible ? "animate-enter" : "animate-leave"
+        )}>
+          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="font-mono text-xs font-semibold text-foreground">Refreshing too fast</p>
+            <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+              {message || "You've hit the free tier refresh limit. Upgrade for higher limits."}
+            </p>
+            <a
+              href="/pricing"
+              className="inline-flex items-center gap-1 mt-2 font-mono text-[11px] text-amber-600 dark:text-amber-400 hover:underline"
+            >
+              <Sparkles className="h-3 w-3" />
+              View Pro plans →
+            </a>
+          </div>
+          <button onClick={() => toast.dismiss(t.id)} className="shrink-0 text-muted-foreground/50 hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ),
+      { duration, id: "rate-limit" }
+    );
+    return;
+  }
+
+  if (kind === "rate_limit_pro") {
+    const retryMsg = retryAfterSec ? ` Try again in ${retryAfterSec}s.` : "";
+    toast.error(`Refreshing too fast.${retryMsg}`, { duration: 3000, id: "rate-limit" });
+    return;
+  }
+
+  if (kind === "quota_exceeded") {
+    toast.custom(
+      (t) => (
+        <div className={cn(
+          "flex items-start gap-3 rounded-lg border border-violet-500/30 bg-background px-4 py-3 shadow-lg max-w-sm",
+          t.visible ? "animate-enter" : "animate-leave"
+        )}>
+          <Lock className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="font-mono text-xs font-semibold text-foreground">Feature limit reached</p>
+            <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+              {message || "You've reached the limit for your current plan."}
+            </p>
+            <a
+              href="/pricing"
+              className="inline-flex items-center gap-1 mt-2 font-mono text-[11px] text-violet-600 dark:text-violet-400 hover:underline"
+            >
+              <Crown className="h-3 w-3" />
+              Upgrade to Pro →
+            </a>
+          </div>
+          <button onClick={() => toast.dismiss(t.id)} className="shrink-0 text-muted-foreground/50 hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ),
+      { duration, id: "quota" }
+    );
+    return;
+  }
+
+  if (kind === "auth") {
+    toast.error(message || "Session expired. Please sign in again.", { duration: 4000 });
+    return;
+  }
+
+  if (kind === "network") {
+    toast.error(message || "Network error — check your connection and try again.", { duration: 4000 });
+    return;
+  }
+
+  // generic
+  toast.error(message || "Something went wrong. Please try again.", { duration: 4000 });
+}
+
+/**
+ * Classifies an API response into a ToastErrorKind.
+ * Call after a failed fetch — pass status code + parsed error body.
+ */
+function classifyApiError(
+  status: number,
+  body: { message?: string; code?: string } | null,
+  isPro: boolean,
+  retryAfter?: string | null,
+): { kind: ToastErrorKind; message?: string; retryAfterSec?: number } {
+  const retryAfterSec = retryAfter ? parseInt(retryAfter, 10) : undefined;
+
+  if (status === 429) {
+    return isPro
+      ? { kind: "rate_limit_pro", message: body?.message, retryAfterSec }
+      : { kind: "rate_limit_free", message: body?.message, retryAfterSec };
+  }
+  if (status === 401 || status === 403) {
+    return { kind: "auth", message: body?.message };
+  }
+  if (status === 402 || body?.code === "QUOTA_EXCEEDED" || body?.code === "PLAN_LIMIT") {
+    return { kind: "quota_exceeded", message: body?.message };
+  }
+  if (status === 0 || status >= 500) {
+    return { kind: "network", message: body?.message };
+  }
+  return { kind: "generic", message: body?.message };
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -353,15 +479,16 @@ function PinButton({ isPinned, onClick, size = "sm", hidden }: { isPinned: boole
   );
 }
 
-interface EmailBoxProps { }
+interface EmailBoxProps {
+  serverProfile?: ServerProfile | null;
+}
 
-export function EmailBox({ }: EmailBoxProps) {
+export function EmailBox({ serverProfile }: EmailBoxProps) {
   const t = useTranslations("EmailBox");
 
   const { data: session, status: sessionStatus } = useSession();
 
   const isSessionLoading = sessionStatus === "loading";
-
   const isAuthenticated = !!session;
   // @ts-ignore
   const userPlan = session?.user?.plan || "none";
@@ -371,12 +498,18 @@ export function EmailBox({ }: EmailBoxProps) {
   const API_ENDPOINT = isAuthenticated ? "/api/private-mailbox" : "/api/public-mailbox";
 
   // ── STATE ──────────────────────────────────────────────────────────────────
-  const [customDomainsFromProfile, setCustomDomainsFromProfile] = useState<{ domain: string; verified: boolean }[]>([]);
+  const [customDomainsFromProfile, setCustomDomainsFromProfile] = useState<{ domain: string; verified: boolean }[]>(
+    // Seed from server-side prefetch immediately — no flash
+    serverProfile?.customDomains ?? []
+  );
   const [fetchedDomains, setFetchedDomains] = useState<FetchedDomain[]>(DOMAIN_SEED);
   const [domainExpiry, setDomainExpiry] = useState<DomainExpiry | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [emailHistory, setEmailHistory] = useState<string[]>([]);
+  const [emailHistory, setEmailHistory] = useState<string[]>(
+    // Seed inbox history from server immediately for logged-in users
+    serverProfile?.inboxes ?? []
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedDomain, setSelectedDomain] = useState("");
@@ -388,10 +521,7 @@ export function EmailBox({ }: EmailBoxProps) {
   const [otpCopied, setOTPCopied] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // FIX 1: New state to expose throttle status to the UI so the button
-  // gives real feedback instead of silently dropping clicks.
   const [isThrottled, setIsThrottled] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: "email" | "message"; id?: string } | null>(null);
@@ -401,7 +531,11 @@ export function EmailBox({ }: EmailBoxProps) {
   const [showAttachmentNotice, setShowAttachmentNotice] = useState(false);
   const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(new Set());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [userSettings, setUserSettings] = useState<UserSettings>({
+    ...DEFAULT_SETTINGS,
+    // Seed settings from server prefetch if available
+    ...(serverProfile?.settings ?? {}),
+  });
   const [activeTab, setActiveTab] = useState<"all" | "dismissed">("all");
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const [dismissedMessageIds, setDismissedMessageIds] = useState<Set<string>>(new Set());
@@ -412,7 +546,10 @@ export function EmailBox({ }: EmailBoxProps) {
   const [authNeedFeature, setAuthNeedFeature] = useState("LoggedIn Features");
   const [flashQueue, setFlashQueue] = useState<{ id: string; from: string; subject: string }[]>([]);
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set());
-  const [inboxNotes, setInboxNotes] = useState<Record<string, string>>({});
+  const [inboxNotes, setInboxNotes] = useState<Record<string, string>>(
+    // Seed notes from server prefetch
+    serverProfile?.inboxNotes ?? {}
+  );
   const [editingNoteInbox, setEditingNoteInbox] = useState<string | null>(null);
   const [noteInputValue, setNoteInputValue] = useState("");
   const [noteHintDismissed, setNoteHintDismissed] = useState(true);
@@ -421,6 +558,9 @@ export function EmailBox({ }: EmailBoxProps) {
   const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
   const [pinnedInboxes, setPinnedInboxes] = useState<string[]>([]);
   const [unseenSettingsFeatures, setUnseenSettingsFeatures] = useState<Set<string>>(new Set());
+
+  // Track whether we've already bootstrapped from serverProfile so we only do it once
+  const serverProfileAppliedRef = useRef(false);
 
   // ── REFS ───────────────────────────────────────────────────────────────────
   const skipNextSettingsSave = useRef(false);
@@ -569,7 +709,6 @@ export function EmailBox({ }: EmailBoxProps) {
       if (prev.readyState < 2) prev.close(1000, 'mailbox_change');
     }
 
-    // Always fetch a fresh token
     let wsToken = '';
     try {
       const res = await fetch('/api/ws-ticket', {
@@ -584,7 +723,6 @@ export function EmailBox({ }: EmailBoxProps) {
     } catch { }
 
     if (!wsToken) {
-      // Back off and retry token fetch if it fails
       const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
       reconnectAttemptsRef.current++;
       reconnectTimerRef.current = setTimeout(
@@ -598,9 +736,7 @@ export function EmailBox({ }: EmailBoxProps) {
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      reconnectAttemptsRef.current = 0;
-    };
+    ws.onopen = () => { reconnectAttemptsRef.current = 0; };
 
     ws.onmessage = (ev) => {
       try {
@@ -625,7 +761,7 @@ export function EmailBox({ }: EmailBoxProps) {
     ws.onerror = () => { };
 
     ws.onclose = (ev) => {
-      if (ev.code === 1000) return; // intentional close, don't reconnect
+      if (ev.code === 1000) return;
       const delay = Math.min(500 * Math.pow(2, reconnectAttemptsRef.current), 30_000);
       reconnectAttemptsRef.current++;
       reconnectTimerRef.current = setTimeout(
@@ -642,10 +778,11 @@ export function EmailBox({ }: EmailBoxProps) {
 
   const userHasInteractedRef = useRef(false);
 
-  // EFFECT 1: init
+  // EFFECT 1: init — uses serverProfile if available, skips redundant client fetch
   useEffect(() => {
     const init = async () => {
       await fetchToken();
+
       const cacheKey = `domains_v2_${isPro ? "pro" : isAuthenticated ? "free" : "anon"}`;
       const cached = sessionStorage.getItem(cacheKey);
       let currentFetchedDomains = DOMAIN_SEED;
@@ -668,8 +805,12 @@ export function EmailBox({ }: EmailBoxProps) {
         })
         .catch(() => { });
 
+      // Load local storage state
       const savedSettings = safeJsonParse<UserSettings | null>(localStorage.getItem("userSettings"), null);
-      if (savedSettings) setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
+      // Server settings take priority over local cache, local cache wins over defaults
+      if (savedSettings && !serverProfile?.settings) {
+        setUserSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
+      }
       setReadMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("readMessageIds"), [])));
       setDismissedMessageIds(new Set(safeJsonParse<string[]>(localStorage.getItem("dismissedMessageIds"), [])));
       setPinnedMessageIds(safeJsonParse<string[]>(localStorage.getItem("pinnedMessages"), []));
@@ -678,6 +819,46 @@ export function EmailBox({ }: EmailBoxProps) {
       setUnseenSettingsFeatures(new Set(["categorization"].filter(f => !seenFeatures.includes(f))));
       setIsStorageLoaded(true);
 
+      // ── Logged-in users: use serverProfile data (already seeded in useState) ──
+      if (isAuthenticated && serverProfile && !serverProfileAppliedRef.current) {
+        serverProfileAppliedRef.current = true;
+
+        // Merge local inbox history with server inboxes
+        const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
+        const serverSet = new Set(serverProfile.inboxes);
+        const localOnly = localHistory.filter(e => !serverSet.has(e));
+        const fullHistory = [...serverProfile.inboxes, ...localOnly];
+
+        setEmailHistory(fullHistory);
+        localStorage.setItem("emailHistory", JSON.stringify(fullHistory));
+
+        if (serverProfile.inboxes.length > 0) {
+          const lastUsed = serverProfile.inboxes[0];
+          setEmail(lastUsed);
+          setSelectedDomain(lastUsed.split('@')[1] || '');
+        } else {
+          // No inboxes yet — generate one
+          const allowedDomainsList = currentFetchedDomains
+            .filter(d => checkDomainAllowed(d.domain, currentFetchedDomains))
+            .map(d => d.domain);
+          const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("lastUsedDomain"), freeDomainSet);
+          const freshEmail = generateRandomEmail(d, isPro);
+          setEmail(freshEmail);
+          setSelectedDomain(d);
+          setEmailHistory([freshEmail]);
+        }
+
+        // Merge notes: server wins on conflicts
+        if (serverProfile.inboxNotes) {
+          const localNotes = safeJsonParse<Record<string, string>>(localStorage.getItem("inboxNotes"), {});
+          const merged = { ...localNotes, ...serverProfile.inboxNotes };
+          setInboxNotes(merged);
+          localStorage.setItem("inboxNotes", JSON.stringify(merged));
+        }
+        return; // Skip the guest path below
+      }
+
+      // ── Logged-in users without serverProfile: client-side fetch (fallback) ──
       if (isAuthenticated) {
         const localHistory = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
         if (localHistory.length > 0) {
@@ -686,6 +867,7 @@ export function EmailBox({ }: EmailBoxProps) {
         return;
       }
 
+      // ── Guest users: pure client-side random address ──
       const currentFreeSet = new Set(currentFetchedDomains.filter(d => d.tier === "free").map(d => d.domain));
       const allowedDomainsList = currentFetchedDomains
         .filter(d => checkDomainAllowed(d.domain, currentFetchedDomains))
@@ -718,9 +900,11 @@ export function EmailBox({ }: EmailBoxProps) {
     init();
   }, []); // eslint-disable-line
 
-  // EFFECT 2: fetchProfile
+  // EFFECT 2: fetchProfile — only runs for logged-in users WITHOUT serverProfile (fallback)
   useEffect(() => {
     if (!isAuthenticated || !session?.user?.id) return;
+    // If we already bootstrapped from serverProfile, skip the client-side fetch
+    if (serverProfile && serverProfileAppliedRef.current) return;
 
     const fetchProfile = async () => {
       try {
@@ -733,9 +917,7 @@ export function EmailBox({ }: EmailBoxProps) {
 
         if (isPro && Array.isArray(user.customDomains) && user.customDomains.length > 0) {
           const verified = user.customDomains.filter((d: any) => d.verified === true);
-          if (verified.length > 0) {
-            setCustomDomainsFromProfile(verified);
-          }
+          if (verified.length > 0) setCustomDomainsFromProfile(verified);
         }
 
         if (Array.isArray(user.inboxes) && user.inboxes.length > 0) {
@@ -754,23 +936,20 @@ export function EmailBox({ }: EmailBoxProps) {
           const domains = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains));
           const freeDomains = domains.filter(d => d.tier === 'free').map(d => d.domain);
           const allDomains = domains.map(d => d.domain);
-
           let targetDomain: string;
           if (isPro && customDomainsFromProfile.length > 0) {
             const verified = customDomainsFromProfile.filter(d => d.verified);
-            targetDomain = verified[Math.floor(Math.random() * verified.length)]?.domain
-              || allDomains[0] || 'ditube.info';
+            targetDomain = verified[Math.floor(Math.random() * verified.length)]?.domain || allDomains[0] || 'ditube.info';
           } else {
             targetDomain = freeDomains[0] || allDomains[0] || 'ditube.info';
           }
-
           const freshEmail = generateRandomEmail(targetDomain, isPro);
           setEmail(freshEmail);
           setSelectedDomain(targetDomain);
           setEmailHistory([freshEmail]);
         }
       } catch {
-        // silent — fall through to guest behavior
+        // silent — keep current state
       }
     };
 
@@ -800,23 +979,32 @@ export function EmailBox({ }: EmailBoxProps) {
   useEffect(() => {
     const fetch_ = async () => {
       if (!isAuthenticated) return;
+      // Skip if we already have server-fetched settings
+      if (serverProfile?.settings) return;
       try {
         const r = await fetch("/api/user/settings");
         if (r.ok) {
           const d = await r.json();
-          if (d.settings) { skipNextSettingsSave.current = true; setUserSettings(p => ({ ...p, ...d.settings })); localStorage.setItem("userSettings", JSON.stringify({ ...DEFAULT_SETTINGS, ...d.settings })); }
+          if (d.settings) {
+            skipNextSettingsSave.current = true;
+            setUserSettings(p => ({ ...p, ...d.settings }));
+            localStorage.setItem("userSettings", JSON.stringify({ ...DEFAULT_SETTINGS, ...d.settings }));
+          }
         }
       } catch { }
     };
     if (isStorageLoaded) fetch_();
-  }, [isAuthenticated, isStorageLoaded]);
+  }, [isAuthenticated, isStorageLoaded, serverProfile?.settings]);
 
   useEffect(() => {
     if (!isStorageLoaded) return;
     const local = safeJsonParse<Record<string, string>>(localStorage.getItem("inboxNotes"), {});
-    setInboxNotes(local);
+    // If already seeded from serverProfile, only apply local keys not in server data
+    if (!serverProfile?.inboxNotes) {
+      setInboxNotes(local);
+    }
     setNoteHintDismissed(localStorage.getItem("noteHintSeen") === "1");
-    if (isPro && isAuthenticated) {
+    if (isPro && isAuthenticated && !serverProfile?.inboxNotes) {
       fetch("/api/user/inbox-notes")
         .then(r => r.json())
         .then(d => {
@@ -860,7 +1048,7 @@ export function EmailBox({ }: EmailBoxProps) {
     currentEmailRef.current = email;
     connectWebSocket(email);
     isRefreshingThrottleRef.current = false;
-    setIsThrottled(false); // FIX 1: reset throttle state on inbox change
+    setIsThrottled(false);
     refreshInbox();
   }, [email, token, isAuthenticated, connectWebSocket]); // eslint-disable-line
 
@@ -874,17 +1062,27 @@ export function EmailBox({ }: EmailBoxProps) {
     return null;
   };
 
+  // ── refreshInbox — proper error classification with toasts ────────────────
   const refreshInbox = async () => {
     if (isRefreshingThrottleRef.current) return;
     if (isAuthenticated && !token) return;
     isRefreshingThrottleRef.current = true;
-    setIsThrottled(true); // FIX 1: mirror throttle ref into state so UI reacts
+    setIsThrottled(true);
     setIsRefreshing(true);
     try {
       const headers: Record<string, string> = { "x-fce-client": "web-client" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}`, { headers });
-      if (!r.ok) throw new Error(r.status === 429 ? "Refreshing too fast." : `HTTP ${r.status}`);
+
+      if (!r.ok) {
+        let body: { message?: string; code?: string } | null = null;
+        try { body = await r.json(); } catch { }
+        const retryAfter = r.headers.get("Retry-After");
+        const { kind, message, retryAfterSec } = classifyApiError(r.status, body, isPro, retryAfter);
+        showApiError(kind, message, retryAfterSec);
+        return;
+      }
+
       const d = await r.json();
       setShowAttachmentNotice(!!d.wasAttachmentStripped);
       setDomainExpiry(d.domain_expiry ?? null);
@@ -892,13 +1090,18 @@ export function EmailBox({ }: EmailBoxProps) {
         const newMsgs = d.data.filter((m: Message) => !readMessageIds.has(m.id) && !messages.some(old => old.id === m.id));
         if (newMsgs.length > 0 && messages.length > 0) sendNotification(`New Email from ${parseSenderName(newMsgs[0].from)}`, newMsgs[0].subject || "(No Subject)");
         setMessages(d.data);
-        const ids = new Set<string>(); d.data.forEach((msg: Message) => { if (localStorage.getItem(`saved-msg-${msg.id}`)) ids.add(msg.id); }); setSavedMessageIds(ids);
+        const ids = new Set<string>();
+        d.data.forEach((msg: Message) => { if (localStorage.getItem(`saved-msg-${msg.id}`)) ids.add(msg.id); });
+        setSavedMessageIds(ids);
       }
-    } catch (e) { console.error(e); } finally {
+    } catch (e) {
+      // Actual network error (fetch threw, no response)
+      showApiError("network");
+    } finally {
       setIsRefreshing(false);
       setTimeout(() => {
         isRefreshingThrottleRef.current = false;
-        setIsThrottled(false); // FIX 1: unblock button visually after cooldown
+        setIsThrottled(false);
       }, 1000);
     }
   };
@@ -907,16 +1110,31 @@ export function EmailBox({ }: EmailBoxProps) {
 
   const toggleSaveMessage = async (msg: Message, e: React.MouseEvent) => {
     e.stopPropagation(); if (userPlan !== "free") return;
-    if (savedMessageIds.has(msg.id)) { localStorage.removeItem(`saved-msg-${msg.id}`); setSavedMessageIds(p => { const s = new Set(p); s.delete(msg.id); return s; }); }
-    else {
+    if (savedMessageIds.has(msg.id)) {
+      localStorage.removeItem(`saved-msg-${msg.id}`);
+      setSavedMessageIds(p => { const s = new Set(p); s.delete(msg.id); return s; });
+    } else {
       try {
         const headers: Record<string, string> = { "x-fce-client": "web-client" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
         const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${msg.id}`, { headers });
-        if (!r.ok) throw new Error("Fetch failed");
+        if (!r.ok) {
+          let body: { message?: string; code?: string } | null = null;
+          try { body = await r.json(); } catch { }
+          const { kind, message } = classifyApiError(r.status, body, isPro);
+          showApiError(kind, message);
+          return;
+        }
         const d = await r.json();
-        if (d.success) { localStorage.setItem(`saved-msg-${msg.id}`, JSON.stringify(d.data)); setSavedMessageIds(p => new Set(p).add(msg.id)); } else setError("Failed to save message.");
-      } catch (err) { setError(`Save error: ${err}`); }
+        if (d.success) {
+          localStorage.setItem(`saved-msg-${msg.id}`, JSON.stringify(d.data));
+          setSavedMessageIds(p => new Set(p).add(msg.id));
+        } else {
+          showApiError("generic", d.message || "Failed to save message.");
+        }
+      } catch {
+        showApiError("network");
+      }
     }
   };
 
@@ -939,7 +1157,6 @@ export function EmailBox({ }: EmailBoxProps) {
       .map(d => d.domain);
 
     let targetDomain: string;
-
     if (isPro && customDomainsFromProfile.length > 0) {
       const verifiedCustom = customDomainsFromProfile.filter(d => d.verified);
       if (verifiedCustom.length > 0) {
@@ -970,23 +1187,34 @@ export function EmailBox({ }: EmailBoxProps) {
     if (itemToDelete?.type === "email") {
       const allowedDomainsList = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains)).map(d => d.domain);
       const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("primaryDomain"), freeDomainSet);
-      const ne = generateRandomEmail(d, isPro); setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
+      const ne = generateRandomEmail(d, isPro);
+      setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
     } else if (itemToDelete?.type === "message" && itemToDelete.id) {
       try {
         const headers: Record<string, string> = { "x-fce-client": "web-client" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
         const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${itemToDelete.id}`, { method: "DELETE", headers });
-        if (!r.ok) throw new Error("Delete failed");
+        if (!r.ok) {
+          let body: { message?: string; code?: string } | null = null;
+          try { body = await r.json(); } catch { }
+          const { kind, message } = classifyApiError(r.status, body, isPro);
+          showApiError(kind, message);
+          return;
+        }
         const d = await r.json();
-        if (d.success) setMessages(msgs => msgs.filter(m => m.id !== itemToDelete.id)); else throw new Error(d.message);
-      } catch (err) { setError(`Delete failed: ${err}`); }
+        if (d.success) {
+          setMessages(msgs => msgs.filter(m => m.id !== itemToDelete.id));
+        } else {
+          showApiError("generic", d.message || "Delete failed.");
+        }
+      } catch {
+        showApiError("network");
+      }
     }
-    setIsDeleteModalOpen(false); setItemToDelete(null);
+    setIsDeleteModalOpen(false);
+    setItemToDelete(null);
   };
 
-  // FIX 2: changeEmail now always resets blockButtons when exiting edit mode,
-  // preventing the button from staying stuck disabled after the user clears
-  // the input and then exits editing via any path.
   const changeEmail = () => {
     if (!isAuthenticated) { setIsAuthNeedOpen(true); setAuthNeedFeature("Update Email"); return; }
     if (isEditing) {
@@ -998,12 +1226,16 @@ export function EmailBox({ }: EmailBoxProps) {
         }
         setEmail(`${p}@${selectedDomain}`);
         setIsEditing(false);
-        setBlockButtons(false); // FIX 2: always clear on successful save
+        setBlockButtons(false);
         setReadMessageIds(new Set());
         setDismissedMessageIds(new Set());
         setDomainExpiry(null);
-      } else setError("Enter a valid email prefix.");
-    } else setIsEditing(true);
+      } else {
+        showApiError("generic", "Enter a valid email prefix.");
+      }
+    } else {
+      setIsEditing(true);
+    }
   };
 
   const handleUseHistoryEmail = (he: string) => {
@@ -1026,7 +1258,11 @@ export function EmailBox({ }: EmailBoxProps) {
     setEditingNoteInbox(null);
     setNoteInputValue("");
     if (isPro && isAuthenticated) {
-      fetch("/api/user/inbox-notes", { method: trimmed ? "POST" : "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inbox, note: trimmed }) }).catch(() => { });
+      fetch("/api/user/inbox-notes", {
+        method: trimmed ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inbox, note: trimmed }),
+      }).catch(() => { });
     }
   }, [inboxNotes, noteCharLimit, isPro, isAuthenticated]);
 
@@ -1174,7 +1410,6 @@ export function EmailBox({ }: EmailBoxProps) {
                     </div>
                     {!isCompact && !isPro && (
                       <button type="button"
-                        
                         className="font-mono text-[10px] text-muted-foreground/35 hover:text-amber-500/80 flex items-center gap-1 pl-0 sm:pl-7 transition-colors text-left"
                         title="Upgrade to Pro — emails never expire">
                         <Clock className="h-2.5 w-2.5 shrink-0" />
@@ -1506,8 +1741,6 @@ export function EmailBox({ }: EmailBoxProps) {
                     setEmail(`${v}@${selectedDomain}`);
                     setBlockButtons(v.length === 0);
                   }}
-                  // FIX 2: Escape key exits editing and always clears blockButtons,
-                  // so Refresh can never be stuck disabled after the user bails.
                   onKeyDown={(e) => {
                     if (e.key === "Escape") {
                       setIsEditing(false);
@@ -1633,9 +1866,6 @@ export function EmailBox({ }: EmailBoxProps) {
                   icon: <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />,
                   label: isRefreshing ? t("refreshing") : isThrottled ? "wait…" : t("refresh"),
                   hint: "R",
-                  // FIX 1: disable on isThrottled too, so users see the button
-                  // is actively cooling down rather than appearing interactive
-                  // but silently no-op-ing on click.
                   disabled: blockButtons || isRefreshing || isThrottled,
                   onClick: refreshInbox,
                 },
@@ -1735,7 +1965,6 @@ export function EmailBox({ }: EmailBoxProps) {
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(f: string) => { setAuthNeedFeature(f); setIsAuthNeedOpen(true); }} />
       <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />
       <AuthNeed isOpen={isAuthNeedOpen} onClose={() => setIsAuthNeedOpen(false)} featureName={authNeedFeature} />
-      {error && <ErrorPopup message={error} onClose={() => setError(null)} />}
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirmation} itemToDelete={itemToDelete?.type === "email" ? "email address" : "message"} />
     </div>
   );

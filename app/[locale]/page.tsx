@@ -1,6 +1,7 @@
 // app/[locale]/page.tsx
-// KEY CHANGE: No auth(), no EmailBoxDataFetcher, no Suspense around EmailBox.
-// The shell renders in <50ms. EmailBox handles its own data client-side.
+// KEY CHANGE: For logged-in users, we prefetch profile + inboxes on the server
+// so EmailBox renders with real data immediately (no random-address flash).
+// Guest users remain fully client-side for maximum TTFB speed.
 
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { AppFooter } from '@/components/app-footer';
@@ -19,6 +20,8 @@ import {
 import { AwardsSection } from '@/components/AwardsSection';
 import { LANDING_PAGES } from '@/lib/landing-pages-config';
 import { Suspense } from 'react';
+import { auth } from '@/auth';
+import { callInternalAPI } from '@/lib/api';
 
 type Props = { params: { locale: Locale } };
 
@@ -45,12 +48,62 @@ const ASCII_FRAGS = [
   { x: '4%',  y: '93%', t: 'Subject: Your verification code is 847291' },
 ];
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+export interface ServerProfile {
+  inboxes: string[];
+  customDomains: { domain: string; verified: boolean }[];
+  plan: 'free' | 'pro' | 'none';
+  settings?: Record<string, any>;
+  inboxNotes?: Record<string, string>;
+}
+
+// ── Server-side profile fetch ─────────────────────────────────────────────────
+async function fetchServerProfile(userId: string, plan: string): Promise<ServerProfile | null> {
+  try {
+    const data = await callInternalAPI(
+      `/user/profile/${userId}`,
+      { method: 'GET' },
+      { id: userId }
+    );
+    if (!data?.user) return null;
+    const user = data.user;
+    return {
+      inboxes: Array.isArray(user.inboxes) ? user.inboxes : [],
+      customDomains: Array.isArray(user.customDomains)
+        ? user.customDomains.filter((d: any) => d.verified === true)
+        : [],
+      plan: (plan as 'free' | 'pro' | 'none') || 'free',
+      settings: user.settings ?? null,
+      inboxNotes: user.inboxNotes ?? null,
+    };
+  } catch {
+    // Non-fatal — EmailBox will fall back to client-side fetch
+    return null;
+  }
+}
+
 export default async function Page({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: 'PageContent' });
   const tFaq = await getTranslations({ locale, namespace: 'FAQ' });
+
+  // ── Server-side auth + profile (logged-in users only) ─────────────────────
+  // For guests this is a no-op — zero extra latency on the critical path.
+  // For logged-in users we prefetch so EmailBox can skip its own profile fetch
+  // and render the correct inbox address immediately.
+  let serverProfile: ServerProfile | null = null;
+  try {
+    const session = await auth();
+    if (session?.user?.id) {
+      // @ts-ignore
+      const plan = session.user.plan ?? 'free';
+      serverProfile = await fetchServerProfile(session.user.id, plan);
+    }
+  } catch {
+    // Auth failure is non-fatal — degrade to client-side fetch
+  }
 
   // ── Schema LD ──────────────────────────────────────────────────────────────
   const softwareJsonLd = {
@@ -159,14 +212,8 @@ export default async function Page({ params }: Props) {
             ))}
           </div>
 
-          {/*
-            FIX: AppHeader no longer needs initialSession from server.
-            It fetches session client-side via useSession().
-            This removes the auth() blocking call from TTFB.
-          */}
           <AppHeader />
 
-          {/* H1 is always in the initial HTML — never behind a loading gate */}
           <h1 className="sr-only">{t('h1')}</h1>
 
           <section
@@ -179,11 +226,12 @@ export default async function Page({ params }: Props) {
 
             <div className="relative z-10 w-full max-w-7xl mx-auto">
               {/*
-                FIX: EmailBox now manages its own session and profile fetch client-side.
-                No more props passed from server. No Suspense wrapper needed here.
-                The skeleton renders immediately — this becomes the LCP element.
+                serverProfile is passed for logged-in users so EmailBox can
+                render the correct inbox address immediately without a client-side
+                profile fetch. For guests, serverProfile is null and EmailBox
+                generates a random address as before.
               */}
-              <EmailBox />
+              <EmailBox serverProfile={serverProfile} />
 
               <Status />
 
@@ -203,16 +251,6 @@ export default async function Page({ params }: Props) {
                 <span className="text-muted-foreground/70">Forever free · No ads · No signup</span>
               </div>
 
-              {/*
-                KEYWORD PARAGRAPH — Point 2 fix.
-                This is the most important single paragraph on the entire page.
-                It must contain: "temp mail", "temporary email", "disposable email",
-                "OTP", "verification" in natural prose — not stuffed.
-                It renders in the initial HTML (server component) so Google sees it
-                immediately, before any JS runs.
-                The font-mono + muted styling keeps it visually subtle so it doesn't
-                compete with the tool UI, but it is fully crawlable text.
-              */}
               <p className="mt-4 max-w-3xl text-xs text-muted-foreground/80 leading-relaxed font-mono">
                 <Link href="/temp-mail" className="text-foreground/70 hover:text-foreground transition-colors underline underline-offset-2 decoration-border">Temp mail</Link>
                 {' '}by FreeCustom.Email — create a free{' '}
@@ -333,12 +371,9 @@ export default async function Page({ params }: Props) {
                 
                 <div className="rounded-lg border border-border overflow-hidden mb-8">
                   <div className="grid gap-px bg-border md:grid-cols-2">
-
-                    
                     <div className="bg-background px-8 py-8">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Guides</p>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 list-none">
-                        
                         <li><Link href="/temp-mail" className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">Free temp mail</Link></li>
                         <li><Link href="/temporary-email" className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">Temporary email address</Link></li>
                         <li><Link href="/disposable-email" className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">Disposable email</Link></li>
@@ -347,8 +382,6 @@ export default async function Page({ params }: Props) {
                         <li><Link href="/temp-mail-api" className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">Temp mail API</Link></li>
                       </ul>
                     </div>
-
-                    
                     <div className="bg-background px-8 py-8 border-l border-border">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Popular</p>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 list-none">
@@ -360,10 +393,7 @@ export default async function Page({ params }: Props) {
                         <li><Link href="/temp-mail-no-ads" className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline py-0.5 block">Temp mail no ads</Link></li>
                       </ul>
                     </div>
-
                   </div>
-
-                  
                   <div className="grid gap-px bg-border md:grid-cols-3 border-t border-border">
                     <div className="bg-background px-8 py-6">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Alternatives</p>
@@ -384,7 +414,6 @@ export default async function Page({ params }: Props) {
                     <div className="bg-background px-8 py-6 border-l border-border">
                       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Tools</p>
                       <ul className="space-y-1.5 list-none">
-                        
                         <li><Link href="/throwaway-email" className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block">Throwaway email</Link></li>
                         <li><Link href="/receive-email-online" className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block">Receive email online</Link></li>
                         <li><Link href="/fake-email-generator" className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block">Fake email generator</Link></li>
