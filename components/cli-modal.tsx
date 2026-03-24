@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ShieldCheck, ArrowRight, Check } from "lucide-react";
+import { ShieldCheck, ArrowRight } from "lucide-react";
 import { CodeBlock } from "@/components/CodeBlock";
 import Link from "next/link";
 
@@ -37,7 +37,7 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
 
-        {/* Header — matches CLI page SectionMarker style */}
+        {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-0.5 h-4 bg-border" aria-hidden />
@@ -60,17 +60,21 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
             <section className="space-y-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Installation</p>
 
-              <Tabs defaultValue="shell" className="w-full">
+              <Tabs defaultValue="npm" className="w-full">
                 <TabsList className="bg-muted/30 p-0.5 h-8 border border-border rounded-md gap-0 flex-wrap">
+                  <TabsTrigger value="npm"   className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">npm</TabsTrigger>
                   <TabsTrigger value="shell" className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">Shell</TabsTrigger>
                   <TabsTrigger value="brew"  className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">Homebrew</TabsTrigger>
                   <TabsTrigger value="scoop" className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">Scoop</TabsTrigger>
                   <TabsTrigger value="choco" className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">Choco</TabsTrigger>
-                  <TabsTrigger value="npm"   className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">npm</TabsTrigger>
                   <TabsTrigger value="go"    className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">Go</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-3">
+                  <TabsContent value="npm" className="mt-0">
+                    <CodeBlock language="bash" code="npm install -g fcemail" className="bg-muted/20" />
+                    <p className="font-mono text-[9px] text-muted-foreground/50 mt-1.5">All platforms · update with <code>npm install -g fcemail@latest</code></p>
+                  </TabsContent>
                   <TabsContent value="shell" className="mt-0">
                     <CodeBlock language="bash" code="curl -fsSL freecustom.email/install.sh | sh" className="bg-muted/20" />
                     <p className="font-mono text-[9px] text-muted-foreground/50 mt-1.5">macOS and Linux</p>
@@ -87,10 +91,6 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
                     <CodeBlock language="powershell" code="choco install fce" className="bg-muted/20" />
                     <p className="font-mono text-[9px] text-muted-foreground/50 mt-1.5">Windows · update with <code>choco upgrade fce</code></p>
                   </TabsContent>
-                  <TabsContent value="npm" className="mt-0">
-                    <CodeBlock language="bash" code="npm install -g fcemail@latest" className="bg-muted/20" />
-                    <p className="font-mono text-[9px] text-muted-foreground/50 mt-1.5">All platforms · update with <code>npm install -g fcemail@latest</code></p>
-                  </TabsContent>
                   <TabsContent value="go" className="mt-0">
                     <CodeBlock language="bash" code="go install github.com/DishIs/fce-cli@latest" className="bg-muted/20" />
                     <p className="font-mono text-[9px] text-muted-foreground/50 mt-1.5">All platforms · requires Go 1.21+</p>
@@ -102,7 +102,6 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
             {/* Quick start */}
             <section className="space-y-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Quick start</p>
-
               <div className="rounded-lg border border-border overflow-hidden">
                 {/* step 1 */}
                 <div className="flex gap-0 border-b border-border">
@@ -110,19 +109,28 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
                     <span className="font-mono text-[9px] text-muted-foreground/40">01</span>
                   </div>
                   <div className="flex-1 px-4 py-3">
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Login — opens browser, saves key to keychain</p>
-                    <CodeBlock code="fce login" language="bash" className="bg-muted/20" />
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Install via npm</p>
+                    <CodeBlock code="npm install -g fcemail" language="bash" className="bg-muted/20" />
                   </div>
                 </div>
-
                 {/* step 2 */}
-                <div className="flex gap-0">
+                <div className="flex gap-0 border-b border-border">
                   <div className="w-10 shrink-0 flex items-start justify-center pt-3.5 border-r border-border">
                     <span className="font-mono text-[9px] text-muted-foreground/40">02</span>
                   </div>
                   <div className="flex-1 px-4 py-3">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Login — opens browser, saves key to keychain</p>
+                    <CodeBlock code="fce login" language="bash" className="bg-muted/20" />
+                  </div>
+                </div>
+                {/* step 3 */}
+                <div className="flex gap-0">
+                  <div className="w-10 shrink-0 flex items-start justify-center pt-3.5 border-r border-border">
+                    <span className="font-mono text-[9px] text-muted-foreground/40">03</span>
+                  </div>
+                  <div className="flex-1 px-4 py-3">
                     <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">
-                      {email ? `Watch your inbox` : "Create inbox and watch instantly"}
+                      {email ? "Watch your inbox" : "Create inbox and watch instantly"}
                     </p>
                     <CodeBlock
                       code={email ? `fce watch ${email}` : "fce dev"}
@@ -175,11 +183,9 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
                     <code className="font-mono text-xs text-foreground w-44 shrink-0">{cmd.c}</code>
                     <span className="text-xs text-muted-foreground flex-1 leading-snug">{cmd.d}</span>
                     <span className={`font-mono text-[9px] border rounded px-1.5 py-px shrink-0 ${
-                      cmd.plan === "Any"
-                        ? "border-border text-muted-foreground/50"
-                        : cmd.plan.includes("Growth")
-                          ? "border-amber-500/20 text-amber-600/70"
-                          : "border-blue-500/20 text-blue-500/70"
+                      cmd.plan === "Any" ? "border-border text-muted-foreground/50"
+                        : cmd.plan.includes("Growth") ? "border-amber-500/20 text-amber-600/70"
+                        : "border-blue-500/20 text-blue-500/70"
                     }`}>{cmd.plan}</span>
                   </div>
                 ))}
@@ -207,21 +213,15 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
             <p className="font-mono text-[9px] text-muted-foreground/40">MIT · v0.1.12 · FreeCustom.Email</p>
             <div className="flex items-center gap-3">
               {["CLI docs", "Automation"].map((label, i) => (
-                <Link
-                  key={label}
-                  href={i === 0 ? "/api/cli" : "/api/automation"}
-                  onClick={onClose}
-                  className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
-                >
+                <Link key={label} href={i === 0 ? "/api/cli" : "/api/automation"} onClick={onClose}
+                  className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5">
                   {label} <ArrowRight className="h-2.5 w-2.5" />
                 </Link>
               ))}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <button onClick={onClose}
+            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
             Close
           </button>
         </div>
