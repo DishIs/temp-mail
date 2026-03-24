@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, Globe, ShieldCheck, AlertTriangle, Info, RefreshCw, ExternalLink, X } from "lucide-react";
+import { Check, Loader2, Globe, ShieldCheck, AlertTriangle, Info, RefreshCw, ExternalLink, X, Terminal } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
@@ -24,11 +24,11 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free"      , label: "Free",       price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false, planId: null as string | null },
-  { name: "developer" , label: "Developer",  price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, planId: "developer" },
-  { name: "startup"   , label: "Startup",    price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, planId: "startup" },
-  { name: "growth"    , label: "Growth",     price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  planId: "growth" },
-  { name: "enterprise", label: "Enterprise", price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  planId: "enterprise" },
+  { name: "free"      , label: "Free",       desc: "Only for trying the API", price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false, pool: "shared",    planId: null as string | null },
+  { name: "developer" , label: "Developer",  desc: null,                      price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, pool: "dedicated", planId: "developer" },
+  { name: "startup"   , label: "Startup",    desc: null,                      price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, pool: "dedicated", planId: "startup" },
+  { name: "growth"    , label: "Growth",     desc: null,                      price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  pool: "dedicated", planId: "growth" },
+  { name: "enterprise", label: "Enterprise", desc: null,                      price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  pool: "dedicated", planId: "enterprise" },
 ] as const;
 
 const CREDITS = [
@@ -100,6 +100,22 @@ const FAQ_ITEMS = [
     q: "Can I get both an API plan and a webapp Pro plan?",
     a: "Absolutely. They are independent subscriptions. If you want to use the API programmatically AND use the polished web client with all Pro UI features, subscribe to both. Each subscription is billed separately.",
   },
+  {
+    q: "What is the shared pool vs. dedicated pool?",
+    a: "On the Free plan, your inboxes share an MX infrastructure pool with all other free-tier users. This means delivery latency can be higher (seconds to tens of seconds) during busy periods, and the sending reputation of the pool is influenced by other users. On any paid plan (Developer and above) you get a dedicated pool — a separate MX routing layer reserved for paying customers — resulting in significantly lower delivery latency and more consistent performance.",
+  },
+  {
+    q: "How much faster is the dedicated pool vs. the shared pool?",
+    a: "In practice, the dedicated pool delivers emails in under a second in most regions. The shared pool can range from a few seconds to up to 30 seconds under load. If your use case involves automated OTP extraction or time-sensitive workflows, any paid plan is strongly recommended.",
+  },
+  {
+    q: "Can I use the fce CLI on the Free plan?",
+    a: "Yes. The fce CLI works on every plan, including Free. However, commands that rely on plan-gated features — such as fce watch (live WebSocket streaming, Startup+) and fce otp (OTP extraction, Growth+) — will return an error if your current plan does not include that feature. All other commands like fce dev, fce inbox, fce messages, and fce status work on every plan.",
+  },
+  {
+    q: "Does fce dev work on the Free plan?",
+    a: "fce dev registers a temporary inbox and begins watching it for emails via WebSocket. The WebSocket streaming component requires Startup plan or above. On the Free plan, fce dev will register the inbox but will not stream emails in real time — you would need to poll using fce messages instead.",
+  },
 ];
 
 const PAYMENT_METHODS = [
@@ -116,7 +132,6 @@ function ProInboxBadge() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -128,7 +143,6 @@ function ProInboxBadge() {
 
   return (
     <div ref={ref} className="relative inline-flex items-center gap-1">
-      {/* Link to pricing page */}
       <Link
         href="/pricing"
         className="text-xs font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors whitespace-nowrap"
@@ -137,7 +151,6 @@ function ProInboxBadge() {
         Pro (forever)
       </Link>
 
-      {/* Info toggle */}
       <button
         type="button"
         aria-label="What is Pro inbox?"
@@ -147,10 +160,8 @@ function ProInboxBadge() {
         <Info className="h-3 w-3" />
       </button>
 
-      {/* Popover */}
       {open && (
         <div className="absolute bottom-full right-0 mb-2 w-72 z-50 rounded-lg border border-border bg-background shadow-lg text-left">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Pro inbox — what's included?</span>
             <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -159,7 +170,6 @@ function ProInboxBadge() {
           </div>
 
           <div className="px-4 py-3 space-y-3">
-            {/* Included */}
             <div>
               <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Backend inbox benefits ✓</p>
               <ul className="space-y-1">
@@ -177,7 +187,6 @@ function ProInboxBadge() {
               </ul>
             </div>
 
-            {/* Not included */}
             <div className="border-t border-border pt-3">
               <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Not included (webapp Pro only)</p>
               <ul className="space-y-1">
@@ -195,7 +204,6 @@ function ProInboxBadge() {
               </ul>
             </div>
 
-            {/* CTA */}
             <div className="border-t border-border pt-3">
               <Link
                 href="/pricing"
@@ -204,6 +212,78 @@ function ProInboxBadge() {
               >
                 <ExternalLink className="h-3 w-3 shrink-0" />
                 See webapp Pro plan features →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CLI info popover (for plans with live watching) ─────────────────────────
+function CliWatchBadge() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-flex items-center gap-1">
+      <Link
+        href="/api/cli"
+        className="text-xs font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors whitespace-nowrap"
+        title="View CLI documentation"
+      >
+        CLI
+      </Link>
+
+      <button
+        type="button"
+        aria-label="CLI live watching info"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-border"
+      >
+        <Info className="h-3 w-3" />
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full right-0 mb-2 w-64 z-50 rounded-lg border border-border bg-background shadow-lg text-left">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">CLI — live watching</span>
+            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+
+          <div className="px-4 py-3 space-y-2">
+            <ul className="space-y-1">
+              {[
+                "fce watch — stream emails via WebSocket",
+                "fce dev — inbox + watch in one command",
+                "fce otp — auto-extract OTP codes (Growth+)",
+              ].map(item => (
+                <li key={item} className="flex items-start gap-1.5 text-xs text-foreground">
+                  <Check className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-border pt-2">
+              <Link
+                href="/api/cli"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setOpen(false)}
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                Full CLI documentation →
               </Link>
             </div>
           </div>
@@ -578,7 +658,7 @@ export default function ApiPricingPage() {
     await changePlan(downgradeTarget, reason, comment);
   };
 
-  // ─── Persistence cell renderer ────────────────────────────────────────────
+  // ─── Persistence cell renderer ────────────────────────────────────────
   const renderPersistence = (plan: typeof PLANS[number]) => {
     if (plan.persistence === "Pro (forever)") {
       return <ProInboxBadge />;
@@ -586,7 +666,7 @@ export default function ApiPricingPage() {
     return <span className="text-xs text-right leading-tight">{plan.persistence}</span>;
   };
 
-  // ─── Fresh domains cell renderer ─────────────────────────────────────────
+  // ─── Fresh domains cell renderer ─────────────────────────────────────
   const renderFreshDomains = (plan: typeof PLANS[number]) => {
     if (!plan.freshDomains) return <Cross />;
     return (
@@ -597,6 +677,42 @@ export default function ApiPricingPage() {
         </span>
       </div>
     );
+  };
+
+  // ─── Pool cell renderer ───────────────────────────────────────────────
+  const renderPool = (plan: typeof PLANS[number]) => {
+    if (plan.pool === "shared") {
+      return (
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-xs text-muted-foreground text-right leading-tight">Shared</span>
+          <span className="font-mono text-[9px] text-muted-foreground/60 leading-tight">high latency</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col items-end gap-0.5">
+        <span className="text-xs text-foreground text-right leading-tight">Dedicated</span>
+        <span className="font-mono text-[9px] text-emerald-600/80 leading-tight">lowest latency</span>
+      </div>
+    );
+  };
+
+  // ─── CLI cell renderer ────────────────────────────────────────────────
+  const renderCli = (plan: typeof PLANS[number]) => {
+    const hasWatch = plan.ws; // Startup, Growth, Enterprise have WebSocket / live watching
+    if (!hasWatch) {
+      // Free + Developer: CLI available but no live watching
+      return (
+        <Link
+          href="/api/cli"
+          className="text-xs font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-colors whitespace-nowrap"
+        >
+          CLI
+        </Link>
+      );
+    }
+    // Startup, Growth, Enterprise: CLI + live watching
+    return <CliWatchBadge />;
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -647,12 +763,26 @@ export default function ApiPricingPage() {
               const planName = plan.name as ApiPlanName;
               const isCurrent = isLoggedIn && currentPlan === planName;
               const isScheduledTarget = scheduledDowngradePlan === planName;
+              const isPopular = planName === "growth";
 
               return (
                 <div
                   key={plan.name}
-                  className={`bg-background flex flex-col p-6 relative ${isCurrent ? "ring-1 ring-inset ring-foreground/20" : ""}`}
+                  className={`bg-background flex flex-col p-6 relative ${
+                    isPopular
+                      ? "ring-2 ring-inset ring-foreground/30"
+                      : isCurrent
+                        ? "ring-1 ring-inset ring-foreground/20"
+                        : ""
+                  }`}
                 >
+                  {/* Popular badge (Growth only) */}
+                  {isPopular && !isCurrent && !isScheduledTarget && (
+                    <span className="absolute top-0 right-0 text-[10px] font-semibold font-mono uppercase tracking-widest text-background bg-foreground px-2 py-1 rounded-bl-lg">
+                      Popular
+                    </span>
+                  )}
+
                   {isCurrent && !isScheduledTarget && (
                     <span className="absolute top-0 right-0 text-[10px] font-semibold font-mono uppercase tracking-widest text-foreground bg-muted/60 px-2 py-1 rounded-bl-lg">
                       Current
@@ -664,7 +794,13 @@ export default function ApiPricingPage() {
                     </span>
                   )}
 
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">{plan.label}</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1">{plan.label}</p>
+
+                  {/* Per-plan short description */}
+                  {plan.desc && (
+                    <p className="text-[10px] font-mono text-muted-foreground/60 mb-3 leading-snug">{plan.desc}</p>
+                  )}
+
                   <div className="flex items-baseline gap-0.5 mb-6">
                     <span className="text-3xl font-bold text-foreground">{plan.price}</span>
                     <span className="text-sm text-muted-foreground">{plan.sub}</span>
@@ -686,6 +822,16 @@ export default function ApiPricingPage() {
                       {
                         label: "Persistence",
                         value: renderPersistence(plan),
+                      },
+                      {
+                        label: "Pool",
+                        value: renderPool(plan),
+                        hint: plan.pool === "shared" ? "Shared MX pool" : "Dedicated MX pool",
+                      },
+                      {
+                        label: "CLI",
+                        value: renderCli(plan),
+                        hint: plan.ws ? "Incl. live email watching" : "Basic commands only",
                       },
                     ].map(row => (
                       <div key={row.label} className="border-t border-border pt-3 flex items-start justify-between gap-2 first:border-t-0 first:pt-0">
@@ -740,6 +886,27 @@ export default function ApiPricingPage() {
                 <Link href="/pricing" className="underline underline-offset-4 decoration-border hover:text-foreground transition-colors">
                   webapp Pro subscription →
                 </Link>
+              </p>
+            </div>
+          </div>
+
+          {/* CLI callout banner */}
+          <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/10 px-4 py-3 text-sm mb-2">
+            <Terminal className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-foreground mb-0.5">
+                CLI available on all plans
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                The{" "}
+                <Link href="/api/cli" className="underline underline-offset-4 decoration-border hover:text-foreground transition-colors">
+                  fce CLI
+                </Link>{" "}
+                works on every plan. Live email watching via{" "}
+                <code className="bg-muted/40 px-1 rounded text-foreground">fce watch</code> and{" "}
+                <code className="bg-muted/40 px-1 rounded text-foreground">fce dev</code> requires Startup or above.
+                OTP extraction via{" "}
+                <code className="bg-muted/40 px-1 rounded text-foreground">fce otp</code> requires Growth or above.
               </p>
             </div>
           </div>
