@@ -73,12 +73,13 @@ export async function callInternalAPI(
     }
 
     // Fallback: If no authorization header was passed but we have a NextAuth session, generate a JWT
-    if (!authHeader) {
+    // We strictly avoid paths called from auth.ts to prevent infinite auth() loops
+    if (!authHeader && !path.startsWith('/auth/') && !path.startsWith('/user/status')) {
         try {
             const { auth } = await import('@/auth');
             const session = await auth();
             if (session?.user) {
-                const plan = session.user.plan || 'free';
+                const plan = (session.user as any).plan || 'free';
                 const id = session.user.id;
                 const token = await sign({ id, plan });
                 authHeader = `Bearer ${token}`;
