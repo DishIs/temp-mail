@@ -118,10 +118,15 @@ function buildPayload(
 }
 
 async function sendToBackend(payload: ReturnType<typeof buildPayload>) {
-  await fetchFromServiceAPI("/paddle/subscription-event", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  await fetchFromServiceAPI(
+    "/paddle/subscription-event",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    { systemCall: true } // 🔥 THIS FIXES EVERYTHING
+  );
+
 }
 
 // ---------------------------------------------------------------
