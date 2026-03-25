@@ -61,7 +61,8 @@ export async function DELETE(request: Request) {
 
   try {
     const body = await request.clone().json().catch(() => ({}));
-    if (!body.id) {
+    const keyId = body.id || body.keyId;
+    if (!keyId) {
         return NextResponse.json({ success: false, message: "API Key ID required" }, { status: 400 });
     }
     
@@ -70,7 +71,7 @@ export async function DELETE(request: Request) {
         "/user/api-keys",
         {
             method: "DELETE",
-            body: JSON.stringify({ wyiUserId: session.user.id, id: body.id }),
+            body: JSON.stringify({ wyiUserId: session.user.id, keyId: keyId }),
         },
         { id: session.user.id }
     );

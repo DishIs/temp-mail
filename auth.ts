@@ -29,14 +29,22 @@ declare module 'next-auth/jwt' {
   }
 }
 
-function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
+async function upsertUser(user: { id: string; email?: string | null; name?: string | null }) {
   const resolvedName = user.name?.trim() || user.email?.split('@')[0] || user.id;
   const resolvedEmail = user.email?.trim() || `${user.id}@provider.noemail`;
   
-  fetchFromServiceAPI('/auth/upsert-user', {
-    method: 'POST',
-    body: JSON.stringify({ wyiUserId: user.id, email: resolvedEmail, name: resolvedName, plan: 'free' }),
-  }, { id: user.id }).catch(e => console.error('Upsert failed:', e));
+  try {
+    const { sign } = await import('@/lib/jwt');
+    const signedToken = await sign({ id: user.id, plan: 'free' });
+    
+    await fetchFromServiceAPI('/auth/upsert-user', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${signedToken}` },
+      body: JSON.stringify({ wyiUserId: user.id, email: resolvedEmail, name: resolvedName, plan: 'free' }),
+    }, { id: user.id });
+  } catch (e) {
+    console.error('Upsert failed:', e);
+  }
 }
 
 const config: NextAuthConfig = {
@@ -90,8 +98,12 @@ const config: NextAuthConfig = {
 
       if (token.id && needsSync) {
         try {
+          const { sign } = await import('@/lib/jwt');
+          const signedToken = await sign({ id: token.id, plan: token.plan });
+          
           const updatedUser = await fetchFromServiceAPI('/user/status', {
             method: 'POST',
+            headers: { 'Authorization': `Bearer ${signedToken}` },
             body: JSON.stringify({ userId: token.id }),
             cache: 'no-store' // <--- CRITICAL FIX: Disables Next.js fetch caching
           }, { id: token.id });
