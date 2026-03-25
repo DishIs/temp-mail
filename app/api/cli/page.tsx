@@ -352,11 +352,6 @@ function InstallSelector() {
       </div>
       <div className="relative">
         <CodeBlock code={method.cmd} language={method.lang} className="bg-muted/20" />
-        <button onClick={() => handleCopy(method.cmd, method.name)}
-          className="absolute top-2 right-2 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-          {copied === method.name ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-          {copied === method.name ? "copied" : "copy"}
-        </button>
       </div>
       <p className="font-mono text-[10px] text-muted-foreground/50">
         Or download a binary from{" "}
