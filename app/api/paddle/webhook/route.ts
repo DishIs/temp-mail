@@ -61,8 +61,8 @@ function getCustomData(event: any): {
   };
 }
 
-function getUserIdFromEvent(event: any): string | null {
-  return getCustomData(event).userId ?? null;
+function getUserIdFromEvent(event: any): string | undefined {
+  return getCustomData(event).userId ?? undefined;
 }
 
 function getSubscriptionId(event: any): string | null {
@@ -103,7 +103,7 @@ function buildPayload(
     userId: overrides.userId ?? custom.userId,
     subscriptionId: overrides.subscriptionId ?? data.subscription_id ?? data.id,
     customerId: data.customer_id,
-    priceId: data.items?.[0]?.price_id,
+    priceId: data.items?.[0]?.price_id ?? data.items?.[0]?.price?.id,
     status: overrides.status ?? data.status,
     startTime: overrides.startTime ?? data.started_at ?? data.created_at,
     nextBilledAt: overrides.nextBilledAt ?? data.next_billed_at,
@@ -128,10 +128,11 @@ async function sendToBackend(payload: ReturnType<typeof buildPayload>) {
 // Subscription lifecycle (app + api)
 // ---------------------------------------------------------------
 async function handleSubscriptionCreated(event: any) {
-  const payload = buildPayload("ACTIVATED", event);
+  const isTrial = event?.data?.status === "trialing";
+  const payload = buildPayload(isTrial ? "TRIALING" : "ACTIVATED", event);
   payload.userId = getUserIdFromEvent(event);
   payload.subscriptionId = event?.data?.id ?? null;
-  payload.status = event?.data?.status ?? "active";
+  payload.status = event?.data?.status ?? (isTrial ? "trialing" : "active");
   payload.startTime = event?.data?.started_at ?? event?.data?.created_at;
   payload.nextBilledAt = event?.data?.next_billed_at;
   payload.payerEmail = event?.data?.customer?.email ?? null;
@@ -140,7 +141,7 @@ async function handleSubscriptionCreated(event: any) {
 }
 
 async function handleSubscriptionTrialing(event: any) {
-  const payload = buildPayload("ACTIVATED", event);
+  const payload = buildPayload("TRIALING", event);
   payload.userId = getUserIdFromEvent(event);
   payload.subscriptionId = event?.data?.id ?? null;
   payload.status = "trialing";
@@ -186,7 +187,7 @@ async function handleSubscriptionUpdated(event: any) {
   payload.userId = getUserIdFromEvent(event);
   payload.subscriptionId = event?.data?.id ?? null;
   // IMPORTANT: Map to price_id for Billing v3
-  payload.priceId = event?.data?.items?.[0]?.price_id;
+  payload.priceId = event?.data?.items?.[0]?.price_id ?? event?.data?.items?.[0]?.price?.id;
   payload.status = event?.data?.status;
   payload.nextBilledAt = event?.data?.next_billed_at;
   // Ensure apiPlan is prioritized from custom_data
