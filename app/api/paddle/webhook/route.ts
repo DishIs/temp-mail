@@ -118,16 +118,19 @@ function buildPayload(
 }
 
 async function sendToBackend(payload: ReturnType<typeof buildPayload>) {
-  await fetchFromServiceAPI(
-    "/paddle/subscription-event",
-    {
+  try {
+    const response = await fetchFromServiceAPI("/paddle/subscription-event", {
       method: "POST",
       body: JSON.stringify(payload),
-    },
-    { systemCall: true } // 🔥 THIS FIXES EVERYTHING
-  );
-
+    });
+    return response;
+  } catch (err: any) {
+    // This logs to your Vercel/Frontend console
+    console.error(`[Paddle Webhook -> Backend Error]: ${err.message}`);
+    throw err; // Re-throw to trigger the catch block in POST()
+  }
 }
+
 
 // ---------------------------------------------------------------
 // Subscription lifecycle (app + api)
