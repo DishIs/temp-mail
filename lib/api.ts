@@ -1,4 +1,4 @@
-import { verify } from '@/lib/jwt';
+import { verify, sign } from '@/lib/jwt';
 import crypto from 'crypto';
 import { headers as nextHeaders, cookies as nextCookies } from 'next/headers';
 
@@ -54,6 +54,7 @@ export async function callInternalAPI(
     let ua = '';
     let lang = '';
     let tz = '';
+    let authHeader = '';
 
     try {
         const h = await nextHeaders();
@@ -63,8 +64,28 @@ export async function callInternalAPI(
         ua = h.get('user-agent') || '';
         lang = h.get('accept-language') || '';
         tz = h.get('x-timezone') || '';
+        
+        // Forward the Authorization JWT (for Gateway Plan Detection)
+        authHeader = h.get('authorization') || '';
     } catch (e) {
         // May fail if called outside of request context (e.g., static generation)
+        console.warn(`[InternalAPI] Calling ${path} without request context. Defaulting to system-level routing.`);
+    }
+
+    // Fallback: If no authorization header was passed but we have a NextAuth session, generate a JWT
+    if (!authHeader) {
+        try {
+            const { auth } = await import('@/auth');
+            const session = await auth();
+            if (session?.user) {
+                const plan = session.user.plan || 'free';
+                const id = session.user.id;
+                const token = await sign({ id, plan });
+                authHeader = `Bearer ${token}`;
+            }
+        } catch (e) {
+            // Ignore auth import/session errors in edge cases or static generation
+        }
     }
 
     if (!cookieId) {
@@ -117,6 +138,10 @@ export async function callInternalAPI(
         'accept-language': lang,
         'x-timezone': tz,
     };
+
+    if (authHeader) {
+        reqHeaders['authorization'] = authHeader;
+    }
 
     if (options.headers) {
         Object.entries(options.headers).forEach(([key, val]) => {
