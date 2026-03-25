@@ -13,9 +13,17 @@ declare module 'next-auth' {
       deletion_status?: 'none' | 'scheduled' | 'permanent';
       deletion_scheduled_at?: string | null;
       can_restore_until?: string | null;
+      banStatus?: 'none' | 'warned' | 'banned';
+      banReason?: string | null;
+      banAt?: string | null;
+      contactEmail?: string;
+      contactNote?: string;
     } & DefaultSession['user'];
   }
-  interface User { plan?: 'free' | 'pro' }
+  interface User {
+    plan?: 'free' | 'pro';
+    banStatus?: 'none' | 'warned' | 'banned';
+  }
 }
 
 declare module 'next-auth/jwt' {
@@ -25,6 +33,11 @@ declare module 'next-auth/jwt' {
     deletion_status?: 'none' | 'scheduled' | 'permanent';
     deletion_scheduled_at?: string | null;
     can_restore_until?: string | null;
+    banStatus?: 'none' | 'warned' | 'banned';
+    banReason?: string | null;
+    banAt?: string | null;
+    contactEmail?: string;
+    contactNote?: string;
     last_synced_at?: number;
   }
 }
@@ -113,6 +126,12 @@ const config: NextAuthConfig = {
           token.deletion_scheduled_at = updatedUser?.deletion_scheduled_at ?? null;
           token.can_restore_until = updatedUser?.can_restore_until ?? null;
           
+          token.banStatus = updatedUser?.banStatus ?? 'none';
+          token.banReason = updatedUser?.banReason ?? null;
+          token.banAt = updatedUser?.banAt ?? null;
+          token.contactEmail = updatedUser?.contactEmail ?? 'support@freecustom.email';
+          token.contactNote = updatedUser?.contactNote ?? 'To appeal this decision, email us with your account details. Bans are reviewed within 5 business days.';
+          
           token.last_synced_at = now; 
         } catch (e) {
           console.error('JWT sync failed:', e);
@@ -128,6 +147,11 @@ const config: NextAuthConfig = {
       session.user.deletion_status = token.deletion_status ?? 'none';
       session.user.deletion_scheduled_at = token.deletion_scheduled_at ?? null;
       session.user.can_restore_until = token.can_restore_until ?? null;
+      session.user.banStatus = token.banStatus ?? 'none';
+      session.user.banReason = token.banReason ?? null;
+      session.user.banAt = token.banAt ?? null;
+      session.user.contactEmail = token.contactEmail ?? 'support@freecustom.email';
+      session.user.contactNote = token.contactNote ?? 'To appeal this decision, email us with your account details. Bans are reviewed within 5 business days.';
       return session;
     },
   },

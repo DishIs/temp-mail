@@ -54,10 +54,10 @@ function getCustomData(event: any): {
   const data = event?.data;
   const custom = data?.custom_data ?? data?.items?.[0]?.price?.custom_data ?? {};
   return {
-    userId: custom.userId ?? null,
-    productType: custom.productType ?? "app",
-    apiPlan: custom.apiPlan ?? undefined,
-    creditsToAdd: custom.creditsToAdd != null ? Number(custom.creditsToAdd) : undefined,
+    userId: custom.userId ?? custom.user_id ?? null,
+    productType: custom.productType ?? custom.product_type ?? "app",
+    apiPlan: custom.apiPlan ?? custom.api_plan ?? undefined,
+    creditsToAdd: custom.creditsToAdd != null ? Number(custom.creditsToAdd) : (custom.credits_to_add != null ? Number(custom.credits_to_add) : undefined),
   };
 }
 
@@ -67,7 +67,7 @@ function getUserIdFromEvent(event: any): string | null {
 
 function getSubscriptionId(event: any): string | null {
   const data = event?.data;
-  return data?.id ?? data?.subscription_id ?? null;
+  return data?.subscription_id ?? data?.id ?? null;
 }
 
 // ---------------------------------------------------------------
@@ -101,16 +101,16 @@ function buildPayload(
     apiPlan: overrides.apiPlan ?? custom.apiPlan,
     creditsToAdd: overrides.creditsToAdd ?? custom.creditsToAdd,
     userId: overrides.userId ?? custom.userId,
-    subscriptionId: overrides.subscriptionId ?? data.id ?? data.subscription_id,
+    subscriptionId: overrides.subscriptionId ?? data.subscription_id ?? data.id,
     customerId: data.customer_id,
-    priceId: data.items?.[0]?.price?.id,
+    priceId: data.items?.[0]?.price_id,
     status: overrides.status ?? data.status,
     startTime: overrides.startTime ?? data.started_at ?? data.created_at,
     nextBilledAt: overrides.nextBilledAt ?? data.next_billed_at,
     payerEmail: overrides.payerEmail ?? data.customer?.email,
     canceledAt: overrides.canceledAt ?? data.canceled_at,
     pausedAt: overrides.pausedAt ?? data.paused_at,
-    amount: overrides.amount ?? data.details?.totals?.grand_total,
+    amount: overrides.amount ?? data.details?.totals?.total ?? data.details?.totals?.grand_total ?? data.amount,
     currency: overrides.currency ?? data.currency_code,
     scheduledChange: overrides.scheduledChange ?? data.scheduled_change,
     rawEvent: event,
@@ -174,7 +174,7 @@ async function handleSubscriptionPaused(event: any) {
 }
 
 async function handleSubscriptionResumed(event: any) {
-  const payload = buildPayload("ACTIVATED", event);
+  const payload = buildPayload("UPDATED", event);
   payload.userId = getUserIdFromEvent(event);
   payload.subscriptionId = event?.data?.id ?? null;
   payload.status = "active";
@@ -185,12 +185,12 @@ async function handleSubscriptionUpdated(event: any) {
   const payload = buildPayload("UPDATED", event);
   payload.userId = getUserIdFromEvent(event);
   payload.subscriptionId = event?.data?.id ?? null;
-  payload.priceId = event?.data?.items?.[0]?.price?.id;
+  // IMPORTANT: Map to price_id for Billing v3
+  payload.priceId = event?.data?.items?.[0]?.price_id;
   payload.status = event?.data?.status;
   payload.nextBilledAt = event?.data?.next_billed_at;
-  payload.apiPlan =
-    payload.apiPlan ??
-    event?.data?.items?.[0]?.price?.custom_data?.api_plan;
+  // Ensure apiPlan is prioritized from custom_data
+  payload.apiPlan = getCustomData(event).apiPlan || event?.data?.items?.[0]?.price?.custom_data?.api_plan;
   await sendToBackend(payload);
 }
 
@@ -215,7 +215,7 @@ async function handleTransactionCompleted(event: any) {
         creditsToAdd,
         userId: custom.userId ?? null,
         subscriptionId: data?.id ?? data?.transaction_id ?? "",
-        amount: data?.details?.totals?.grand_total,
+        amount: data?.details?.totals?.total ?? data?.details?.totals?.grand_total,
         currency: data?.currency_code,
       })
     );
@@ -227,7 +227,7 @@ async function handleTransactionCompleted(event: any) {
     buildPayload("PAYMENT_COMPLETED", event, {
       userId: getUserIdFromEvent(event),
       subscriptionId,
-      amount: data?.details?.totals?.grand_total,
+      amount: data?.details?.totals?.total ?? data?.details?.totals?.grand_total,
       currency: data?.currency_code,
     })
   );
@@ -299,6 +299,7 @@ export async function POST(request: Request) {
         await handleSubscriptionCanceled(event);
         break;
       case "subscription.paused":
+      case "subscription.past_due":
         await handleSubscriptionPaused(event);
         break;
       case "subscription.resumed":
@@ -314,7 +315,10 @@ export async function POST(request: Request) {
         await handleTransactionPaymentFailed(event);
         break;
       case "transaction.refunded":
-        await handleTransactionRefunded(event);
+      case "adjustment.updated":
+        if (event?.data?.status === "approved" || eventType === "transaction.refunded") {
+          await handleTransactionRefunded(event);
+        }
         break;
       default:
         console.log(`[Paddle Webhook] Unhandled event: ${eventType}`);

@@ -287,7 +287,7 @@ export default function PricingPage() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="bg-background text-foreground overflow-x-hidden">
-        <AppHeader initialSession={session} />
+        <AppHeader />
 
         {/* ── HERO ──────────────────────────────────────────────────── */}
         <section className="relative min-h-[72vh] flex flex-col items-center justify-center px-6 py-28 text-center border-b border-border" style={DOT_BG}>
@@ -390,7 +390,9 @@ export default function PricingPage() {
 
               {!isPro && (
                 <p className="text-xs text-muted-foreground">
-                  {isMonthly ? "No card charged today · Cancel anytime" : "Billed as $29.99/year · Cancel anytime"}
+                  {isMonthly
+                    ? "No card charged today · Renews monthly at $3.99 · Cancel anytime from Profile → Billing"
+                    : "Billed as $29.99/year · Renews annually · Cancel anytime from Profile → Billing"}
                 </p>
               )}
 
@@ -478,7 +480,6 @@ export default function PricingPage() {
                       guest={false} free={<span className="font-mono text-[10px] text-muted-foreground">Pro only</span>} pro={true} />
                     <FeatureRow icon={<Link2 className="h-3.5 w-3.5" />} label="Verification link detection" hint="One-click verify button extracted from email" isNew
                       guest={false} free={<span className="font-mono text-[10px] text-muted-foreground">Pro only</span>} pro={true} />
-                    {/* ── NEW: Inbox notes row ── */}
                     <FeatureRow
                       icon={<FileText className="h-3.5 w-3.5" />}
                       label="Inbox notes"
@@ -552,6 +553,10 @@ export default function PricingPage() {
                       <div className="flex items-center gap-2 mb-6">
                         <Crown className="h-5 w-5 text-foreground" />
                         <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Pro Plan</span>
+                        {/* Recurring billing badge */}
+                        <span className="ml-auto font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px text-muted-foreground">
+                          {isMonthly ? "Recurring monthly" : "Recurring yearly"}
+                        </span>
                       </div>
                       {isMonthly ? (
                         <>
@@ -559,10 +564,12 @@ export default function PricingPage() {
                             <span className="text-6xl font-bold font-mono text-foreground leading-none">3</span>
                             <div>
                               <p className="text-base text-muted-foreground font-medium leading-snug">days free</p>
-                              <p className="font-mono text-xs text-muted-foreground">then {price}{sub}</p>
+                              <p className="font-mono text-xs text-muted-foreground">then {price}{sub}, billed monthly</p>
                             </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-4">No charge now. Cancel before day 4 and pay nothing.</p>
+                          <p className="text-sm text-muted-foreground mt-4">
+                            No charge now. Cancel before day 4 and pay nothing. After the trial, your card is charged $3.99 every month until you cancel.
+                          </p>
                         </>
                       ) : (
                         <>
@@ -570,11 +577,11 @@ export default function PricingPage() {
                             <span className="text-6xl font-bold font-mono text-foreground leading-none">$2.50</span>
                             <div>
                               <p className="text-base text-muted-foreground font-medium leading-snug">/ month</p>
-                              <p className="font-mono text-xs text-muted-foreground">billed as $29.99/year</p>
+                              <p className="font-mono text-xs text-muted-foreground">billed as $29.99/year, renews annually</p>
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground mt-4">
-                            Save 37% vs monthly. Same full Pro access.{" "}
+                            Save 37% vs monthly. Your card is charged $29.99 once per year until you cancel. Same full Pro access.{" "}
                             <span className="font-mono text-[9px] uppercase tracking-widest border border-border rounded-sm px-1.5 py-px">37% off</span>
                           </p>
                         </>
@@ -611,7 +618,16 @@ export default function PricingPage() {
                           {busy ? "Processing…" : ctaLabel}
                         </Button>
                         <p className="text-xs text-muted-foreground text-center">
-                          {isMonthly ? "No card charged today" : "Billed annually"}
+                          {isMonthly
+                            ? <>No card charged today · renews monthly at $3.99</>
+                            : <>Billed as $29.99/year · renews annually</>
+                          }
+                        </p>
+                        {/* Cancellation instructions */}
+                        <p className="text-[11px] text-muted-foreground text-center leading-relaxed border-t border-border pt-2">
+                          Cancel anytime from{" "}
+                          <span className="font-semibold text-foreground/80">Profile → Billing → Manage Subscription</span>
+                          {" "}— you'll be taken to Paddle's customer portal where cancellation is one click.
                         </p>
                         <div className="pt-1 border-t border-border space-y-2">
                           <p className="text-[10px] text-muted-foreground font-mono text-center">Secure payment via Paddle · 200+ countries</p>
@@ -628,7 +644,7 @@ export default function PricingPage() {
 
                       <div className="border-t border-border pt-6 space-y-3">
                         {[
-                          { icon: <Check className="h-3.5 w-3.5" />, label: "Cancel in one click" },
+                          { icon: <Check className="h-3.5 w-3.5" />, label: "Cancel in one click — no hoops" },
                           { icon: <Users className="h-3.5 w-3.5" />, label: "50,000+ users / month" },
                         ].map(({ icon, label }) => (
                           <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -663,8 +679,9 @@ export default function PricingPage() {
             <div className="space-y-0">
               {[
                 { id: "trial",     q: "How does the 3-day free trial work?",          a: "Select the Monthly plan and start your trial — no charge until day 4. Full Pro access during the trial. Cancel any time before day 4 and you won't be billed a single cent." },
+                { id: "recurring", q: "Is Pro a recurring subscription?",             a: "Yes. The monthly plan charges $3.99 automatically every month after your 3-day trial ends. The yearly plan charges $29.99 once per year. You're always in control — cancel anytime from Profile → Billing → Manage Subscription and your plan won't renew." },
+                { id: "cancel",    q: "How do I cancel my subscription?",             a: "Go to Profile → Billing and click 'Manage Subscription'. This takes you directly to Paddle's customer portal, where cancellation is a single button click — no forms, no emails, no waiting. Cancel before your next renewal date and you won't be charged again. You keep Pro access until the end of your current billing period." },
                 { id: "domains",   q: "Why do Pro domains actually work where others get blocked?", a: "Most temp mail providers have used the same domains for years — they're in every spam database and blocklist on the internet. We regularly rotate in new domains for Pro members that have zero history with spam filters. Fresh domains aren't on blocklists yet, so signups and verification emails land every time. Free plan users share older domains that sites may already know and reject." },
-                { id: "cancel",    q: "Can I cancel anytime?",                        a: "Yes. Cancel from your account settings — no fees, no hoops. If you're on a trial, cancelling before day 4 means zero charges." },
                 { id: "retention", q: "What happens to my emails if I don't upgrade?",a: "Free plan emails are automatically deleted after 24 hours. Pro keeps all your emails and attachments forever (up to 5 GB)." },
                 { id: "otp",       q: "How does auto OTP extraction work?",            a: "Our SMTP plugin scans the subject and body the moment an email arrives. It uses layered regex patterns to detect 4–8 digit codes. The code appears instantly in your inbox list without opening the email. Pro only." },
                 { id: "verify",    q: "What is verification link detection?",          a: "When an email contains a Verify, Confirm, Activate, or Magic Link button, our server extracts the URL from the HTML. You'll see a Verify chip in your inbox list. Pro only." },

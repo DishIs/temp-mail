@@ -17,8 +17,30 @@ export function DeletionRedirect({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (status !== "authenticated" || !session?.user) return;
 
-    const deletionStatus = (session.user as { deletion_status?: string }).deletion_status;
+    const user = session.user as any;
+    const deletionStatus = user.deletion_status;
+    const banStatus = user.banStatus;
 
+    // 1. BAN CHECK (Highest priority)
+    if (banStatus === "banned") {
+      if (!pathname?.startsWith("/account-banned")) {
+        router.replace("/account-banned");
+      }
+      return;
+    }
+
+    if (banStatus === "warned") {
+      // Allow bypass if already acknowledged in this session
+      const acknowledged = typeof window !== "undefined" && sessionStorage.getItem("warning_acknowledged") === "true";
+      if (acknowledged) return;
+
+      if (!pathname?.startsWith("/account-warned")) {
+        router.replace("/account-warned");
+      }
+      return;
+    }
+
+    // 2. DELETION CHECK
     if (deletionStatus === "permanent") {
       if (!pathname?.startsWith("/account-deleted")) {
         signOut({ redirect: false }).then(() => router.replace("/account-deleted"));

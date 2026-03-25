@@ -48,6 +48,8 @@ export default async function middleware(request: NextRequest) {
     path.startsWith('/policies/') ||
     path === '/account-deletion-scheduled' ||
     path === '/account-deleted' ||
+    path === '/account-banned' ||
+    path === '/account-warned' ||
     path === '/open-source' ||
     path.startsWith('/landing');
 
