@@ -960,14 +960,6 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
   useEffect(() => {
     if (!email || !email.includes('@')) return;
 
-    if (isAuthenticated) {
-      fetch("/api/user/inboxes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inboxName: email }),
-      }).catch(() => { });
-    }
-
     const h = safeJsonParse<string[]>(localStorage.getItem("emailHistory"), []);
     let next = [email, ...h.filter(e => e !== email)];
     if (userPlan === "free") next = next.slice(0, 7);
@@ -1224,9 +1216,18 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
           openUpsell(!fetchedDomains.some(d => d.domain === selectedDomain) ? "Custom Domains" : "Pro Domains");
           return;
         }
-        setEmail(`${p}@${selectedDomain}`);
+        const newEmail = `${p}@${selectedDomain}`;
+        setEmail(newEmail);
         setIsEditing(false);
         setBlockButtons(false);
+        
+        if (isAuthenticated) {
+          fetch("/api/user/inboxes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inboxName: newEmail }),
+          }).catch(() => { });
+        }
         setReadMessageIds(new Set());
         setDismissedMessageIds(new Set());
         setDomainExpiry(null);
