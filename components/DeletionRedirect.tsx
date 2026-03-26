@@ -22,7 +22,7 @@ export function DeletionRedirect({ children }: { children: React.ReactNode }) {
     const banStatus = user.banStatus;
 
     // 1. BAN CHECK (Highest priority)
-    if (banStatus === "banned") {
+    if (banStatus && banStatus !== "none" && banStatus !== "warned") {
       if (!pathname?.startsWith("/account-banned")) {
         router.replace("/account-banned");
       }

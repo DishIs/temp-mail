@@ -24,13 +24,13 @@ export default function AccountBannedPage() {
       router.replace("/auth?callbackUrl=/account-banned");
       return;
     }
-    if (status === "authenticated" && banStatus !== "banned") {
+    if (status === "authenticated" && (!banStatus || banStatus === "none" || banStatus === "warned")) {
       router.replace("/");
       return;
     }
   }, [status, banStatus, router]);
 
-  if (status === "loading" || (status === "authenticated" && banStatus !== "banned")) {
+  if (status === "loading" || (status === "authenticated" && (!banStatus || banStatus === "none" || banStatus === "warned"))) {
     return (
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <div className="min-h-screen flex items-center justify-center bg-background">

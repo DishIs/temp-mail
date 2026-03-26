@@ -2,11 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
 import { LANDING_PAGE_SLUGS } from '@/lib/landing-pages-config';
+import { getToken } from 'next-auth/jwt';
 
 const i18nMiddleware = createMiddleware(routing);
 
 export default async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+
+  // -- BAN CHECK IN MIDDLEWARE --
+  // If user is banned, prevent access to protected routes
+  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+  const isBanned = token?.banStatus && token.banStatus !== 'none' && token.banStatus !== 'warned';
+
+  if (isBanned) {
+    if (path.startsWith('/api/user/')) {
+      return NextResponse.json(
+        { success: false, message: 'Account is banned.' },
+        { status: 403 }
+      );
+    }
+    // Protect dashboard and settings pages from server-side bypass
+    if (path.includes('/dashboard') || path === '/' || path.startsWith('/api/automation') || path.startsWith('/api/playground')) {
+      return NextResponse.redirect(new URL('/account-banned', request.url));
+    }
+  }
 
   let cookieId = request.cookies.get('fp_id')?.value ?? crypto.randomUUID();
   let response: NextResponse;
@@ -37,6 +56,7 @@ export default async function middleware(request: NextRequest) {
 
   // 3. BYPASS NEXT-INTL FOR SPECIFIC ROUTES
   const shouldBypassI18n =
+    path.startsWith('/api') ||
     path === '/blog' ||
     path.startsWith('/blog/') ||
     path === '/docs' ||
@@ -64,5 +84,5 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)']
+  matcher: ['/((?!_next|_vercel|.*\\..*).*)']
 };
