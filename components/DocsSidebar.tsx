@@ -12,6 +12,7 @@ const SIDEBAR_GROUPS: { label: string; links: { href: string; label: string }[] 
     label: "Getting Started",
     links: [
       { href: "/api/docs/quickstart", label: "Quickstart" },
+      { href: "/ai", label: "Ask FCE AI" },
     ],
   },
   {

@@ -30,6 +30,7 @@ const FOOTER_COLS = [
     heading: "Developers",
     links: [
       { label: "API Overview",   href: "/api",                  external: false },
+      { label: "FCE AI",         href: "/ai",                   external: false },
       { label: "Documentation",  href: "/api/docs",             external: false },
       { label: "CLI Tool",       href: "/api/cli",              external: false },
       { label: "API Pricing",    href: "/api/pricing",          external: false },

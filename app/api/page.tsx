@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Bot } from "lucide-react";
 import { ApiHeroCode } from "@/app/api/ApiHeroCode";
 import { ApiCodeExamples } from "@/app/api/ApiCodeExamples";
 import { EmailFlowAnimation } from "@/app/api/EmailFlowAnimation";
@@ -187,6 +187,11 @@ export default function ApiOverviewPage() {
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href="/api/docs/quickstart">Read the docs</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="border-primary/50 hover:bg-primary/5">
+              <Link href="/ai" className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-primary" /> Ask FCE AI
+              </Link>
             </Button>
           </motion.div>
 

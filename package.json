@@ -14,6 +14,8 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250705.0",
     "@dishistech/blogs-sdk": "^1.0.4",
+    "@google/genai": "^1.46.0",
+    "@google/generative-ai": "^0.24.1",
     "@marsidev/react-turnstile": "^1.4.1",
     "@next/third-parties": "^15.0.3",
     "@opennextjs/cloudflare": "^1.16.5",
@@ -40,6 +42,7 @@
     "framer-motion": "^12.23.12",
     "jose": "^5.9.6",
     "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.462.0",
     "miniflare": "^4.20250712.0",
     "next": "^15.5.12",

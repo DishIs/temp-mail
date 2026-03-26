@@ -6,7 +6,7 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  Terminal, Github, Check, Copy, ShieldCheck, Zap,
+  Terminal, Github, Check, Copy, ShieldCheck, Zap, Bot,
   ArrowRight, Cpu, RotateCcw
 } from "lucide-react";
 import { CodeBlock } from "@/components/CodeBlock";
