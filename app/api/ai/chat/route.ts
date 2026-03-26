@@ -12,16 +12,16 @@ export async function POST(req: NextRequest) {
     }
 
     const lastMessage = messages[messages.length - 1];
-    const hasAttachments =
-      !!(lastMessage?.attachments?.length > 0);
+    const hasAttachments = !!(lastMessage?.attachments?.length > 0);
 
     const modelName = chooseModel(
       lastMessage?.content || "",
       hasAttachments
     );
 
+    // Format messages strictly to "user" and "model" roles
     const formattedMessages = messages.map((m: any) => {
-      const parts: any[] = [];
+      const parts: any[] =[];
 
       if (m.content) {
         parts.push({ text: m.content });
@@ -56,14 +56,9 @@ export async function POST(req: NextRequest) {
 
     const stream = await ai.models.generateContentStream({
       model: modelName,
-      contents: [
-        {
-          role: "system",
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        ...formattedMessages,
-      ],
+      contents: formattedMessages, // No system role here!
       config: {
+        systemInstruction: SYSTEM_PROMPT, // Put system prompt here
         tools: TOOLS,
         maxOutputTokens: 2048,
         temperature: 0.7,

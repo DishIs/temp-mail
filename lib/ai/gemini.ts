@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type, Tool } from "@google/genai";
 
 export const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY!,
@@ -110,21 +110,18 @@ export function chooseModel(
 
   return isComplex ? "gemini-2.5-pro" : "gemini-2.5-flash";
 }
-
-export const TOOLS = [
+export const TOOLS: Tool[] = [
   {
-    functionDeclarations: [
+    functionDeclarations:[
       {
         name: "get_api_specs",
-        description:
-          "Fetch API schema or details for a given endpoint",
+        description: "Fetch API schema or details for a given endpoint",
         parameters: {
-          type: "object",
+          type: Type.OBJECT,
           properties: {
             endpoint: {
-              type: "string",
-              description:
-                "Endpoint or keyword like 'inboxes', 'messages'",
+              type: Type.STRING,
+              description: "Endpoint or keyword like 'inboxes', 'messages'",
             },
           },
           required: ["endpoint"],
@@ -134,12 +131,11 @@ export const TOOLS = [
         name: "get_cli_docs",
         description: "Fetch CLI documentation",
         parameters: {
-          type: "object",
+          type: Type.OBJECT,
           properties: {
             command: {
-              type: "string",
-              description:
-                "Command like 'login' or 'inbox create'",
+              type: Type.STRING,
+              description: "Command like 'login' or 'inbox create'",
             },
           },
         },
@@ -148,36 +144,32 @@ export const TOOLS = [
         name: "handle_contact_request",
         description: "Send support request",
         parameters: {
-          type: "object",
+          type: Type.OBJECT,
           properties: {
-            name: { type: "string" },
-            email: { type: "string" },
-            message: { type: "string" },
+            name: { type: Type.STRING },
+            email: { type: Type.STRING },
+            message: { type: Type.STRING },
           },
           required: ["name", "email", "message"],
         },
       },
       {
         name: "trigger_api_action",
-        description:
-          "Request permission for API action or key creation",
+        description: "Request permission for API action or key creation",
         parameters: {
-          type: "object",
+          type: Type.OBJECT,
           properties: {
             action_type: {
-              type: "string",
-              description:
-                "create_api_key or perform_request",
+              type: Type.STRING,
+              description: "create_api_key or perform_request",
             },
             description: {
-              type: "string",
-              description:
-                "Explain what will happen",
+              type: Type.STRING,
+              description: "Explain what will happen",
             },
             json_params: {
-              type: "string",
-              description:
-                "JSON string for API params",
+              type: Type.STRING,
+              description: "JSON string for API params",
             },
           },
           required: ["action_type", "description"],
