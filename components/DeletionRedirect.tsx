@@ -23,7 +23,8 @@ export function DeletionRedirect({ children }: { children: React.ReactNode }) {
 
     // 1. BAN CHECK (Highest priority)
     if (banStatus && banStatus !== "none" && banStatus !== "warned") {
-      if (!pathname?.startsWith("/account-banned")) {
+      const allowedForBanned = pathname?.startsWith("/account-banned") || pathname?.startsWith("/contact") || pathname?.startsWith("/policies");
+      if (!allowedForBanned) {
         router.replace("/account-banned");
       }
       return;
@@ -34,7 +35,8 @@ export function DeletionRedirect({ children }: { children: React.ReactNode }) {
       const acknowledged = typeof window !== "undefined" && sessionStorage.getItem("warning_acknowledged") === "true";
       if (acknowledged) return;
 
-      if (!pathname?.startsWith("/account-warned")) {
+      const allowedForWarned = pathname?.startsWith("/account-warned") || pathname?.startsWith("/contact") || pathname?.startsWith("/policies");
+      if (!allowedForWarned) {
         router.replace("/account-warned");
       }
       return;
@@ -49,7 +51,8 @@ export function DeletionRedirect({ children }: { children: React.ReactNode }) {
     }
 
     if (deletionStatus === "scheduled") {
-      if (!pathname?.includes("account-deletion-scheduled")) {
+      const allowedForScheduled = pathname?.startsWith("/account-deletion-scheduled") || pathname?.startsWith("/contact") || pathname?.startsWith("/policies");
+      if (!allowedForScheduled) {
         router.replace("/account-deletion-scheduled");
       }
     }
