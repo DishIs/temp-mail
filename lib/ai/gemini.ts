@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI, SchemaType, Tool } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export const SYSTEM_PROMPT = `
 You are FCE AI, the intelligent assistant for FreeCustom.Email (FCE).
@@ -37,21 +37,19 @@ CONTEXT MANAGEMENT:
 export function chooseModel(input: string, hasAttachments: boolean = false) {
   const complexKeywords = ["build", "debug", "automation", "complex", "project", "multi-file", "generate", "create", "analyze", "explain this image"];
   const isComplex = hasAttachments || input.length > 500 || complexKeywords.some(k => input.toLowerCase().includes(k));
-  // Use 1.5 versions for stability or 2.0-flash if available and supported by the current SDK version
-  // Switching to 1.5-pro for complex/vision tasks as it is very robust.
-  return isComplex ? "gemini-1.5-pro" : "gemini-1.5-flash";
+  return isComplex ? "gemini-2.5-pro" : "gemini-2.5-flash";
 }
 
-export const TOOLS: Tool[] = [
+export const TOOLS = [
   {
     functionDeclarations: [
       {
         name: "get_api_specs",
         description: "Fetch technical details or schema for a specific API endpoint or category from the OpenAPI spec.",
         parameters: {
-          type: SchemaType.OBJECT,
+          type: "OBJECT",
           properties: {
-            endpoint: { type: SchemaType.STRING, description: "The API endpoint or keyword to search for (e.g., 'inboxes', 'messages', 'domains')" }
+            endpoint: { type: "STRING", description: "The API endpoint or keyword to search for (e.g., 'inboxes', 'messages', 'domains')" }
           },
           required: ["endpoint"]
         }
@@ -60,9 +58,9 @@ export const TOOLS: Tool[] = [
         name: "get_cli_docs",
         description: "Fetch documentation for FCE CLI commands.",
         parameters: {
-          type: SchemaType.OBJECT,
+          type: "OBJECT",
           properties: {
-            command: { type: SchemaType.STRING, description: "The CLI command or topic to lookup (e.g., 'login', 'inbox create')" }
+            command: { type: "STRING", description: "The CLI command or topic to lookup (e.g., 'login', 'inbox create')" }
           }
         }
       },
@@ -70,11 +68,11 @@ export const TOOLS: Tool[] = [
         name: "handle_contact_request",
         description: "Send a message to the FCE support team on behalf of the user.",
         parameters: {
-          type: SchemaType.OBJECT,
+          type: "OBJECT",
           properties: {
-            name: { type: SchemaType.STRING },
-            email: { type: SchemaType.STRING },
-            message: { type: SchemaType.STRING }
+            name: { type: "STRING" },
+            email: { type: "STRING" },
+            message: { type: "STRING" }
           },
           required: ["name", "email", "message"]
         }
@@ -83,11 +81,11 @@ export const TOOLS: Tool[] = [
         name: "trigger_api_action",
         description: "Requests permission to perform a specific API action or create an API key.",
         parameters: {
-          type: SchemaType.OBJECT,
+          type: "OBJECT",
           properties: {
-            action_type: { type: SchemaType.STRING, description: "The type of action to perform: create_api_key or perform_request" },
-            description: { type: SchemaType.STRING, description: "A clear description for the user of what this action will do" },
-            json_params: { type: SchemaType.STRING, description: "JSON string of parameters for the API request if perform_request is chosen" }
+            action_type: { type: "STRING", description: "The type of action to perform: create_api_key or perform_request" },
+            description: { type: "STRING", description: "A clear description for the user of what this action will do" },
+            json_params: { type: "STRING", description: "JSON string of parameters for the API request if perform_request is chosen" }
           },
           required: ["action_type", "description"]
         }

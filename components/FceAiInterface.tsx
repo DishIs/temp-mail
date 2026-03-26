@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { 
-  Send, Bot, User, Trash2, Download, Copy, Check, 
-  X, Shield, Lock, Zap, Loader2, FileArchive as FileZip, 
-  Info, Paperclip, Image as ImageIcon, FileText, Trash
+import {
+  Send, Bot, User, Trash2, Copy, Check,
+  X, Shield, Lock, Zap, Loader2, FileArchive as FileZip,
+  Paperclip, Image as ImageIcon, FileText, Trash, RefreshCcw, Edit2, PlayCircle
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,8 +38,12 @@ export function FceAiInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [thinking, setThinking] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editInput, setEditInput] = useState("");
+  
   const [showPermission, setShowPermission] = useState<{
     show: boolean;
     type: string;
@@ -49,10 +54,15 @@ export function FceAiInterface() {
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mainInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const consented = localStorage.getItem("fce_ai_consent");
-    if (!consented) setShowConsent(true);
+    if (!consented) {
+      setShowConsent(true);
+    } else {
+      mainInputRef.current?.focus();
+    }
   }, []);
 
   useEffect(() => {
@@ -133,43 +143,24 @@ export function FceAiInterface() {
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if ((!input.trim() && attachments.length === 0) || isLoading) return;
-
-    const userMessage = input.trim();
-    const currentAttachments = [...attachments];
-    setInput("");
-    setAttachments([]);
-    
-    const newMessages: Message[] = [...messages, { 
-      role: "user", 
-      content: userMessage,
-      attachments: currentAttachments
-    }];
-    
-    if (newMessages.length > 20) {
-      for (let i = 0; i < newMessages.length - 15; i++) {
-        newMessages[i].hidden = true;
-      }
-    }
-    
-    setMessages(newMessages);
+  const submitChat = async (chatMessages: Message[]) => {
     setIsLoading(true);
-
+    setThinking("FCE AI is analyzing the request...");
+    
     try {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
-        body: JSON.stringify({ messages: newMessages.filter(m => !m.hidden) }),
+        body: JSON.stringify({ messages: chatMessages.filter(m => !m.hidden) }),
       });
 
       if (!response.ok) {
-        const errData = await response.json();
+        const errData = await response.json().catch(() => ({}));
         throw new Error(errData.details || "Connection Error");
       }
 
       const reader = response.body?.getReader();
       let aiContent = "";
+      setThinking(null);
 
       setMessages(prev => [...prev, { role: "model", content: "" }]);
 
@@ -180,7 +171,10 @@ export function FceAiInterface() {
         const chunk = new TextDecoder().decode(value);
         
         if (chunk.includes("__FCE_AI_CALL__:")) {
-          const [text, callStr] = chunk.split("__FCE_AI_CALL__:");
+          const parts = chunk.split("__FCE_AI_CALL__:");
+          const text = parts[0];
+          const callStr = parts.slice(1).join("__FCE_AI_CALL__:"); // Handle multiple calls or messy chunks
+          
           if (text) {
             aiContent += text;
             setMessages(prev => {
@@ -189,7 +183,17 @@ export function FceAiInterface() {
               return last;
             });
           }
-          // Note: In real production we'd re-trigger the call here with tool results
+          
+          try {
+            const callData = JSON.parse(callStr);
+            for (const call of callData.calls) {
+               if (call.name === "get_api_specs") setThinking("Searching OpenAPI specifications...");
+               if (call.name === "get_cli_docs") setThinking("Reviewing CLI documentation...");
+               if (call.name === "handle_contact_request") setThinking("Connecting to support desk...");
+               // For demo/simplicity, we clear thinking immediately since we aren't looping the tool response back yet
+               setTimeout(() => setThinking(null), 1500);
+            }
+          } catch(e) {}
           continue;
         }
 
@@ -202,10 +206,82 @@ export function FceAiInterface() {
       }
     } catch (error: any) {
       console.error(error);
-      setMessages(prev => [...prev, { role: "model", content: `Error: ${error.message}` }]);
+      setMessages(prev => prev.filter(m => m.content !== ""));
+      toast.error(`Error: ${error.message || "Unable to reach FCE AI"}`);
+      setThinking(null);
     } finally {
       setIsLoading(false);
+      mainInputRef.current?.focus();
     }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if ((!input.trim() && attachments.length === 0) || isLoading) return;
+
+    const userMessage = input.trim();
+    const currentAttachments = [...attachments];
+    setInput("");
+    setAttachments([]);
+    
+    const newMessages: Message[] = [...messages, {
+      role: "user",
+      content: userMessage,
+      attachments: currentAttachments
+    }];
+    
+    if (newMessages.length > 20) {
+      for (let i = 0; i < newMessages.length - 15; i++) {
+        newMessages[i].hidden = true;
+      }
+    }
+    
+    setMessages(newMessages);
+    await submitChat(newMessages);
+  };
+
+  const handleRetry = async (index: number) => {
+    if (isLoading) return;
+    // Remove the AI's response and any messages after the user's prompt
+    const newMessages = messages.slice(0, index + 1);
+    setMessages(newMessages);
+    await submitChat(newMessages);
+  };
+
+  const handleDelete = (index: number) => {
+    if (isLoading) return;
+    // If user message, delete it and the following AI response (if any)
+    if (messages[index].role === "user") {
+      const newMessages = [...messages];
+      newMessages.splice(index, 2);
+      setMessages(newMessages);
+    } else {
+      // Just delete the AI message
+      const newMessages = [...messages];
+      newMessages.splice(index, 1);
+      setMessages(newMessages);
+    }
+    toast.success("Message removed");
+    mainInputRef.current?.focus();
+  };
+
+  const startEdit = (index: number, content: string) => {
+    if (isLoading) return;
+    setEditingIndex(index);
+    setEditInput(content);
+  };
+
+  const submitEdit = async (index: number) => {
+    if (!editInput.trim() || isLoading) return;
+    
+    const newMessages = messages.slice(0, index);
+    const updatedMessage = { ...messages[index], content: editInput.trim() };
+    newMessages.push(updatedMessage);
+    
+    setEditingIndex(null);
+    setEditInput("");
+    setMessages(newMessages);
+    await submitChat(newMessages);
   };
 
   const downloadAllCode = async (content: string) => {
@@ -227,21 +303,27 @@ export function FceAiInterface() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-background relative overflow-hidden">
+    <div className="flex flex-col h-full w-full relative overflow-hidden bg-transparent">
       {/* Messages Area */}
       <ScrollArea className="flex-1 px-4 md:px-0" ref={scrollRef}>
         <div className="max-w-3xl mx-auto py-12 md:py-20 space-y-12">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 text-center space-y-6">
-              <div className="w-20 h-20 rounded-2xl bg-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+                className="w-20 h-20 rounded-2xl bg-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
                 <Bot className="w-10 h-10 text-primary" />
-              </div>
-              <div className="space-y-3">
-                <h3 className="text-3xl font-extrabold tracking-tight">How can FCE AI help?</h3>
-                <p className="text-muted-foreground text-base max-w-sm mx-auto">
-                  Paste code, attach images of errors, or ask for API automations. FCE AI can analyze files and screenshots.
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+                className="space-y-3 text-center w-full">
+                <h3 className="text-3xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent pb-1">
+                  FCE AI Assistant
+                </h3>
+                <p className="text-muted-foreground text-base max-w-md mx-auto leading-relaxed">
+                  Your intelligent partner for mastering the FreeCustom.Email ecosystem. Generate code, troubleshoot CLI issues, or perform API actions instantly.
                 </p>
-              </div>
+              </motion.div>
             </div>
           )}
           
@@ -257,37 +339,72 @@ export function FceAiInterface() {
                   {m.role === "user" ? <User className="w-5 h-5 text-muted-foreground" /> : <Bot className="w-5 h-5 text-primary" />}
                 </div>
                 <div className="flex-1 space-y-4 overflow-hidden">
-                  <div className="font-bold text-xs uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                    {m.role === "user" ? (session?.user?.name || "User") : "FCE AI"}
-                    {m.role === "model" && <Zap className="w-3 h-3 text-primary fill-primary" />}
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-xs uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
+                      {m.role === "user" ? (session?.user?.name || "User") : "FCE AI"}
+                      {m.role === "model" && <Zap className="w-3 h-3 text-primary fill-primary" />}
+                    </div>
+                    {/* Action Toolbar */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {m.role === "user" && !isLoading && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground" onClick={() => startEdit(i, m.content)} title="Edit prompt">
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground" onClick={() => handleRetry(i)} title="Retry from here">
+                            <RefreshCcw className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                      {m.role === "model" && !isLoading && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground" onClick={() => { navigator.clipboard.writeText(m.content); toast.success("Copied to clipboard"); }} title="Copy response">
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive" onClick={() => handleDelete(i)} title="Delete message">
+                         <Trash className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
                   
                   {m.attachments && m.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 pb-2">
                        {m.attachments.map((at, idx) => (
-                         <div key={idx} className="flex items-center gap-2 p-2 bg-muted/50 border rounded-lg max-w-[200px] overflow-hidden">
-                            {at.type.startsWith("image/") ? <ImageIcon className="w-4 h-4 shrink-0" /> : <FileText className="w-4 h-4 shrink-0" />}
-                            <span className="text-[11px] font-medium truncate">{at.name}</span>
+                         <div key={idx} className="flex items-center gap-2 p-2 bg-muted/50 border rounded-lg max-w-[200px] overflow-hidden shadow-sm">
+                            {at.type.startsWith("image/") ? <ImageIcon className="w-4 h-4 shrink-0 text-muted-foreground" /> : <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />}
+                            <span className="text-[11px] font-medium truncate text-foreground/80">{at.name}</span>
                          </div>
                        ))}
                     </div>
                   )}
 
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                    {m.content}
-                  </div>
-                  
-                  {m.role === "model" && m.content.includes("```") && (
-                    <div className="pt-2 flex gap-3">
-                      <Button size="sm" variant="outline" className="h-8 gap-2 rounded-lg text-xs font-semibold hover:bg-muted" onClick={() => downloadAllCode(m.content)}>
-                        <FileZip className="w-4 h-4" /> Export (.zip)
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-8 gap-2 rounded-lg text-xs font-semibold" onClick={() => {
-                         navigator.clipboard.writeText(m.content);
-                      }}>
-                        <Copy className="w-4 h-4" /> Copy markdown
-                      </Button>
+                  {editingIndex === i ? (
+                    <div className="space-y-3 pt-1">
+                      <Textarea
+                        value={editInput}
+                        onChange={(e) => setEditInput(e.target.value)}
+                        className="min-h-[100px] bg-background border-muted focus-visible:ring-primary/50 text-base resize-y"
+                        autoFocus
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="ghost" onClick={() => setEditingIndex(null)}>Cancel</Button>
+                        <Button size="sm" onClick={() => submitEdit(i)}>Save & Submit</Button>
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                        {m.content}
+                      </div>
+                      
+                      {m.role === "model" && m.content.includes("```") && (
+                        <div className="pt-2 flex gap-3">
+                          <Button size="sm" variant="outline" className="h-8 gap-2 rounded-lg text-xs font-semibold hover:bg-muted shadow-sm" onClick={() => downloadAllCode(m.content)}>
+                            <FileZip className="w-4 h-4" /> Export (.zip)
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -300,14 +417,22 @@ export function FceAiInterface() {
                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-primary/10 border-primary/20">
                    <Bot className="w-5 h-5 text-primary" />
                  </div>
-                 <div className="flex-1 space-y-4">
-                    <div className="font-bold text-xs uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                      FCE AI <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                       <div className="h-4 w-full bg-muted/50 animate-pulse rounded-md" />
-                       <div className="h-4 w-2/3 bg-muted/50 animate-pulse rounded-md" />
-                    </div>
+                 <div className="flex-1 space-y-4 mt-1.5">
+                    {thinking ? (
+                      <div className="flex items-center gap-2 text-sm text-primary font-medium animate-pulse">
+                         <PlayCircle className="w-4 h-4" /> {thinking}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="font-bold text-xs uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
+                          FCE AI <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        </div>
+                        <div className="space-y-2">
+                           <div className="h-4 w-full bg-muted/50 animate-pulse rounded-md" />
+                           <div className="h-4 w-2/3 bg-muted/50 animate-pulse rounded-md" />
+                        </div>
+                      </>
+                    )}
                  </div>
                </div>
             </div>
@@ -334,7 +459,8 @@ export function FceAiInterface() {
           )}
 
           <div className="relative p-2">
-            <Textarea 
+            <Textarea
+              ref={mainInputRef}
               value={input}
               onPaste={handlePaste}
               onChange={(e) => setInput(e.target.value)}
@@ -346,10 +472,10 @@ export function FceAiInterface() {
               }}
               placeholder="Ask anything about the API, attach images, or paste code..."
               disabled={isLoading}
-              className="min-h-[100px] max-h-[400px] w-full border-0 focus-visible:ring-0 bg-transparent text-lg p-4 resize-none placeholder:text-muted-foreground/50"
+              className="min-h-[100px] max-h-[400px] w-full border-0 focus-visible:ring-0 bg-transparent text-lg p-4 resize-none placeholder:text-muted-foreground/50 shadow-none"
             />
             
-            <div className="flex items-center justify-between px-2 pb-1 pt-2">
+            <div className="flex items-center justify-between px-2 pb-1 pt-2 border-t border-border/40 mt-2">
               <div className="flex gap-1">
                 <Button 
                   type="button" 
