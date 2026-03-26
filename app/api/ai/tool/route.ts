@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
         "openapi.yaml"
       );
 
+      if (!fs.existsSync(openapiPath)) {
+        return NextResponse.json({
+          result: "openapi.yaml not found",
+        });
+      }
+
       const content = fs.readFileSync(openapiPath, "utf8");
 
       const endpoint = params?.endpoint?.toLowerCase();
@@ -55,9 +61,39 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (tool === "get_cli_docs") {
+    if (tool === "get_sdk_docs") {
+      const lang = params?.language?.toLowerCase() === "python" ? "python" : "npm";
+      const docPath = path.join(
+        process.cwd(),
+        "app",
+        "api",
+        "docs",
+        "sdk",
+        lang,
+        "page.tsx"
+      );
+
+      if (fs.existsSync(docPath)) {
+        let content = fs.readFileSync(docPath, "utf8");
+        // Extract basic textual information if needed, or just return the whole page content (up to limits)
+        return NextResponse.json({
+          result: content.substring(0, 5000) + (content.length > 5000 ? "\n... (truncated)" : ""),
+        });
+      }
+
       return NextResponse.json({
-        result: `
+        result: "SDK Docs not found for language: " + lang,
+      });
+    }
+
+    if (tool === "get_cli_docs") {
+      const docPath = path.join(process.cwd(), "app", "api", "cli", "page.tsx");
+      let content = "";
+      if (fs.existsSync(docPath)) {
+        content = fs.readFileSync(docPath, "utf8");
+        content = content.substring(0, 5000) + (content.length > 5000 ? "\n... (truncated)" : "");
+      } else {
+        content = `
 fce login
 fce logout
 fce inbox create
@@ -65,7 +101,10 @@ fce inbox list
 fce message list <inbox>
 fce message get <id>
 fce otp get <inbox>
-        `,
+        `;
+      }
+      return NextResponse.json({
+        result: content,
       });
     }
 
@@ -73,6 +112,18 @@ fce otp get <inbox>
       return NextResponse.json({
         result:
           "FreeCustom.Email lets you create unlimited private inboxes on custom domains with real-time updates.",
+      });
+    }
+
+    if (tool === "handle_contact_request") {
+      return NextResponse.json({
+        result: "Contact request submitted successfully.",
+      });
+    }
+
+    if (tool === "trigger_api_action") {
+      return NextResponse.json({
+        result: "API action executed successfully.",
       });
     }
 

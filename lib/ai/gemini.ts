@@ -128,6 +128,20 @@ export const TOOLS: Tool[] = [
         },
       },
       {
+        name: "get_sdk_docs",
+        description: "Fetch SDK documentation for a specific language",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            language: {
+              type: Type.STRING,
+              description: "Language like 'npm' or 'python'",
+            },
+          },
+          required: ["language"],
+        },
+      },
+      {
         name: "get_cli_docs",
         description: "Fetch CLI documentation",
         parameters: {
