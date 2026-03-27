@@ -62,13 +62,47 @@ const ASCII_FRAGMENTS =[
   { x: "67%", y: "87%", t: "RCPT TO:<ai@freecustom.email>" },
 ];
 
-const EXAMPLE_PROMPTS =[
-  "Generate a Python script to watch emails via WebSocket",
-  "How do I add a custom domain using the CLI?",
-  "Create a Node.js example for extracting OTPs",
-  "Write a cURL command to list all my inboxes",
-  "What is the rate limit for the Free plan?",
-  "Explain how the credits system works"
+const PROMPT_CATEGORIES = [
+  {
+    id: "getting_started",
+    name: "Getting Started",
+    prompts: [
+      "What is the rate limit for the Free plan?",
+      "Explain how the credits system works",
+      "How do I create my first private inbox?",
+      "Give me a quickstart guide for the FCE API"
+    ]
+  },
+  {
+    id: "sdk",
+    name: "SDK & Code",
+    prompts: [
+      "Generate a Python script to watch emails via WebSocket",
+      "Create a Node.js example for extracting OTPs",
+      "How to initialize the npm SDK and list messages?",
+      "Write a PHP script to fetch emails using REST API"
+    ]
+  },
+  {
+    id: "cli",
+    name: "CLI Tool",
+    prompts: [
+      "How do I add a custom domain using the CLI?",
+      "Write a cURL command to list all my inboxes",
+      "Show me how to fetch the latest OTP using the CLI",
+      "What does 'fce watch' do?"
+    ]
+  },
+  {
+    id: "advanced",
+    name: "Automation",
+    prompts: [
+      "How to connect FCE to Make.com for email parsing?",
+      "Explain the n8n automation flow for FCE",
+      "What is the exact OpenAPI specification for the OTP endpoint?",
+      "How to set up custom domain DNS records securely?"
+    ]
+  }
 ];
 
 function AsciiLayer() {
@@ -140,21 +174,29 @@ const renderMarkdownText = (text: string, isUser: boolean) => {
   });
 };
 
-// ─── Tool Execution Block ───────────────────────────────────────────────────
-function ToolExecutionBlock({ execution }: { execution: ToolExecution }) {
+// ─── Tool Executions Group ──────────────────────────────────────────────────
+function ToolExecutionsGroup({ executions }: { executions: ToolExecution[] }) {
   const [expanded, setExpanded] = useState(false);
-  const isRunning = execution.status === "running";
+  if (!executions || executions.length === 0) return null;
+
+  const runningCount = executions.filter(e => e.status === "running").length;
+  const isRunning = runningCount > 0;
+  
+  let summaryText = "";
+  if (isRunning) {
+    summaryText = `Running ${runningCount > 1 ? `${runningCount} tools` : executions.find(e => e.status === "running")?.name}...`;
+  } else {
+    summaryText = `Used ${executions.length > 1 ? `${executions.length} tools` : executions[0].name}`;
+  }
 
   return (
-    <div className="mb-3 text-xs font-mono">
+    <div className="mb-3 text-xs font-mono border-b border-border/30 pb-2">
       <button 
         onClick={() => setExpanded(!expanded)} 
-        className={`flex items-center gap-2 w-full text-left transition-colors ${isRunning ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground hover:text-foreground'}`}
+        className={`flex items-center gap-2 w-full text-left transition-colors ${isRunning ? 'text-primary animate-pulse' : 'text-muted-foreground hover:text-foreground'}`}
       >
         {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
-        <span className="flex-1 truncate">
-          {isRunning ? `Running ${execution.name}...` : `Used tool: ${execution.name}`}
-        </span>
+        <span className="flex-1 truncate">{summaryText}</span>
       </button>
 
       <AnimatePresence>
@@ -165,17 +207,24 @@ function ToolExecutionBlock({ execution }: { execution: ToolExecution }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="pt-2 pb-1 space-y-2 border-l-2 border-border/50 ml-1.5 pl-3 mt-1">
-              <div>
-                <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Parameters</span>
-                <pre className="mt-1 text-[11px] whitespace-pre-wrap text-muted-foreground">{JSON.stringify(execution.args, null, 2)}</pre>
-              </div>
-              {execution.result && (
-                <div>
-                  <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Result</span>
-                  <pre className="mt-1 text-[11px] max-h-40 overflow-y-auto whitespace-pre-wrap text-muted-foreground">{execution.result}</pre>
+            <div className="pt-3 pb-1 space-y-4 border-l-2 border-border/50 ml-1.5 pl-3 mt-2">
+              {executions.map((exec, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="text-[10px] uppercase tracking-widest text-foreground font-semibold flex items-center gap-1.5">
+                    <Zap className="w-3 h-3 text-muted-foreground" /> {exec.name}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground uppercase tracking-widest text-[9px]">Parameters</span>
+                    <pre className="mt-0.5 text-[11px] whitespace-pre-wrap text-muted-foreground">{JSON.stringify(exec.args, null, 2)}</pre>
+                  </div>
+                  {exec.result && (
+                    <div className="mt-2">
+                      <span className="text-muted-foreground uppercase tracking-widest text-[9px]">Result</span>
+                      <pre className="mt-0.5 text-[11px] max-h-32 overflow-y-auto whitespace-pre-wrap text-muted-foreground/80">{exec.result}</pre>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           </motion.div>
         )}
@@ -194,6 +243,7 @@ export function FceAiInterface() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isConsenting, setIsConsenting] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(PROMPT_CATEGORIES[0].id);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,6 +253,12 @@ export function FceAiInterface() {
   useEffect(() => {
     if (!localStorage.getItem("fce_ai_consent")) setShowConsent(true);
     else mainInputRef.current?.focus();
+    
+    // Reset scroll to top on mount
+    if (scrollRef.current) {
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) viewport.scrollTop = 0;
+    }
   },[]);
 
   const handleConsent = async () => {
@@ -232,7 +288,13 @@ export function FceAiInterface() {
   useEffect(() => {
     if (scrollRef.current) {
       const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) viewport.scrollTop = viewport.scrollHeight;
+      if (viewport) {
+        if (messages.length > 0) {
+          viewport.scrollTop = viewport.scrollHeight;
+        } else {
+          viewport.scrollTop = 0;
+        }
+      }
     }
   }, [messages, isLoading, thinking]);
 
@@ -411,6 +473,22 @@ export function FceAiInterface() {
     }
   };
 
+  const visibleMessages = messages.filter(m => !m.hidden);
+  const groupedMessages = visibleMessages.reduce((acc, m) => {
+    const last = acc[acc.length - 1];
+    if (last && last.role === 'model' && m.role === 'model') {
+      if (m.content) {
+        last.content = last.content ? `${last.content}\n\n${m.content}` : m.content;
+      }
+      if (m.toolExecutions) {
+        last.toolExecutions = [...(last.toolExecutions || []), ...m.toolExecutions];
+      }
+    } else {
+      acc.push({ ...m });
+    }
+    return acc;
+  }, [] as Message[]);
+
   return (
     <div className="flex flex-col h-full w-full relative bg-background text-foreground overflow-x-hidden font-sans" style={DOT_BG}>
       <AsciiLayer />
@@ -433,9 +511,23 @@ export function FceAiInterface() {
               </p>
               
               <div className="mt-8">
-                <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4">Example Prompts</p>
+                <div className="flex flex-wrap items-center gap-2 mb-4 border-b border-border/50 pb-2">
+                  {PROMPT_CATEGORIES.map(category => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`text-xs font-mono uppercase tracking-widest px-3 py-1.5 rounded-md transition-colors ${
+                        selectedCategory === category.id 
+                          ? 'bg-muted/50 text-foreground' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                  {EXAMPLE_PROMPTS.map((prompt, i) => (
+                  {PROMPT_CATEGORIES.find(c => c.id === selectedCategory)?.prompts.map((prompt, i) => (
                     <button 
                       key={i} 
                       onClick={() => { setInput(prompt); mainInputRef.current?.focus(); }}
@@ -451,7 +543,7 @@ export function FceAiInterface() {
 
           {/* Messages */}
           <div className="space-y-8 mt-6">
-            {messages.filter(m => !m.hidden).map((m, i) => (
+            {groupedMessages.map((m, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-4 group ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 
                 {/* Avatar Icon */}
@@ -479,9 +571,9 @@ export function FceAiInterface() {
                       : 'bg-background/90 border-transparent shadow-sm'
                   }`}>
                     {/* Render Tool Executions */}
-                    {m.toolExecutions?.map((exec, idx) => (
-                      <ToolExecutionBlock key={`tool-${idx}`} execution={exec} />
-                    ))}
+                    {m.toolExecutions && m.toolExecutions.length > 0 && (
+                      <ToolExecutionsGroup executions={m.toolExecutions} />
+                    )}
                     
                     {/* Render Content (Code Blocks + Markdown) */}
                     {m.content.split(/(```[\s\S]*?```)/g).map((part, idx) => {
@@ -566,11 +658,11 @@ export function FceAiInterface() {
               />
 
               {isLoading ? (
-                <Button onClick={handleStop} size="icon" className="h-10 w-10 rounded shrink-0 shadow-none border border-border bg-muted/20 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors">
+                <Button onClick={handleStop} size="icon" className="h-10 w-10 rounded shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                   <Square className="w-4 h-4 fill-current" />
                 </Button>
               ) : (
-                <Button onClick={handleSend} disabled={!input.trim() && attachments.length === 0} size="icon" className="h-10 w-10 rounded shrink-0 transition-transform active:scale-95 shadow-none border border-border bg-muted/20 hover:bg-foreground hover:text-background">
+                <Button onClick={handleSend} disabled={!input.trim() && attachments.length === 0} size="icon" className="h-10 w-10 rounded shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-50">
                   <Send className="w-4 h-4" />
                 </Button>
               )}
