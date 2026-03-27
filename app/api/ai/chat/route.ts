@@ -111,21 +111,15 @@ export async function POST(req: NextRequest) {
       }
 
       // If it's a hidden tool result, Gemini prefers `functionResponse` natively.
-      if (m.role === "user" && m.hidden && m.isToolResult) {
-        parts.push({
-          functionResponse: {
-            name: m.toolName,
-            response: { result: m.content }
-          }
-        });
-        // Clear text because we are sending functionResponse
-        const textIndex = parts.findIndex(p => p.text);
-        if (textIndex > -1) {
-          parts.splice(textIndex, 1);
-        }
+      if (m.hidden && m.isToolResult) {
         return {
-          role: "user", // For functionResponse, some SDK versions expect "user" or "function" role
-          parts,
+          role: "user",
+          parts: [{
+            functionResponse: {
+              name: m.toolName,
+              response: { result: m.content }
+            }
+          }]
         };
       }
 

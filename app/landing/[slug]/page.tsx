@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { fetchFromServiceAPI } from "@/lib/api";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader } from "@/components/nLHeader";
 import { AppFooter } from "@/components/app-footer";
 import { EmailBox } from "@/components/email-box";
 import { LandingPageTemplate } from "@/components/landing-page-template";

@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { motion, AnimatePresence } from "framer-motion";
 import { CodeBlock } from "@/components/CodeBlock";
 import { Turnstile } from "@marsidev/react-turnstile";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // ─── types ─────────────────────────────────────────────────────────────────
 interface Attachment {
@@ -134,44 +136,60 @@ function SectionMarker({ index, total, label }: { index: number; total: number; 
   );
 }
 
-// ─── Markdown Inline Parser ────────────────────────────────────────────────
-// Renders basic markdown (bold, italic, inline code, links, lists) safely
-const renderMarkdownText = (text: string, isUser: boolean) => {
-  return text.split('\n').map((line, i) => {
-    if (!line.trim()) return <br key={i} />;
-    
-    // Check if it's a list item
-    const isListItem = line.trim().match(/^[-*]\s+(.*)/) || line.trim().match(/^\d+\.\s+(.*)/);
-    
-    // Split by markdown tokens
-    const parts = line.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\))/g);
-    
-    const renderedLine = parts.map((part, j) => {
-      if (part.startsWith('**') && part.endsWith('**')) return <strong key={j} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
-      if (part.startsWith('*') && part.endsWith('*')) return <em key={j} className="italic">{part.slice(1, -1)}</em>;
-      if (part.startsWith('`') && part.endsWith('`')) return (
-        <code key={j} className={`border rounded px-1.5 py-0.5 text-[11px] font-mono mx-0.5 ${isUser ? 'bg-background/20 border-border/20' : 'bg-muted/50 border-border/50'}`}>
-          {part.slice(1, -1)}
-        </code>
-      );
-      if (part.match(/\[(.*?)\]\((.*?)\)/)) {
-        const [, label, href] = part.match(/\[(.*?)\]\((.*?)\)/)!;
-        return <a key={j} href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:opacity-80 transition-opacity">{label}</a>;
-      }
-      return <span key={j}>{part}</span>;
-    });
+// ─── Markdown Renderer ─────────────────────────────────────────────────────
+const Markdown = ({ children, isUser }: { children: string; isUser: boolean }) => {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ ...props }) => <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0" {...props} />,
+        h2: ({ ...props }) => <h2 className="text-lg font-bold mb-3 mt-5 first:mt-0" {...props} />,
+        h3: ({ ...props }) => <h3 className="text-base font-bold mb-2 mt-4 first:mt-0" {...props} />,
+        h4: ({ ...props }) => <h4 className="text-sm font-bold mb-1 mt-3 first:mt-0" {...props} />,
+        p: ({ ...props }) => <p className={`mb-3 last:mb-0 leading-relaxed ${isUser ? 'opacity-90' : 'text-muted-foreground'}`} {...props} />,
+        ul: ({ ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,
+        ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />,
+        li: ({ ...props }) => <li className={`${isUser ? 'opacity-90' : 'text-muted-foreground'}`} {...props} />,
+        strong: ({ ...props }) => <strong className="font-bold text-foreground" {...props} />,
+        em: ({ ...props }) => <em className="italic" {...props} />,
+        code: ({ node, ...props }) => {
+          const { className, children } = props;
+          const match = /language-(\w+)/.exec(className || "");
+          const isInline = !match;
 
-    if (isListItem) {
-      return (
-        <div key={i} className="flex gap-2 mt-1.5">
-          <span className="text-muted-foreground/50 select-none">•</span>
-          <span className={`${isUser ? 'opacity-90' : 'text-muted-foreground'}`}>{renderedLine}</span>
-        </div>
-      );
-    }
-    
-    return <p key={i} className={`mb-2 last:mb-0 ${isUser ? 'opacity-90' : 'text-muted-foreground'}`}>{renderedLine}</p>;
-  });
+          if (isInline) {
+            return (
+              <code className={`border rounded px-1.5 py-0.5 text-[11px] font-mono mx-0.5 ${isUser ? 'bg-background/20 border-border/20' : 'bg-muted/50 border-border/50'}`}>
+                {children}
+              </code>
+            );
+          }
+
+          return (
+            <CodeBlock 
+              code={String(children).replace(/\n$/, "")} 
+              language={match[1]} 
+              className="text-xs my-4 rounded border border-border shadow-sm" 
+            />
+          );
+        },
+        pre: ({ children }) => <>{children}</>,
+        a: ({ ...props }) => <a className="text-primary underline underline-offset-4 hover:opacity-80 transition-opacity" target="_blank" rel="noopener noreferrer" {...props} />,
+        table: ({ ...props }) => (
+          <div className="my-6 overflow-x-auto rounded-lg border border-border/50">
+            <table className="w-full border-collapse text-left text-xs" {...props} />
+          </div>
+        ),
+        thead: ({ ...props }) => <thead className="bg-muted/30 border-b border-border/50" {...props} />,
+        th: ({ ...props }) => <th className="px-4 py-3 font-semibold text-foreground" {...props} />,
+        td: ({ ...props }) => <td className="px-4 py-3 border-t border-border/30 text-muted-foreground" {...props} />,
+        blockquote: ({ ...props }) => <blockquote className="border-l-4 border-primary/30 pl-4 py-1 italic my-4 text-muted-foreground/80" {...props} />,
+        hr: ({ ...props }) => <hr className="my-8 border-border/40" {...props} />,
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
 };
 
 // ─── Tool Executions Group ──────────────────────────────────────────────────
@@ -401,7 +419,7 @@ export function FceAiInterface() {
         const toolResultString = toolData.result || toolData.error || "No data returned.";
 
         const toolResultMessage: Message = {
-          role: "user",
+          role: "function",
           content: `[SYSTEM: The tool '${toolCallToExecute.name}' returned this data:\n${toolResultString}\n\nPlease analyze this and provide the final answer.]`,
           hidden: true,
           isToolResult: true,
@@ -575,16 +593,7 @@ export function FceAiInterface() {
                       <ToolExecutionsGroup executions={m.toolExecutions} />
                     )}
                     
-                    {/* Render Content (Code Blocks + Markdown) */}
-                    {m.content.split(/(```[\s\S]*?```)/g).map((part, idx) => {
-                      if (part.startsWith('```')) {
-                        const lines = part.split('\n');
-                        const lang = lines[0].replace('```','').trim();
-                        const code = lines.slice(1,-1).join('\n');
-                        return <CodeBlock key={idx} code={code} language={lang} className="text-xs my-4 rounded border border-border shadow-sm" />;
-                      }
-                      return <div key={idx}>{renderMarkdownText(part, m.role === 'user')}</div>;
-                    })}
+                    <Markdown isUser={m.role === 'user'}>{m.content}</Markdown>
                     
                     {/* Attachments */}
                     {m.attachments?.length ? (
