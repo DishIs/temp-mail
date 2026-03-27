@@ -254,8 +254,8 @@
     "description": "Tek kullanımlık e-posta ihtiyaçlarınız için doğru planı seçin. Ücretsiz ve Pro planları mevcuttur."
   },
   "Profile": {
-    "title": "Hesap Ayarları",
-    "subtitle": "Profilinizi, aboneliğinizi ve fatura tarihinizi yönetin.",
+    "title": "Hesap Ayarları – FreeCustom.Email",
+    "subtitle": "Profilinizi, aboneliğinizi ve fatura geçmişinizi yönetin.",
     "upgrade_btn": "Pro'ya yükselt",
     "loading": "Profil verilerini yükle...",
     "tabs": {

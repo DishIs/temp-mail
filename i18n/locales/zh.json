@@ -254,8 +254,8 @@
     "description": "为您的次性电子邮件需求选择合适的计划。提供免费和专业计划。"
   },
   "Profile": {
-    "title": "账户设置",
-    "subtitle": "管理您的个人资料,订阅和发票历史记录.",
+    "title": "账户设置 – FreeCustom.Email",
+    "subtitle": "管理您的个人资料、订阅和账单历史记录。",
     "upgrade_btn": "升级到专业",
     "loading": "查看个人资料.",
     "tabs": {

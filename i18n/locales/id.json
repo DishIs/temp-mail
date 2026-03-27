@@ -254,8 +254,8 @@
     "description": "Pilih paket yang tepat untuk kebutuhan email sekali pakai Anda. Tersedia paket Gratis dan Pro."
   },
   "Profile": {
-    "title": "Setelan Akun",
-    "subtitle": "Mengelola profil, langganan, dan sejarah tagihan Anda.",
+    "title": "Pengaturan Akun – FreeCustom.Email",
+    "subtitle": "Kelola profil, langganan, dan riwayat tagihan Anda.",
     "upgrade_btn": "Upgrade ke Pro",
     "loading": "Mengunggah data profil...",
     "tabs": {

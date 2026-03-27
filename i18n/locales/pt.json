@@ -254,8 +254,8 @@
     "description": "Escolha o plano certo para suas necessidades de e-mail descartável. Planos gratuitos e Pro disponíveis."
   },
   "Profile": {
-    "title": "Configurações de Conta",
-    "subtitle": "Gerencie o seu perfil, assinatura e histórico de faturamento.",
+    "title": "Configurações da Conta – FreeCustom.Email",
+    "subtitle": "Gerencie seu perfil, assinatura e histórico de faturamento.",
     "upgrade_btn": "Avaliar para Pro",
     "loading": "Carregar dados de perfil...",
     "tabs": {

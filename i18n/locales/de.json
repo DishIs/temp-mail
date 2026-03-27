@@ -254,8 +254,8 @@
     "description": "Wählen Sie den richtigen Plan für Ihre Anforderungen an Einweg-E-Mails. Kostenlose und Pro-Pläne verfügbar."
   },
   "Profile": {
-    "title": "Konto-Einstellungen",
-    "subtitle": "Verwalten Sie Ihr Profil, Abonnement und Rechnungsgeschichte.",
+    "title": "Kontoeinstellungen – FreeCustom.Email",
+    "subtitle": "Verwalten Sie Ihr Profil, Abonnement und Ihre Rechnungshistorie.",
     "upgrade_btn": "Upgrade auf Pro",
     "loading": "Die Profildaten laden...",
     "tabs": {

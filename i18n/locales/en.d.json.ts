@@ -257,7 +257,7 @@ declare const messages: {
     }
   },
   "Profile": {
-    "title": "Account Settings",
+    "title": "Account Settings – FreeCustom.Email",
     "subtitle": "Manage your profile, subscription, and billing history.",
     "upgrade_btn": "Upgrade to Pro",
     "loading": "Loading profile data...",

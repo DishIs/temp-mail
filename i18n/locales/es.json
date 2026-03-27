@@ -254,8 +254,8 @@
     "description": "Elija el plan adecuado para sus necesidades de correo electrónico desechable. Planes Gratuitos y Pro disponibles."
   },
   "Profile": {
-    "title": "Configuración de cuentas",
-    "subtitle": "Gestionar su perfil, suscripción y historial de facturación.",
+    "title": "Configuración de la cuenta – FreeCustom.Email",
+    "subtitle": "Administre su perfil, suscripción e historial de facturación.",
     "upgrade_btn": "Actualización a Pro",
     "loading": "Cargar datos de perfil...",
     "tabs": {

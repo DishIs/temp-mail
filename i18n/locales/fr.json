@@ -254,8 +254,8 @@
     "description": "Choisissez le forfait adapté à vos besoins de messagerie jetable. Forfaits gratuit et pro disponibles."
   },
   "Profile": {
-    "title": "Paramètres de compte",
-    "subtitle": "Gérez votre profil, votre abonnement et votre historique de facturation.",
+    "title": "Paramètres du compte – FreeCustom.Email",
+    "subtitle": "Gérez votre profil, votre abonnement et l'historique de facturation.",
     "upgrade_btn": "Mise à niveau vers Pro",
     "loading": "Je charge les données du profil...",
     "tabs": {
