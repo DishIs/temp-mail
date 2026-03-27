@@ -156,7 +156,7 @@ export default async function SinglePostPage({ params }: { params: { slug: strin
         <div className="fixed inset-y-0 right-[max(0px,calc(50%-45rem))] w-px bg-border/50 pointer-events-none z-0" aria-hidden />
 
         <div className="relative z-10 flex flex-col min-h-screen">
-          <AppHeader initialSession={null} />
+          <AppHeader />
 
           {/* ── Post hero ────────────────────────────────────────────── */}
           <div className="border-b border-border">

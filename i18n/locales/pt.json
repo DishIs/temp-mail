@@ -192,7 +192,8 @@
     "info_card_2_title": "O poder das listas mudas",
     "info_card_2_desc": "Pare spam na fonte. Ao contrário de pastas de spam simples, nossa lista silenciosa bloqueia e-mails no nível da rede antes mesmo de chegarem à sua caixa de entrada temporária. Você pode bloquear stalkers individuais ou domínios inteiros (por exemplo, `spammy-marketing.com`).",
     "info_card_3_title": "Servidores mais rápidos sem anúncios",
-    "info_card_3_desc": "Os profissionais têm acesso total aos nossos serviços sem anúncios."
+    "info_card_3_desc": "Os profissionais têm acesso total aos nossos serviços sem anúncios.",
+    "description": "Gerencie seus domínios de e-mail temporários, listas de mudo e configurações de privacidade avançadas."
   },
   "Pricing": {
     "header_badge": "Preços transparentes",
@@ -248,7 +249,9 @@
       "redirect": "Redirecionar para o PayPal...",
       "no_url": "Nenhum redirecionamento de URL recebido",
       "conn_err": "Não conseguiu ligar-se ao servidor de pagamento"
-    }
+    },
+    "title": "Preços e planos — E-mail temporário para profissionais",
+    "description": "Escolha o plano certo para suas necessidades de e-mail descartável. Planos gratuitos e Pro disponíveis."
   },
   "Profile": {
     "title": "Configurações de Conta",

@@ -192,7 +192,8 @@
     "info_card_2_title": "Die Kraft stummsprachiger Listen",
     "info_card_2_desc": "Haltet Spam an der Quelle. Im Gegensatz zu einfachen Spam-Ordnern blockiert unsere Mute List E-Mails auf Netzwerkebene, bevor sie sogar in Ihrem temporären Posteingang gelangen. Sie können einzelne Stalker oder ganze Domains blockieren (z.B. `spammy-marketing.com`).",
     "info_card_3_title": "Schnellerer Server ohne Anzeigen",
-    "info_card_3_desc": "Pro-Nutzer erhalten vollen Zugriff auf unsere Dienste ohne Werbung."
+    "info_card_3_desc": "Pro-Nutzer erhalten vollen Zugriff auf unsere Dienste ohne Werbung.",
+    "description": "Verwalten Sie Ihre temporären E-Mail-Domains, Sperrlisten und erweiterten Datenschutzeinstellungen."
   },
   "Pricing": {
     "header_badge": "Transparente Preise",
@@ -248,7 +249,9 @@
       "redirect": "Umleiten Sie auf PayPal...",
       "no_url": "Keine Weiterleitung URL erhalten",
       "conn_err": "Nicht mit dem Zahlungsserver verbunden"
-    }
+    },
+    "title": "Preise & Pläne — Temporäre E-Mail für Profis",
+    "description": "Wählen Sie den richtigen Plan für Ihre Anforderungen an Einweg-E-Mails. Kostenlose und Pro-Pläne verfügbar."
   },
   "Profile": {
     "title": "Konto-Einstellungen",

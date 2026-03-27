@@ -192,7 +192,8 @@
     "info_card_2_title": "Le pouvoir des listes muettes",
     "info_card_2_desc": "Arrêtez le spam à la source. Contrairement aux dossiers de spam simples, notre liste silencieuse bloque les e-mails au niveau du réseau avant même qu'ils n'atteignent votre boîte de réception temporaire. Vous pouvez bloquer des stalkers individuels ou des domaines entiers (par exemple, `spammy-marketing.com`).",
     "info_card_3_title": "Serveurs plus rapides sans publicité",
-    "info_card_3_desc": "Les utilisateurs professionnels ont accès à nos services sans publicité, sans lancement lent du site Web en raison de publicités."
+    "info_card_3_desc": "Les utilisateurs professionnels ont accès à nos services sans publicité, sans lancement lent du site Web en raison de publicités.",
+    "description": "Gérez vos domaines de messagerie temporaires, vos listes de blocage et vos paramètres de confidentialité avancés."
   },
   "Pricing": {
     "header_badge": "Prix transparents",
@@ -248,7 +249,9 @@
       "redirect": "Pour rediriger vers PayPal...",
       "no_url": "Aucune adresse URL de redirection reçue",
       "conn_err": "Pas de connexion au serveur de paiement"
-    }
+    },
+    "title": "Tarifs et forfaits — E-mail temporaire pour les professionnels",
+    "description": "Choisissez le forfait adapté à vos besoins de messagerie jetable. Forfaits gratuit et pro disponibles."
   },
   "Profile": {
     "title": "Paramètres de compte",

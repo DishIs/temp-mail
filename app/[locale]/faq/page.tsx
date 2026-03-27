@@ -103,7 +103,7 @@ export default async function FAQPage({ params }: Props) {
             ))}
           </div>
 
-          <AppHeader initialSession={session} />
+          <AppHeader />
 
           {/* ── HERO ─────────────────────────────────────────────────────── */}
           <section

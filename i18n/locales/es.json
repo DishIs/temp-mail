@@ -192,7 +192,8 @@
     "info_card_2_title": "El poder de las listas mudas",
     "info_card_2_desc": "Detener el spam en la fuente. A diferencia de las carpetas de spam simples, nuestra lista silenciosa bloquea los correos electrónicos a nivel de red antes de que lleguen incluso a su bandeja de entrada temporal. Puede bloquear a individuos stalkers o dominios enteros (por ejemplo, `spammy-marketing.com`).",
     "info_card_3_title": "Servidores más rápidos sin anuncios",
-    "info_card_3_desc": "Los usuarios profesionales tienen acceso completo a nuestros servicios sin anuncios."
+    "info_card_3_desc": "Los usuarios profesionales tienen acceso completo a nuestros servicios sin anuncios.",
+    "description": "Administre sus dominios de correo electrónico temporales, listas de bloqueo y configuraciones de privacidad avanzadas."
   },
   "Pricing": {
     "header_badge": "Precios transparentes",
@@ -248,7 +249,9 @@
       "redirect": "Redirigir a PayPal...",
       "no_url": "No se ha recibido ninguna dirección de redirección",
       "conn_err": "No pudo conectarse al servidor de pago"
-    }
+    },
+    "title": "Precios y planes — Correo electrónico temporal para profesionales",
+    "description": "Elija el plan adecuado para sus necesidades de correo electrónico desechable. Planes Gratuitos y Pro disponibles."
   },
   "Profile": {
     "title": "Configuración de cuentas",

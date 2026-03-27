@@ -192,7 +192,8 @@
     "info_card_2_title": "Düm Listelerin Gücü",
     "info_card_2_desc": "Sıfır spam'i durdurun. Basit spam klasörlerinden farklı olarak, bizim Sıfır Listemiz, e-postaları geçici gelen kutunuza ulaşmadan önce ağ düzeyinde engeller.",
     "info_card_3_title": "Reklamsız Daha Hızlı Sunucular",
-    "info_card_3_desc": "Pro kullanıcılar reklamlar olmadan hizmetlerimize tam erişim elde eder."
+    "info_card_3_desc": "Pro kullanıcılar reklamlar olmadan hizmetlerimize tam erişim elde eder.",
+    "description": "Geçici e-posta alan adlarınızı, sessize alma listelerinizi ve gelişmiş gizlilik ayarlarınızı yönetin."
   },
   "Pricing": {
     "header_badge": "Şeffaf Fiyatlandırma",
@@ -248,7 +249,9 @@
       "redirect": "PayPal'a yönlendirme...",
       "no_url": "Hiçbir yönlendirme URL almadı",
       "conn_err": "Ödeme sunucusuna bağlanamadım"
-    }
+    },
+    "title": "Fiyatlandırma ve Planlar — Profesyoneller için Geçici E-posta",
+    "description": "Tek kullanımlık e-posta ihtiyaçlarınız için doğru planı seçin. Ücretsiz ve Pro planları mevcuttur."
   },
   "Profile": {
     "title": "Hesap Ayarları",

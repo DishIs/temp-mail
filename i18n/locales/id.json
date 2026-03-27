@@ -192,7 +192,8 @@
     "info_card_2_title": "Kekuatan Daftar Bisu",
     "info_card_2_desc": "Hentikan spam di sumber. Tidak seperti folder spam sederhana, daftar mati kami memblokir email di tingkat jaringan bahkan sebelum mereka sampai ke kotak masuk sementara Anda. Anda dapat memblokir stalker individu atau seluruh domain (misalnya, `spammy-marketing.com`).",
     "info_card_3_title": "Server Lebih Cepat Tanpa Iklan",
-    "info_card_3_desc": "Pengguna profesional mendapatkan akses penuh ke layanan kami tanpa iklan. Tidak lambat peluncuran situs web karena iklan."
+    "info_card_3_desc": "Pengguna profesional mendapatkan akses penuh ke layanan kami tanpa iklan. Tidak lambat peluncuran situs web karena iklan.",
+    "description": "Kelola domain email sementara, daftar bisu, dan pengaturan privasi lanjutan Anda."
   },
   "Pricing": {
     "header_badge": "Harga yang transparan",
@@ -248,7 +249,9 @@
       "redirect": "Mengarah ke PayPal...",
       "no_url": "Tidak ada URL redirect yang diterima",
       "conn_err": "Tidak bisa terhubung ke server pembayaran"
-    }
+    },
+    "title": "Harga & Paket — Email Sementara untuk Profesional",
+    "description": "Pilih paket yang tepat untuk kebutuhan email sekali pakai Anda. Tersedia paket Gratis dan Pro."
   },
   "Profile": {
     "title": "Setelan Akun",

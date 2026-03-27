@@ -74,7 +74,7 @@ export default function ContactPage() {
         <div className="fixed inset-y-0 right-[max(0px,calc(50%-40rem))] w-px bg-border/50 pointer-events-none z-0" aria-hidden />
 
         <div className="relative z-10 flex flex-col min-h-screen">
-          <AppHeader initialSession={session} />
+          <AppHeader />
 
           <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-16 sm:py-24">
             {/* Header */}

@@ -12,6 +12,14 @@ import Link from "next/link";
 // ── Affiliate link ─────────────────────────────────────────────────────────
 const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
 
+export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
+  const t = await getTranslations("Dashboard");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
+
 // ── ASCII fragments (matching api/profile pages) ──────────────────────────
 const ASCII_FRAGS = [
   { x: "2%",  y: "5%",  t: "EHLO api2.freecustom.email" },
