@@ -204,12 +204,30 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("AI Chat Error:", error);
 
+    let userFacingError = "Internal Server Error. Please try again later.";
+    let statusCode = 500;
+
+    try {
+      const errorDetails = JSON.parse(error.message);
+      if (errorDetails?.error?.message) {
+        userFacingError = `AI Error: ${errorDetails.error.message}`;
+        if (errorDetails.error.code === 503) {
+          userFacingError = "AI is currently experiencing high demand. Please try again in a few moments.";
+          statusCode = 503;
+        }
+      } else {
+        userFacingError = `AI Error: ${error.message}`;
+      }
+    } catch (parseError) {
+      // If parsing fails, use the original message or a generic one.
+      userFacingError = `AI Error: ${error.message}`;
+    }
+
     return new Response(
       JSON.stringify({
-        error: "Internal Server Error",
-        details: error.message,
+        error: userFacingError,
       }),
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }

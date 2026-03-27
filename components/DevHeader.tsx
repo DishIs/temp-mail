@@ -127,7 +127,7 @@ export function DevHeader() {
         <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8 max-w-[90rem]">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="API Home">
+          <Link href="/api" className="flex items-center gap-2 shrink-0" aria-label="API Home">
             <Image src="/logo.webp" alt="FreeCustom.Email" width={28} height={28} className="h-7 w-7" priority />
             <div className="flex flex-col leading-none">
               <span className="text-sm font-semibold tracking-tight text-foreground">FreeCustom.Email</span>

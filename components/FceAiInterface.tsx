@@ -354,7 +354,15 @@ export function FceAiInterface() {
         signal: abortControllerRef.current.signal,
       });
 
-      if (!response.ok) throw new Error("API Error");
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorBody = await response.json();
+          throw new Error(errorBody.error || "API Error");
+        } else {
+          throw new Error(response.statusText || "API Error");
+        }
+      }
       
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
