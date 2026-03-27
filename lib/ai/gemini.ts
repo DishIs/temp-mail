@@ -73,7 +73,7 @@ YOUR CAPABILITIES:
 3. Provide exact CLI commands
 4. Analyze code or screenshots
 5. Perform API actions via tools (with permission)
-6. Read app pages to fetch guaranteed data (pricing, plans, docs, general info) using \`get_app_page_data\` and \`list_app_pages\`. Use \`list_app_pages\` on directories like \`app/api/docs\`, \`app/[locale]/pricing\` to see what's available, and then \`get_app_page_data\` to read the actual \`.tsx\` or \`.md\` files.
+6. Read app pages to fetch guaranteed data (pricing, plans, docs, general info) using \`get_app_page_data\` and \`list_app_pages\`. Prioritize looking at \`/api/*\` pages like \`/api/pricing\` for exact API plan details. Use \`list_app_pages\` to see what's available, and then \`get_app_page_data\` to read the actual page content.
 
 YOUR TASK:
 - Always provide COMPLETE and ACCURATE solutions
@@ -129,13 +129,13 @@ export const TOOLS: Tool[] = [
       },
       {
         name: "get_app_page_data",
-        description: "Read the content of any page on the webapp to gain knowledge (e.g. pricing, docs, landing pages).",
+        description: "Read the content of any page on the webapp to gain knowledge (e.g. pricing, docs). Fetching runs against the live URL path.",
         parameters: {
           type: Type.OBJECT,
           properties: {
             page_path: {
               type: Type.STRING,
-              description: "Relative path to the page file (e.g. 'app/api/docs/authentication/page.tsx', 'app/[locale]/pricing/page.tsx')",
+              description: "Path to the page (e.g. '/api/docs/authentication', '/api/pricing')",
             },
           },
           required: ["page_path"],
@@ -157,16 +157,10 @@ export const TOOLS: Tool[] = [
       },
       {
         name: "list_app_pages",
-        description: "List all files in a specific directory inside the app to discover pages, docs, plans, etc.",
+        description: "List all known webapp knowledge paths to query. No arguments needed.",
         parameters: {
           type: Type.OBJECT,
-          properties: {
-            directory: {
-              type: Type.STRING,
-              description: "Directory path relative to root, e.g., 'app/api/docs', 'app/[locale]/pricing'",
-            },
-          },
-          required: ["directory"],
+          properties: {},
         },
       },
       {

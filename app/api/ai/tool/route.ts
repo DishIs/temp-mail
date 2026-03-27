@@ -1,33 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 
 export const runtime = "nodejs";
+
+// A simple utility to extract text from HTML, preserving some spacing for code blocks
+function stripHtml(html: string): string {
+  let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  
+  // Add newlines around common block elements
+  text = text.replace(/<\/?(div|p|h[1-6]|ul|ol|li|br|section|article|main|aside|nav|header|footer)[^>]*>/gi, '\n');
+  // Preserve pre and code blocks explicitly by adding special markers if needed, 
+  // but for now just adding space is fine
+  text = text.replace(/<[^>]+>/g, ' ');
+  // Collapse multiple spaces to single space
+  text = text.replace(/ [ ]+/g, ' ');
+  // Collapse multiple newlines
+  text = text.replace(/\n\s*\n/g, '\n\n');
+  return text.trim();
+}
 
 export async function POST(req: NextRequest) {
   try {
     const { tool, params } = await req.json();
 
     if (tool === "get_api_specs") {
-      const openapiPath = path.join(
-        process.cwd(),
-        "public",
-        "openapi.yaml"
-      );
-
-      if (!fs.existsSync(openapiPath)) {
+      const openapiUrl = new URL('/openapi.yaml', req.url);
+      const res = await fetch(openapiUrl);
+      if (!res.ok) {
         return NextResponse.json({
           result: "openapi.yaml not found",
         });
       }
 
-      const content = fs.readFileSync(openapiPath, "utf8");
+      const content = await res.text();
       const endpoint = params?.endpoint?.toLowerCase();
 
       if (!endpoint) {
-        // Return full spec but truncate to a safe limit if huge, though openapi is usually okay for Gemini.
         return NextResponse.json({
-          result: content.substring(0, 100000), // Return a large chunk or all of it.
+          result: content.substring(0, 100000), 
         });
       }
 
@@ -47,11 +57,8 @@ export async function POST(req: NextRequest) {
 
         if (found) {
           const currentIndent = line.search(/\S/);
-
           if (currentIndent <= indent && line.trim()) break;
-
           result += line + "\n";
-
           if (result.length > 50000) break;
         }
       }
@@ -63,63 +70,55 @@ export async function POST(req: NextRequest) {
 
     if (tool === "get_app_page_data") {
       try {
-        const pagePath = params?.page_path;
-        if (!pagePath) {
-          return NextResponse.json({ result: "Please specify a page_path." });
-        }
+        let pagePath = params?.page_path || "";
+        if (!pagePath.startsWith("/")) pagePath = "/" + pagePath;
         
-        // Ensure the path is within the project to prevent directory traversal
-        const resolvedPath = path.resolve(process.cwd(), pagePath);
-        if (!resolvedPath.startsWith(process.cwd())) {
-           return NextResponse.json({ result: "Invalid path." });
+        // Some known routes might be dynamic or Next.js app router specific.
+        // We fetch the rendered HTML page from our own origin
+        const url = new URL(pagePath, req.url);
+        const res = await fetch(url);
+        
+        if (!res.ok) {
+          return NextResponse.json({ result: `Page not found or error: ${res.status}` });
         }
 
-        if (fs.existsSync(resolvedPath)) {
-          const content = fs.readFileSync(resolvedPath, "utf8");
-          // Return up to 50,000 chars to avoid overwhelming the context but enough to provide guaranteed data
-          return NextResponse.json({
-            result: content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : ""),
-          });
-        }
-        return NextResponse.json({ result: `File not found: ${pagePath}` });
+        const html = await res.text();
+        const content = stripHtml(html);
+
+        return NextResponse.json({
+          result: content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : ""),
+        });
       } catch (err) {
         return NextResponse.json({ result: "Error reading file." });
       }
     }
 
     if (tool === "list_app_pages") {
-      try {
-        let directory = params?.directory || "";
-        
-        // Strip leading slash
-        if (directory.startsWith("/")) directory = directory.substring(1);
-        
-        const resolvedDir = path.resolve(process.cwd(), directory);
-        if (!resolvedDir.startsWith(process.cwd())) {
-          return NextResponse.json({ result: "Invalid directory. Stay within the project." });
-        }
-
-        if (!fs.existsSync(resolvedDir)) {
-           // Fallback to giving them the root directory's top level folders
-           const rootFiles = fs.readdirSync(process.cwd());
-           const folders = rootFiles.filter(f => fs.statSync(path.join(process.cwd(), f)).isDirectory());
-           return NextResponse.json({ 
-             result: `Directory '${directory}' not found. Valid root folders are: ${folders.join(', ')}. Hint: look in 'app/[locale]' or 'app/api'` 
-           });
-        }
-
-        const files = fs.readdirSync(resolvedDir, { recursive: true }) as string[];
-        const resultFiles = files
-          .filter(f => f.endsWith('.tsx') || f.endsWith('.ts') || f.endsWith('.md'))
-          .map(f => path.posix.join(directory, f))
-          .join('\n');
-
-        return NextResponse.json({
-          result: resultFiles ? resultFiles : "No .tsx or .md pages found in this directory.",
-        });
-      } catch (err) {
-        return NextResponse.json({ result: "Error listing pages: " + (err as Error).message });
-      }
+      // In Cloudflare Workers we can't use fs.readdirSync.
+      // Return a static map of highly relevant knowledge pages instead.
+      return NextResponse.json({
+        result: `
+Available Webapp Knowledge Pages (use get_app_page_data with these paths):
+- /api/docs/authentication
+- /api/docs/changelog
+- /api/docs/credits
+- /api/docs/custom-domains
+- /api/docs/errors
+- /api/docs/faq
+- /api/docs/inboxes
+- /api/docs/messages
+- /api/docs/otp
+- /api/docs/platform-domains
+- /api/docs/quickstart
+- /api/docs/rate-limits
+- /api/docs/sdk/npm
+- /api/docs/sdk/python
+- /api/docs/websocket
+- /api/cli
+- /api/pricing (PRIMARY PRICING/PLANS PAGE)
+- /openapi.yaml (use get_api_specs)
+        `.trim()
+      });
     }
 
     if (tool === "get_sdk_docs") {
@@ -127,32 +126,43 @@ export async function POST(req: NextRequest) {
       let targetPath = "";
       
       if (lang === "python" || lang === "npm") {
-        targetPath = path.join(process.cwd(), "app", "api", "docs", "sdk", lang, "page.tsx");
+        targetPath = `/api/docs/sdk/${lang}`;
       } else {
-        // Try to find the doc page by matching the name
-        targetPath = path.join(process.cwd(), "app", "api", "docs", lang, "page.tsx");
+        targetPath = `/api/docs/${lang}`;
       }
 
-      if (fs.existsSync(targetPath)) {
-        let content = fs.readFileSync(targetPath, "utf8");
-        return NextResponse.json({
-          result: content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : ""),
-        });
-      }
+      try {
+        const url = new URL(targetPath, req.url);
+        const res = await fetch(url);
+        if (res.ok) {
+          const html = await res.text();
+          const content = stripHtml(html);
+          return NextResponse.json({
+            result: content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : ""),
+          });
+        }
+      } catch(e) {}
 
       return NextResponse.json({
-        result: `SDK Docs not found for: ${lang}. Try using list_app_pages with 'app/api/docs'.`,
+        result: `SDK Docs not found for: ${lang}. Try using list_app_pages.`,
       });
     }
 
     if (tool === "get_cli_docs") {
-      const docPath = path.join(process.cwd(), "app", "api", "cli", "page.tsx");
-      let content = "";
-      if (fs.existsSync(docPath)) {
-        content = fs.readFileSync(docPath, "utf8");
-        content = content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : "");
-      } else {
-        content = `
+      try {
+        const url = new URL("/api/cli", req.url);
+        const res = await fetch(url);
+        if (res.ok) {
+          const html = await res.text();
+          const content = stripHtml(html);
+          return NextResponse.json({
+            result: content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : ""),
+          });
+        }
+      } catch(e) {}
+      
+      return NextResponse.json({
+        result: `
 fce login
 fce logout
 fce inbox create
@@ -160,10 +170,7 @@ fce inbox list
 fce message list <inbox>
 fce message get <id>
 fce otp get <inbox>
-        `;
-      }
-      return NextResponse.json({
-        result: content,
+        `.trim(),
       });
     }
 
