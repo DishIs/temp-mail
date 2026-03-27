@@ -22,12 +22,12 @@ export async function POST(req: NextRequest) {
       }
 
       const content = fs.readFileSync(openapiPath, "utf8");
-
       const endpoint = params?.endpoint?.toLowerCase();
 
       if (!endpoint) {
+        // Return full spec but truncate to a safe limit if huge, though openapi is usually okay for Gemini.
         return NextResponse.json({
-          result: "Please specify an endpoint.",
+          result: content.substring(0, 100000), // Return a large chunk or all of it.
         });
       }
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
           result += line + "\n";
 
-          if (result.length > 5000) break;
+          if (result.length > 50000) break;
         }
       }
 
@@ -61,28 +61,87 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (tool === "get_sdk_docs") {
-      const lang = params?.language?.toLowerCase() === "python" ? "python" : "npm";
-      const docPath = path.join(
-        process.cwd(),
-        "app",
-        "api",
-        "docs",
-        "sdk",
-        lang,
-        "page.tsx"
-      );
+    if (tool === "get_app_page_data") {
+      try {
+        const pagePath = params?.page_path;
+        if (!pagePath) {
+          return NextResponse.json({ result: "Please specify a page_path." });
+        }
+        
+        // Ensure the path is within the project to prevent directory traversal
+        const resolvedPath = path.resolve(process.cwd(), pagePath);
+        if (!resolvedPath.startsWith(process.cwd())) {
+           return NextResponse.json({ result: "Invalid path." });
+        }
 
-      if (fs.existsSync(docPath)) {
-        let content = fs.readFileSync(docPath, "utf8");
-        // Extract basic textual information if needed, or just return the whole page content (up to limits)
+        if (fs.existsSync(resolvedPath)) {
+          const content = fs.readFileSync(resolvedPath, "utf8");
+          // Return up to 50,000 chars to avoid overwhelming the context but enough to provide guaranteed data
+          return NextResponse.json({
+            result: content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : ""),
+          });
+        }
+        return NextResponse.json({ result: `File not found: ${pagePath}` });
+      } catch (err) {
+        return NextResponse.json({ result: "Error reading file." });
+      }
+    }
+
+    if (tool === "list_app_pages") {
+      try {
+        let directory = params?.directory || "";
+        
+        // Strip leading slash
+        if (directory.startsWith("/")) directory = directory.substring(1);
+        
+        const resolvedDir = path.resolve(process.cwd(), directory);
+        if (!resolvedDir.startsWith(process.cwd())) {
+          return NextResponse.json({ result: "Invalid directory. Stay within the project." });
+        }
+
+        if (!fs.existsSync(resolvedDir)) {
+           // Fallback to giving them the root directory's top level folders
+           const rootFiles = fs.readdirSync(process.cwd());
+           const folders = rootFiles.filter(f => fs.statSync(path.join(process.cwd(), f)).isDirectory());
+           return NextResponse.json({ 
+             result: `Directory '${directory}' not found. Valid root folders are: ${folders.join(', ')}. Hint: look in 'app/[locale]' or 'app/api'` 
+           });
+        }
+
+        const files = fs.readdirSync(resolvedDir, { recursive: true }) as string[];
+        const resultFiles = files
+          .filter(f => f.endsWith('.tsx') || f.endsWith('.ts') || f.endsWith('.md'))
+          .map(f => path.posix.join(directory, f))
+          .join('\n');
+
         return NextResponse.json({
-          result: content.substring(0, 5000) + (content.length > 5000 ? "\n... (truncated)" : ""),
+          result: resultFiles ? resultFiles : "No .tsx or .md pages found in this directory.",
+        });
+      } catch (err) {
+        return NextResponse.json({ result: "Error listing pages: " + (err as Error).message });
+      }
+    }
+
+    if (tool === "get_sdk_docs") {
+      const lang = params?.language?.toLowerCase() || "";
+      let targetPath = "";
+      
+      if (lang === "python" || lang === "npm") {
+        targetPath = path.join(process.cwd(), "app", "api", "docs", "sdk", lang, "page.tsx");
+      } else {
+        // Try to find the doc page by matching the name
+        targetPath = path.join(process.cwd(), "app", "api", "docs", lang, "page.tsx");
+      }
+
+      if (fs.existsSync(targetPath)) {
+        let content = fs.readFileSync(targetPath, "utf8");
+        return NextResponse.json({
+          result: content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : ""),
         });
       }
 
       return NextResponse.json({
-        result: "SDK Docs not found for language: " + lang,
+        result: `SDK Docs not found for: ${lang}. Try using list_app_pages with 'app/api/docs'.`,
       });
     }
 
@@ -91,7 +150,7 @@ export async function POST(req: NextRequest) {
       let content = "";
       if (fs.existsSync(docPath)) {
         content = fs.readFileSync(docPath, "utf8");
-        content = content.substring(0, 5000) + (content.length > 5000 ? "\n... (truncated)" : "");
+        content = content.substring(0, 50000) + (content.length > 50000 ? "\n... (truncated)" : "");
       } else {
         content = `
 fce login

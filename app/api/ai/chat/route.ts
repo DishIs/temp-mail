@@ -1,10 +1,21 @@
 import { ai, chooseModel, TOOLS, SYSTEM_PROMPT } from "@/lib/ai/gemini";
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
+import { auth } from "@/auth";
+import { Redis } from "@upstash/redis";
+import { resend } from "@/lib/resend";
 
 export const runtime = "nodejs";
 
+const redis = Redis.fromEnv();
+
 export async function POST(req: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    if (!cookieStore.get("fce_ai_verified")?.value) {
+      return new Response(JSON.stringify({ error: "Unauthorized. Turnstile verification required." }), { status: 403 });
+    }
+
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
@@ -19,12 +30,103 @@ export async function POST(req: NextRequest) {
       hasAttachments
     );
 
+    // Limit Session Tokens
+    const session = await auth();
+    const userEmail = session?.user?.email;
+    const ip = req.headers.get("x-forwarded-for") || req.ip || "unknown";
+    // Construct a simplistic fingerprint from user-agent and language
+    const ua = req.headers.get("user-agent") || "unknown";
+    const lang = req.headers.get("accept-language") || "unknown";
+    const fingerprint = `${ua}|${lang}`;
+    
+    const MAX_TOKENS = 150000;
+    
+    let estimatedTokens = 0;
+    for (const m of messages) {
+      if (m.content) {
+        estimatedTokens += Math.ceil(m.content.length / 4);
+      }
+    }
+    
+    const redisKeys = [
+      `ai_usage:ip:${ip}`,
+      `ai_usage:fp:${fingerprint}`,
+      userEmail ? `ai_usage:email:${userEmail}` : null
+    ].filter(Boolean) as string[];
+
+    let isAnomaly = false;
+    for (const key of redisKeys) {
+      const currentUsage = await redis.get<number>(key) || 0;
+      if (currentUsage > MAX_TOKENS) {
+        isAnomaly = true;
+      }
+    }
+
+    if (isAnomaly) {
+      // Send anomaly alert if not already sent recently to avoid spamming the admin
+      const alertKey = `ai_alert_sent:${ip}`;
+      const alertSent = await redis.get(alertKey);
+      
+      if (!alertSent) {
+        await resend.emails.send({
+          from: `FreeCustom.Email <contact@freecustom.email>`,
+          to: process.env.ADMIN_EMAIL || "admin@example.com",
+          subject: `[ALERT] FCE AI Abuse Detected`,
+          text: `Anomaly detected. Usage exceeded limit for IP: ${ip}, Email: ${userEmail || "Guest"}\nFingerprint: ${fingerprint}`,
+        });
+        await redis.setex(alertKey, 3600, "1"); // Only alert once per hour per IP
+      }
+
+      return new Response(JSON.stringify({ error: "Session token limit exceeded. Please try again later." }), { status: 429 });
+    }
+
+    // Increment usage asynchronously
+    for (const key of redisKeys) {
+      const currentVal = await redis.incrby(key, estimatedTokens);
+      if (currentVal === estimatedTokens) {
+        // First time setting this key, set expiration
+        await redis.expire(key, 86400); // 24 hours reset
+      }
+    }
+
     // Format messages strictly to "user" and "model" roles
     const formattedMessages = messages.map((m: any) => {
       const parts: any[] =[];
 
       if (m.content) {
         parts.push({ text: m.content });
+      }
+
+      if (m.toolExecutions?.length) {
+        for (const exec of m.toolExecutions) {
+          if (m.role === "model") {
+            parts.push({
+              functionCall: {
+                name: exec.name,
+                args: exec.args || {},
+              }
+            });
+          }
+        }
+      }
+
+      // If it's a hidden tool result, Gemini prefers `functionResponse` natively.
+      if (m.role === "user" && m.hidden && m.isToolResult) {
+        parts.push({
+          functionResponse: {
+            name: m.toolName,
+            response: { result: m.content }
+          }
+        });
+        // Clear text because we are sending functionResponse
+        const textIndex = parts.findIndex(p => p.text);
+        if (textIndex > -1) {
+          parts.splice(textIndex, 1);
+        }
+        return {
+          role: "user", // For functionResponse, some SDK versions expect "user" or "function" role
+          parts,
+        };
       }
 
       if (m.attachments?.length) {

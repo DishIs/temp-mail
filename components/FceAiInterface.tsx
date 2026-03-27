@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { CodeBlock } from "@/components/CodeBlock";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 // ─── types ─────────────────────────────────────────────────────────────────
 interface Attachment {
@@ -21,11 +22,22 @@ interface Attachment {
   content?: string;
 }
 
+interface ToolExecution {
+  id: string;
+  name: string;
+  args: any;
+  result?: string;
+  status: "running" | "done" | "error";
+}
+
 interface Message {
-  role: "user" | "model";
+  role: "user" | "model" | "function";
   content: string;
   attachments?: Attachment[];
   hidden?: boolean;
+  toolExecutions?: ToolExecution[];
+  isToolResult?: boolean;
+  toolName?: string;
 }
 
 // ─── styling elements ──────────────────────────────────────────────────────
@@ -128,6 +140,50 @@ const renderMarkdownText = (text: string, isUser: boolean) => {
   });
 };
 
+// ─── Tool Execution Block ───────────────────────────────────────────────────
+function ToolExecutionBlock({ execution }: { execution: ToolExecution }) {
+  const [expanded, setExpanded] = useState(false);
+  const isRunning = execution.status === "running";
+
+  return (
+    <div className="mb-4 text-xs font-mono">
+      <button 
+        onClick={() => setExpanded(!expanded)} 
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors w-full text-left ${isRunning ? 'bg-muted/10 border-border/50 text-muted-foreground animate-pulse' : 'bg-muted/30 border-border hover:bg-muted/50 text-foreground'}`}
+      >
+        {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3 text-primary" />}
+        <span className="flex-1 truncate">
+          {isRunning ? `Running ${execution.name}...` : `Used tool: ${execution.name}`}
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: "auto", opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="p-3 mt-1 bg-background/50 border border-border/50 rounded-md space-y-2">
+              <div>
+                <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Parameters</span>
+                <pre className="mt-1 p-2 bg-muted/20 rounded border border-border/50 overflow-x-auto text-[11px] whitespace-pre-wrap">{JSON.stringify(execution.args, null, 2)}</pre>
+              </div>
+              {execution.result && (
+                <div>
+                  <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Result</span>
+                  <pre className="mt-1 p-2 bg-muted/20 rounded border border-border/50 overflow-x-auto text-[11px] max-h-40 whitespace-pre-wrap">{execution.result}</pre>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────
 export function FceAiInterface() {
   const[messages, setMessages] = useState<Message[]>([]);
@@ -136,6 +192,8 @@ export function FceAiInterface() {
   const [thinking, setThinking] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [isConsenting, setIsConsenting] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +203,30 @@ export function FceAiInterface() {
     if (!localStorage.getItem("fce_ai_consent")) setShowConsent(true);
     else mainInputRef.current?.focus();
   },[]);
+
+  const handleConsent = async () => {
+    if (!turnstileToken) return;
+    setIsConsenting(true);
+    try {
+      const res = await fetch("/api/ai/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken })
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem("fce_ai_consent", "true");
+        setShowConsent(false);
+      } else {
+        toast.error(data.error || "Verification failed");
+        setTurnstileToken(null);
+      }
+    } catch(e) {
+      toast.error("An error occurred");
+    } finally {
+      setIsConsenting(false);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -185,7 +267,7 @@ export function FceAiInterface() {
     try {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
-        body: JSON.stringify({ messages: chatMessages.filter(m => !m.hidden) }),
+        body: JSON.stringify({ messages: chatMessages }),
       });
 
       if (!response.ok) throw new Error("API Error");
@@ -220,7 +302,25 @@ export function FceAiInterface() {
       }
 
       if (toolCallToExecute) {
-        setThinking(`Executing: ${toolCallToExecute.name}() ...`); 
+        setThinking(null); 
+        const toolExecutionId = Math.random().toString(36).substring(7);
+
+        setMessages(prev => {
+          const temp = [...prev];
+          const lastMsg = temp[temp.length - 1];
+          if (lastMsg && lastMsg.role === 'model') {
+            lastMsg.toolExecutions = [
+              ...(lastMsg.toolExecutions || []),
+              {
+                id: toolExecutionId,
+                name: toolCallToExecute.name,
+                args: toolCallToExecute.args,
+                status: "running"
+              }
+            ];
+          }
+          return temp;
+        });
         
         const toolRes = await fetch("/api/ai/tool", {
           method: "POST",
@@ -237,14 +337,34 @@ export function FceAiInterface() {
         const toolResultMessage: Message = {
           role: "user",
           content: `[SYSTEM: The tool '${toolCallToExecute.name}' returned this data:\n${toolResultString}\n\nPlease analyze this and provide the final answer.]`,
-          hidden: true
+          hidden: true,
+          isToolResult: true,
+          toolName: toolCallToExecute.name
         };
 
-        const newChatHistory = [...chatMessages, toolResultMessage];
+        const updatedModelMsg: Message = { 
+          role: "model", 
+          content: aiContent,
+          toolExecutions: [{
+            id: toolExecutionId,
+            name: toolCallToExecute.name,
+            args: toolCallToExecute.args,
+            status: "done",
+            result: toolResultString
+          }]
+        };
+        const newChatHistory = [...chatMessages, updatedModelMsg, toolResultMessage];
 
         setMessages(prev => {
           const temp = [...prev];
-          temp.pop(); 
+          const aiMsg = temp[temp.length - 1];
+          if (aiMsg && aiMsg.role === 'model' && aiMsg.toolExecutions) {
+            const exec = aiMsg.toolExecutions.find(t => t.id === toolExecutionId);
+            if (exec) {
+               exec.status = "done";
+               exec.result = toolResultString;
+            }
+          }
           temp.push(toolResultMessage);
           return temp;
         });
@@ -318,7 +438,7 @@ export function FceAiInterface() {
 
           {/* Messages */}
           <div className="space-y-8 mt-6">
-            {messages.map((m, i) => (
+            {messages.filter(m => !m.hidden).map((m, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-4 group ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 
                 {/* Avatar Icon */}
@@ -345,6 +465,11 @@ export function FceAiInterface() {
                       ? 'bg-muted/20 border-border text-foreground' 
                       : 'bg-background/90 border-transparent shadow-sm'
                   }`}>
+                    {/* Render Tool Executions */}
+                    {m.toolExecutions?.map((exec, idx) => (
+                      <ToolExecutionBlock key={`tool-${idx}`} execution={exec} />
+                    ))}
+                    
                     {/* Render Content (Code Blocks + Markdown) */}
                     {m.content.split(/(```[\s\S]*?```)/g).map((part, idx) => {
                       if (part.startsWith('```')) {
@@ -388,7 +513,7 @@ export function FceAiInterface() {
           
           <div className="flex items-center justify-between px-1">
              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-               <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" /> Terminal Input
+               <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" /> AI Input
              </span>
              {messages.length > 0 && (
                <button onClick={() => setMessages([])} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
@@ -435,20 +560,32 @@ export function FceAiInterface() {
         </div>
       </div>
 
-      <Dialog open={showConsent} onOpenChange={setShowConsent}>
-        <DialogContent className="sm:max-w-[400px] rounded-lg border-border bg-background p-8 shadow-2xl">
+      <Dialog open={showConsent} onOpenChange={(open) => { if (!open && localStorage.getItem("fce_ai_consent")) setShowConsent(false); }}>
+        <DialogContent className="sm:max-w-[400px] rounded-lg border-border bg-background p-8 shadow-2xl [&>button]:hidden">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-sm font-mono flex items-center gap-3 uppercase tracking-widest text-foreground">
               <Shield className="w-4 h-4" /> System Policy
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-            The FCE AI Terminal uses specialized language models to assist with API integration. 
+            The FCE AI uses specialized language models to assist with API integration. 
             All inputs are processed securely and are strictly excluded from public model training datasets.
           </p>
-          <Button variant="outline" className="w-full h-10 rounded text-xs font-mono uppercase tracking-widest border-border hover:bg-foreground hover:text-background transition-colors" onClick={() => { localStorage.setItem("fce_ai_consent", "true"); setShowConsent(false); }}>
-            Acknowledge & Connect
-          </Button>
+          <div className="flex flex-col gap-4 items-center">
+            <Turnstile
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+              onSuccess={(token) => setTurnstileToken(token)}
+              options={{ theme: "dark" }}
+            />
+            <Button 
+              variant="outline" 
+              className="w-full h-10 rounded text-xs font-mono uppercase tracking-widest border-border hover:bg-foreground hover:text-background transition-colors" 
+              disabled={!turnstileToken || isConsenting}
+              onClick={handleConsent}
+            >
+              {isConsenting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Acknowledge & Connect"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

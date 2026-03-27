@@ -73,6 +73,7 @@ YOUR CAPABILITIES:
 3. Provide exact CLI commands
 4. Analyze code or screenshots
 5. Perform API actions via tools (with permission)
+6. Read app pages to fetch guaranteed data (pricing, plans, docs, general info) using \`get_app_page_data\` and \`list_app_pages\`. Use \`list_app_pages\` on directories like \`app/api/docs\`, \`app/[locale]/pricing\` to see what's available, and then \`get_app_page_data\` to read the actual \`.tsx\` or \`.md\` files.
 
 YOUR TASK:
 - Always provide COMPLETE and ACCURATE solutions
@@ -115,30 +116,57 @@ export const TOOLS: Tool[] = [
     functionDeclarations:[
       {
         name: "get_api_specs",
-        description: "Fetch API schema or details for a given endpoint",
+        description: "Fetch API schema or details from openapi.yaml",
         parameters: {
           type: Type.OBJECT,
           properties: {
             endpoint: {
               type: Type.STRING,
-              description: "Endpoint or keyword like 'inboxes', 'messages'",
+              description: "Endpoint or keyword like 'inboxes', 'messages'. Leave empty for the whole file.",
             },
           },
-          required: ["endpoint"],
+        },
+      },
+      {
+        name: "get_app_page_data",
+        description: "Read the content of any page on the webapp to gain knowledge (e.g. pricing, docs, landing pages).",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            page_path: {
+              type: Type.STRING,
+              description: "Relative path to the page file (e.g. 'app/api/docs/authentication/page.tsx', 'app/[locale]/pricing/page.tsx')",
+            },
+          },
+          required: ["page_path"],
         },
       },
       {
         name: "get_sdk_docs",
-        description: "Fetch SDK documentation for a specific language",
+        description: "Fetch SDK documentation for a specific language or general docs",
         parameters: {
           type: Type.OBJECT,
           properties: {
             language: {
               type: Type.STRING,
-              description: "Language like 'npm' or 'python'",
+              description: "Language like 'npm', 'python', or specific doc path like 'custom-domains'",
             },
           },
           required: ["language"],
+        },
+      },
+      {
+        name: "list_app_pages",
+        description: "List all files in a specific directory inside the app to discover pages, docs, plans, etc.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            directory: {
+              type: Type.STRING,
+              description: "Directory path relative to root, e.g., 'app/api/docs', 'app/[locale]/pricing'",
+            },
+          },
+          required: ["directory"],
         },
       },
       {

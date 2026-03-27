@@ -53,6 +53,8 @@
     "DITBLOGS_API_KEY": "your-ditblogs-api-key",
     "DITBLOGS_WEBHOOK_SECRET": "your-ditblogs-webhook-secret",
     "AUTH_TRUST_HOST": true,
+    "UPSTASH_REDIS_REST_URL": "https://your-upstash-redis-url.upstash.io",
+    "UPSTASH_REDIS_REST_TOKEN": "your-upstash-redis-token",
     "NEXT_PUBLIC_PADDLE_ENV": "sandbox",
     "NEXT_PUBLIC_PADDLE_CLIENT_TOKEN": "your-paddle-client-token",
     "PADDLE_PRICE_WEEKLY": "your-paddle-price-id",
