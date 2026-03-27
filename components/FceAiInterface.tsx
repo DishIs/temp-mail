@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Send, Bot, User, X, Shield, Zap, Loader2,
-  Paperclip, FileText, Trash, Copy
+  Paperclip, FileText, Trash, Copy, Square
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -146,12 +146,12 @@ function ToolExecutionBlock({ execution }: { execution: ToolExecution }) {
   const isRunning = execution.status === "running";
 
   return (
-    <div className="mb-4 text-xs font-mono">
+    <div className="mb-3 text-xs font-mono">
       <button 
         onClick={() => setExpanded(!expanded)} 
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors w-full text-left ${isRunning ? 'bg-muted/10 border-border/50 text-muted-foreground animate-pulse' : 'bg-muted/30 border-border hover:bg-muted/50 text-foreground'}`}
+        className={`flex items-center gap-2 w-full text-left transition-colors ${isRunning ? 'text-muted-foreground animate-pulse' : 'text-muted-foreground hover:text-foreground'}`}
       >
-        {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3 text-primary" />}
+        {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
         <span className="flex-1 truncate">
           {isRunning ? `Running ${execution.name}...` : `Used tool: ${execution.name}`}
         </span>
@@ -165,15 +165,15 @@ function ToolExecutionBlock({ execution }: { execution: ToolExecution }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-3 mt-1 bg-background/50 border border-border/50 rounded-md space-y-2">
+            <div className="pt-2 pb-1 space-y-2 border-l-2 border-border/50 ml-1.5 pl-3 mt-1">
               <div>
                 <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Parameters</span>
-                <pre className="mt-1 p-2 bg-muted/20 rounded border border-border/50 overflow-x-auto text-[11px] whitespace-pre-wrap">{JSON.stringify(execution.args, null, 2)}</pre>
+                <pre className="mt-1 text-[11px] whitespace-pre-wrap text-muted-foreground">{JSON.stringify(execution.args, null, 2)}</pre>
               </div>
               {execution.result && (
                 <div>
                   <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Result</span>
-                  <pre className="mt-1 p-2 bg-muted/20 rounded border border-border/50 overflow-x-auto text-[11px] max-h-40 whitespace-pre-wrap">{execution.result}</pre>
+                  <pre className="mt-1 text-[11px] max-h-40 overflow-y-auto whitespace-pre-wrap text-muted-foreground">{execution.result}</pre>
                 </div>
               )}
             </div>
@@ -198,6 +198,7 @@ export function FceAiInterface() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem("fce_ai_consent")) setShowConsent(true);
@@ -264,10 +265,13 @@ export function FceAiInterface() {
     setIsLoading(true);
     if (!thinking) setThinking("Processing request...");
 
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         body: JSON.stringify({ messages: chatMessages }),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) throw new Error("API Error");
@@ -373,7 +377,8 @@ export function FceAiInterface() {
         return; 
       }
 
-    } catch (e) { 
+    } catch (e: any) { 
+      if (e.name === 'AbortError') return;
       toast.error("Failed to connect to FCE AI"); 
       setMessages(prev => prev.filter(m => m.content !== ""));
     } 
@@ -396,6 +401,14 @@ export function FceAiInterface() {
     const updated = [...messages, msg];
     setMessages(updated);
     await submitChat(updated);
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsLoading(false);
+      setThinking(null);
+    }
   };
 
   return (
@@ -552,9 +565,15 @@ export function FceAiInterface() {
                 className="min-h-[44px] max-h-[200px] border-0 focus-visible:ring-0 bg-transparent text-sm px-2 py-3 resize-none shadow-none font-mono placeholder:text-muted-foreground/40"
               />
 
-              <Button onClick={handleSend} disabled={isLoading || (!input.trim() && attachments.length === 0)} size="icon" className="h-10 w-10 rounded shrink-0 transition-transform active:scale-95 shadow-none border border-border bg-muted/20 hover:bg-foreground hover:text-background">
-                <Send className="w-4 h-4" />
-              </Button>
+              {isLoading ? (
+                <Button onClick={handleStop} size="icon" className="h-10 w-10 rounded shrink-0 shadow-none border border-border bg-muted/20 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors">
+                  <Square className="w-4 h-4 fill-current" />
+                </Button>
+              ) : (
+                <Button onClick={handleSend} disabled={!input.trim() && attachments.length === 0} size="icon" className="h-10 w-10 rounded shrink-0 transition-transform active:scale-95 shadow-none border border-border bg-muted/20 hover:bg-foreground hover:text-background">
+                  <Send className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
