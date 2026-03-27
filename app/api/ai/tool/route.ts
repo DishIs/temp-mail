@@ -115,6 +115,12 @@ Available Webapp Knowledge Pages (use get_app_page_data with these paths):
 - /api/docs/sdk/python
 - /api/docs/websocket
 - /api/cli
+- /api/dashboard
+- /api/playground
+- /api/automation/make
+- /api/automation/n8n
+- /api/automation/zapier
+- /api/automation/openclaw
 - /api/pricing (PRIMARY PRICING/PLANS PAGE)
 - /openapi.yaml (use get_api_specs)
         `.trim()

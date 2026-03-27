@@ -150,9 +150,19 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    const mergedMessages: any[] = [];
+    for (const msg of formattedMessages) {
+      const last = mergedMessages[mergedMessages.length - 1];
+      if (last && last.role === msg.role) {
+        last.parts.push(...msg.parts);
+      } else {
+        mergedMessages.push(msg);
+      }
+    }
+
     const stream = await ai.models.generateContentStream({
       model: modelName,
-      contents: formattedMessages, // No system role here!
+      contents: mergedMessages, // No system role here!
       config: {
         systemInstruction: SYSTEM_PROMPT, // Put system prompt here
         tools: TOOLS,

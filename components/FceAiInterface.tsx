@@ -367,7 +367,7 @@ export function FceAiInterface() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let aiContent = "";
-      let toolCallToExecute: any = null;
+      let toolCallsToExecute: any[] = [];
       
       setThinking(null);
       setMessages(prev =>[...prev, { role: "model", content: "" }]);
@@ -384,18 +384,24 @@ export function FceAiInterface() {
           
           try {
             const callData = JSON.parse(parts[1]);
-            toolCallToExecute = callData.calls[0];
+            toolCallsToExecute = callData.calls || [];
           } catch(e) { console.error("Failed to parse tool call:", e); }
           break;
         }
         
-        aiContent += chunk; 
+        aiContent += chunk;
         updateLast(aiContent);
       }
 
-      if (toolCallToExecute) {
-        setThinking(null); 
-        const toolExecutionId = Math.random().toString(36).substring(7);
+      if (toolCallsToExecute.length > 0) {
+        setThinking(null);
+        
+        const executions = toolCallsToExecute.map(call => ({
+          id: Math.random().toString(36).substring(7),
+          name: call.name,
+          args: call.args,
+          status: "running" as const
+        }));
 
         setMessages(prev => {
           const temp = [...prev];
@@ -403,66 +409,85 @@ export function FceAiInterface() {
           if (lastMsg && lastMsg.role === 'model') {
             lastMsg.toolExecutions = [
               ...(lastMsg.toolExecutions || []),
-              {
-                id: toolExecutionId,
-                name: toolCallToExecute.name,
-                args: toolCallToExecute.args,
-                status: "running"
-              }
+              ...executions
             ];
           }
           return temp;
         });
         
-        const toolRes = await fetch("/api/ai/tool", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tool: toolCallToExecute.name,
-            params: toolCallToExecute.args || {}
-          })
-        });
-        
-        const toolData = await toolRes.json();
-        const toolResultString = toolData.result || toolData.error || "No data returned.";
+        const toolResultMessages: Message[] = [];
+        const completedExecutions = [];
 
-        const toolResultMessage: Message = {
-          role: "function",
-          content: `[SYSTEM: The tool '${toolCallToExecute.name}' returned this data:\n${toolResultString}\n\nPlease analyze this and provide the final answer.]`,
-          hidden: true,
-          isToolResult: true,
-          toolName: toolCallToExecute.name
-        };
+        for (const exec of executions) {
+          try {
+            const toolRes = await fetch("/api/ai/tool", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                tool: exec.name,
+                params: exec.args || {}
+              })
+            });
+            
+            const toolData = await toolRes.json();
+            const toolResultString = toolData.result || toolData.error || "No data returned.";
 
-        const updatedModelMsg: Message = { 
-          role: "model", 
+            toolResultMessages.push({
+              role: "function",
+              content: `[SYSTEM: The tool '${exec.name}' returned this data:\n${toolResultString}\n\nPlease analyze this and provide the final answer.]`,
+              hidden: true,
+              isToolResult: true,
+              toolName: exec.name
+            });
+
+            completedExecutions.push({
+              ...exec,
+              status: "done" as const,
+              result: toolResultString
+            });
+          } catch (err) {
+            console.error("Tool execution failed:", err);
+            const toolResultString = "Tool execution failed.";
+            toolResultMessages.push({
+              role: "function",
+              content: `[SYSTEM: The tool '${exec.name}' returned this data:\n${toolResultString}\n\nPlease analyze this and provide the final answer.]`,
+              hidden: true,
+              isToolResult: true,
+              toolName: exec.name
+            });
+            completedExecutions.push({
+              ...exec,
+              status: "done" as const,
+              result: toolResultString
+            });
+          }
+        }
+
+        const updatedModelMsg: Message = {
+          role: "model",
           content: aiContent,
-          toolExecutions: [{
-            id: toolExecutionId,
-            name: toolCallToExecute.name,
-            args: toolCallToExecute.args,
-            status: "done",
-            result: toolResultString
-          }]
+          toolExecutions: completedExecutions
         };
-        const newChatHistory = [...chatMessages, updatedModelMsg, toolResultMessage];
+        const newChatHistory = [...chatMessages, updatedModelMsg, ...toolResultMessages];
 
         setMessages(prev => {
           const temp = [...prev];
           const aiMsg = temp[temp.length - 1];
           if (aiMsg && aiMsg.role === 'model' && aiMsg.toolExecutions) {
-            const exec = aiMsg.toolExecutions.find(t => t.id === toolExecutionId);
-            if (exec) {
-               exec.status = "done";
-               exec.result = toolResultString;
-            }
+             for (const exec of aiMsg.toolExecutions) {
+                 const comp = completedExecutions.find(c => c.id === exec.id);
+                 if (comp) {
+                     exec.status = "done";
+                     exec.result = comp.result;
+                 }
+             }
           }
-          temp.push(toolResultMessage);
+          temp.push(...toolResultMessages);
           return temp;
         });
 
         await submitChat(newChatHistory, retryCount + 1);
-        return; 
+        return;
       }
 
     } catch (e: any) { 
