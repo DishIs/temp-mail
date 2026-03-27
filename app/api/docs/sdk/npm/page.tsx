@@ -46,16 +46,16 @@ const client = new FreecustomEmailClient({
 });
 
 // 1. Register a disposable inbox
-await client.inboxes.register('test@ditmail.info');
+await client.inboxes.register('test@ditapi.info');
 
 // 2. (trigger your app to send a verification email)
 
 // 3. Get the OTP — polls until it arrives (Growth plan+)
-const otp = await client.otp.waitFor('test@ditmail.info', { timeoutMs: 30_000 });
+const otp = await client.otp.waitFor('test@ditapi.info', { timeoutMs: 30_000 });
 console.log('OTP:', otp); // '847291'
 
 // 4. Clean up
-await client.inboxes.unregister('test@ditmail.info');`} language="typescript" />
+await client.inboxes.unregister('test@ditapi.info');`} language="typescript" />
 
       {/* Client config */}
       <h2 id="client" className="text-lg font-semibold mt-10 mb-3">Client configuration</h2>
@@ -72,30 +72,30 @@ await client.inboxes.unregister('test@ditmail.info');`} language="typescript" />
       {/* Inboxes */}
       <h2 id="inboxes" className="text-lg font-semibold mt-10 mb-3">Inboxes</h2>
       <CodeBlock code={`// Register a new inbox
-const result = await client.inboxes.register('mytest@ditmail.info');
-// { success: true, message: 'Inbox registered.', inbox: 'mytest@ditmail.info' }
+const result = await client.inboxes.register('mytest@ditapi.info');
+// { success: true, message: 'Inbox registered.', inbox: 'mytest@ditapi.info' }
 
 // List all registered inboxes
 const inboxes = await client.inboxes.list();
-// [{ inbox: 'mytest@ditmail.info', local: 'mytest', domain: 'ditmail.info' }]
+// [{ inbox: 'mytest@ditapi.info', local: 'mytest', domain: 'ditapi.info' }]
 
 // Unregister
-await client.inboxes.unregister('mytest@ditmail.info');`} language="typescript" />
+await client.inboxes.unregister('mytest@ditapi.info');`} language="typescript" />
 
       {/* Messages */}
       <h2 id="messages" className="text-lg font-semibold mt-10 mb-3">Messages</h2>
       <CodeBlock code={`// List all messages in an inbox
-const messages = await client.messages.list('mytest@ditmail.info');
+const messages = await client.messages.list('mytest@ditapi.info');
 
 // Get a single message by ID
-const msg = await client.messages.get('mytest@ditmail.info', 'D3vt8NnEQ');
+const msg = await client.messages.get('mytest@ditapi.info', 'D3vt8NnEQ');
 console.log(msg.subject, msg.otp, msg.verificationLink);
 
 // Delete a message
-await client.messages.delete('mytest@ditmail.info', 'D3vt8NnEQ');
+await client.messages.delete('mytest@ditapi.info', 'D3vt8NnEQ');
 
 // Wait for a message matching a condition (polls until found or timeout)
-const msg = await client.messages.waitFor('mytest@ditmail.info', {
+const msg = await client.messages.waitFor('mytest@ditapi.info', {
   timeoutMs:      30_000,
   pollIntervalMs: 2_000,
   match: m => m.from.includes('github.com'),
@@ -107,14 +107,14 @@ const msg = await client.messages.waitFor('mytest@ditmail.info', {
         OTP extraction requires <strong>Growth plan or above</strong>. On lower plans, the <code className="rounded bg-muted px-1 py-0.5 text-xs">otp</code> field returns <code className="rounded bg-muted px-1 py-0.5 text-xs">__DETECTED__</code> as a signal to upgrade.
       </p>
       <CodeBlock code={`// Get the latest OTP immediately (returns null if none found)
-const result = await client.otp.get('mytest@ditmail.info');
+const result = await client.otp.get('mytest@ditapi.info');
 if (result.otp) {
   console.log('OTP:', result.otp);               // '847291'
   console.log('Link:', result.verification_link); // 'https://...'
 }
 
 // Poll until OTP arrives — the most common pattern in test automation
-const otp = await client.otp.waitFor('mytest@ditmail.info', {
+const otp = await client.otp.waitFor('mytest@ditapi.info', {
   timeoutMs:      30_000, // throw WaitTimeoutError after 30s
   pollIntervalMs: 2_000,  // check every 2s
 });`} language="typescript" />
@@ -125,13 +125,13 @@ const otp = await client.otp.waitFor('mytest@ditmail.info', {
         <code className="rounded bg-muted px-1 py-0.5 text-xs">getOtpForInbox</code> handles the entire register → trigger → wait → unregister lifecycle. Ideal for test suites.
       </p>
       <CodeBlock code={`const otp = await client.getOtpForInbox(
-  'mytest@ditmail.info',
+  'mytest@ditapi.info',
   async () => {
     // Trigger your app to send the verification email
     await fetch('https://yourapp.com/api/send-verification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'mytest@ditmail.info' }),
+      body: JSON.stringify({ email: 'mytest@ditapi.info' }),
     });
   },
   {
@@ -147,7 +147,7 @@ console.log('Verified with OTP:', otp);`} language="typescript" />
         Requires <strong>Startup plan or above</strong>. Delivers emails in under 200ms with no polling. Auto-reconnects on disconnect.
       </p>
       <CodeBlock code={`const ws = client.realtime({
-  mailbox:              'mytest@ditmail.info', // omit to subscribe to all your inboxes
+  mailbox:              'mytest@ditapi.info', // omit to subscribe to all your inboxes
   autoReconnect:        true,
   reconnectDelayMs:     3_000,
   maxReconnectAttempts: 10,
@@ -189,7 +189,7 @@ ws.disconnect();`} language="typescript" />
       <h2 id="webhooks" className="text-lg font-semibold mt-10 mb-3">Webhooks</h2>
       <CodeBlock code={`// Register a webhook — your URL gets a POST on every new email
 const hook = await client.webhooks.register(
-  'mytest@ditmail.info',
+  'mytest@ditapi.info',
   'https://your-server.com/hooks/email',
 );
 console.log('Webhook ID:', hook.id);
@@ -241,7 +241,7 @@ console.log('Resets at:', usage.resets);`} language="typescript" />
 } from 'freecustom-email';
 
 try {
-  const otp = await client.otp.get('mytest@ditmail.info');
+  const otp = await client.otp.get('mytest@ditapi.info');
 } catch (err) {
   if (err instanceof AuthError) {
     // 401 — invalid or revoked API key

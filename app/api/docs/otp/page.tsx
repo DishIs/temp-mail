@@ -35,13 +35,13 @@ export default function OtpPage() {
           <tr className="border-b border-border"><td className="py-2 font-mono text-xs">message_id, received_at</td><td className="py-2">Message ID and timestamp</td></tr>
         </tbody>
       </table>
-      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditmail.info/otp" \\
+      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditapi.info/otp" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <p className="text-sm text-muted-foreground mt-3">Example success (200):</p>
       <CodeBlock code={`{
   "success": true,
   "data": {
-    "inbox": "mytest@ditmail.info",
+    "inbox": "mytest@ditapi.info",
     "otp": "847291",
     "verification_link": "https://github.com/verify?token=abc123",
     "from": "noreply@example.com",

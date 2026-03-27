@@ -12,7 +12,7 @@ const ASCII_FRAGMENTS = [
   { x: "2%",  y: "5%",  t: "EHLO api2.freecustom.email" },
   { x: "67%", y: "3%",  t: "250 2.1.0 Ok" },
   { x: "78%", y: "11%", t: "From: noreply@service.com" },
-  { x: "1%",  y: "21%", t: "RCPT TO:<inbox@ditmail.info>" },
+  { x: "1%",  y: "21%", t: "RCPT TO:<inbox@ditapi.info>" },
   { x: "71%", y: "27%", t: "Message-ID: <abc123@fce.email>" },
   { x: "4%",  y: "37%", t: "Content-Type: text/plain; charset=utf-8" },
   { x: "74%", y: "43%", t: "354 End data with <CR><LF>.<CR><LF>" },

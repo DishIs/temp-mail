@@ -32,7 +32,7 @@ export default function WebSocketPage() {
       <h2 id="node" className="text-lg font-semibold mt-8 mb-2">Node.js example (ws)</h2>
       <CodeBlock code={`const WebSocket = require("ws");
 const ws = new WebSocket(
-  "wss://api2.freecustom.email/v1/ws?api_key=" + process.env.FCE_API_KEY + "&mailbox=test@ditmail.info"
+  "wss://api2.freecustom.email/v1/ws?api_key=" + process.env.FCE_API_KEY + "&mailbox=test@ditapi.info"
 );
 ws.on("message", (data) => console.log(JSON.parse(data)));
 ws.on("open", () => ws.send(JSON.stringify({ type: "pong" })));`} language="javascript" />
@@ -43,7 +43,7 @@ import websockets
 import json
 
 async def main():
-    uri = "wss://api2.freecustom.email/v1/ws?api_key=YOUR_KEY&mailbox=test@ditmail.info"
+    uri = "wss://api2.freecustom.email/v1/ws?api_key=YOUR_KEY&mailbox=test@ditapi.info"
     async with websockets.connect(uri) as ws:
         async for msg in ws:
             data = json.loads(msg)

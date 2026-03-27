@@ -343,7 +343,7 @@ const ASCII_FRAGS = [
   { x: "2%",  y: "8%",  t: "EHLO api2.freecustom.email" },
   { x: "70%", y: "6%",  t: "250 2.1.0 Ok"               },
   { x: "1%",  y: "55%", t: "X-OTP: 847291"               },
-  { x: "71%", y: "52%", t: "RCPT TO:<inbox@ditmail.info>" },
+  { x: "71%", y: "52%", t: "RCPT TO:<inbox@ditapi.info>" },
 ];
 
 // ─── Downgrade modal ──────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 const ASCII_FRAGS = [
   { x: "2%",  y: "8%",  t: "EHLO api2.freecustom.email"     },
   { x: "68%", y: "5%",  t: "250 2.1.0 Ok"                   },
-  { x: "1%",  y: "40%", t: "RCPT TO:<inbox@ditmail.info>"    },
+  { x: "1%",  y: "40%", t: "RCPT TO:<inbox@ditapi.info>"    },
   { x: "70%", y: "36%", t: "Message-ID: <abc123@fce.email>"  },
   { x: "2%",  y: "65%", t: "X-OTP: 847291"                  },
   { x: "69%", y: "62%", t: "SMTP 220 mail.freecustom.email"  },

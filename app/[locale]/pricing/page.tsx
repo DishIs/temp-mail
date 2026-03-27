@@ -34,7 +34,7 @@ const ASCII_FRAGS = [
   { x: "2%",  y: "5%",  t: "EHLO api2.freecustom.email" },
   { x: "67%", y: "3%",  t: "250 2.1.0 Ok" },
   { x: "78%", y: "11%", t: "From: noreply@service.com" },
-  { x: "1%",  y: "21%", t: "RCPT TO:<inbox@ditmail.info>" },
+  { x: "1%",  y: "21%", t: "RCPT TO:<inbox@ditapi.info>" },
   { x: "71%", y: "27%", t: "Message-ID: <abc123@fce.email>" },
   { x: "4%",  y: "37%", t: "Content-Type: text/plain; charset=utf-8" },
   { x: "1%",  y: "51%", t: "X-OTP: 847291" },
@@ -472,7 +472,7 @@ export default function PricingPage() {
                     <FeatureRow icon={<Paperclip className="h-3.5 w-3.5" />} label="Attachment downloads" guest={false} free={<V v="Limited" />} pro={true} />
 
                     <SectionRow label="Identity" />
-                    <FeatureRow icon={<Mail className="h-3.5 w-3.5" />} label="Custom email prefix" hint="e.g. yourname@ditmail.info" guest={false} free={true} pro={true} />
+                    <FeatureRow icon={<Mail className="h-3.5 w-3.5" />} label="Custom email prefix" hint="e.g. yourname@ditapi.info" guest={false} free={true} pro={true} />
                     <FeatureRow icon={<Globe className="h-3.5 w-3.5" />} label="Custom domain" hint="Receive mail at your own domain" guest={false} free={false} pro={true} />
 
                     <SectionRow label="Smart Features" />

@@ -9,10 +9,10 @@ const CURL = `# 1. Register an inbox
 curl -X POST https://api2.freecustom.email/v1/inboxes \\
   -H "Authorization: Bearer fce_your_api_key" \\
   -H "Content-Type: application/json" \\
-  -d '{"inbox":"test@ditmail.info"}'
+  -d '{"inbox":"test@ditapi.info"}'
 
 # 2. Get latest OTP
-curl "https://api2.freecustom.email/v1/inboxes/test@ditmail.info/otp" \\
+curl "https://api2.freecustom.email/v1/inboxes/test@ditapi.info/otp" \\
   -H "Authorization: Bearer fce_your_api_key"`;
 
 const NODE = `import { FreecustomEmailClient } from 'freecustom-email';
@@ -23,10 +23,10 @@ const client = new FreecustomEmailClient({
 });
 
 // Register a disposable inbox
-await client.inboxes.register('test@ditmail.info');
+await client.inboxes.register('test@ditapi.info');
 
 // Wait for OTP — no polling, no regex
-const otp = await client.otp.waitFor('test@ditmail.info');
+const otp = await client.otp.waitFor('test@ditapi.info');
 console.log(otp); // '212342'`;
 
 const PYTHON = `from freecustom_email import FreeCustomEmail
@@ -37,10 +37,10 @@ client = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"])
 
 async def main():
     # Register a disposable inbox
-    await client.inboxes.register("test@ditmail.info")
+    await client.inboxes.register("test@ditapi.info")
 
     # Wait for OTP — no polling, no regex
-    otp = await client.otp.wait_for("test@ditmail.info")
+    otp = await client.otp.wait_for("test@ditapi.info")
     print(otp)  # '212342'
 
 asyncio.run(main())`;
@@ -56,7 +56,7 @@ import (
 
 func main() {
   key  := os.Getenv("FCE_API_KEY")
-  body, _ := json.Marshal(map[string]string{"inbox": "test@ditmail.info"})
+  body, _ := json.Marshal(map[string]string{"inbox": "test@ditapi.info"})
 
   req, _ := http.NewRequest(
     "POST",

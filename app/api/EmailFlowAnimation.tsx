@@ -20,7 +20,7 @@ const STAGE_DETAILS: Record<StageId, { lines: string[]; badge?: string }> = {
   app: {
     lines: [
       "POST /api/signup",
-      '{ "email": "test@ditmail.info" }',
+      '{ "email": "test@ditapi.info" }',
       "",
       "▶ Sending verification…",
     ],
@@ -29,7 +29,7 @@ const STAGE_DETAILS: Record<StageId, { lines: string[]; badge?: string }> = {
     lines: [
       "EHLO mail.example.com",
       "250-STARTTLS",
-      "RCPT TO:<test@ditmail.info>",
+      "RCPT TO:<test@ditapi.info>",
       "354 End data",
     ],
   },

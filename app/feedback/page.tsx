@@ -22,7 +22,7 @@ const ASCII_FRAGS = [
   { x: "2%",  y: "8%",  t: "EHLO api2.freecustom.email" },
   { x: "68%", y: "6%",  t: "250 2.1.0 Ok"               },
   { x: "1%",  y: "48%", t: "X-OTP: 847291"              },
-  { x: "70%", y: "45%", t: "RCPT TO:<inbox@ditmail.info>" },
+  { x: "70%", y: "45%", t: "RCPT TO:<inbox@ditapi.info>" },
   { x: "2%",  y: "88%", t: "AUTH PLAIN"                  },
   { x: "68%", y: "86%", t: "MAIL FROM:<service@example.com>" },
 ];

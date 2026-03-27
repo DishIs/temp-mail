@@ -17,13 +17,13 @@ export default function MessagesPage() {
 
       <h2 id="list" className="text-lg font-semibold mt-8 mb-2">GET /v1/inboxes/{`{inbox}`}/messages</h2>
       <p className="text-sm text-muted-foreground mb-2">Returns messages for the given inbox (newest first). Query params: <code className="rounded bg-muted px-1 py-0.5 text-xs">limit</code> (default 20, max 100), <code className="rounded bg-muted px-1 py-0.5 text-xs">before</code> (message ID for pagination).</p>
-      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditmail.info/messages" \\
+      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditapi.info/messages" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
       <ResponseBlock status={200} label="Success" body={`{
   "success": true,
   "data": {
-    "inbox": "mytest@ditmail.info",
+    "inbox": "mytest@ditapi.info",
     "messages": [
       {
         "id": "msg_01jqz3k4m5n6p7q8r9s0t1u2v3",
@@ -43,12 +43,12 @@ export default function MessagesPage() {
       <ResponseBlock status={403} label="Inbox not registered" body={`{
   "success": false,
   "error": "forbidden",
-  "message": "mytest@ditmail.info is not registered on this account."
+  "message": "mytest@ditapi.info is not registered on this account."
 }`} />
 
       <h2 id="get" className="text-lg font-semibold mt-8 mb-2">GET /v1/inboxes/{`{inbox}`}/messages/{`{id}`}</h2>
       <p className="text-sm text-muted-foreground mb-2">Returns full message body (html, text), metadata, and attachments (if plan allows).</p>
-      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditmail.info/messages/msg_abc123" \\
+      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditapi.info/messages/msg_abc123" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
       <ResponseBlock status={200} label="Success" body={`{
@@ -56,7 +56,7 @@ export default function MessagesPage() {
   "data": {
     "id": "msg_01jqz3k4m5n6p7q8r9s0t1u2v3",
     "from": "noreply@github.com",
-    "to": "mytest@ditmail.info",
+    "to": "mytest@ditapi.info",
     "subject": "Your GitHub verification code",
     "date": "2026-03-04T09:55:00.000Z",
     "html": "<p>Your code is <strong>482931</strong></p>",
@@ -70,12 +70,12 @@ export default function MessagesPage() {
       <ResponseBlock status={404} label="Message not found" body={`{
   "success": false,
   "error": "not_found",
-  "message": "Message msg_abc123 not found in mytest@ditmail.info."
+  "message": "Message msg_abc123 not found in mytest@ditapi.info."
 }`} />
 
       <h2 id="delete" className="text-lg font-semibold mt-8 mb-2">DELETE /v1/inboxes/{`{inbox}`}/messages/{`{id}`}</h2>
       <p className="text-sm text-muted-foreground mb-2">Deletes a single message.</p>
-      <CodeBlock code={`curl -X DELETE "https://api2.freecustom.email/v1/inboxes/mytest@ditmail.info/messages/msg_abc123" \\
+      <CodeBlock code={`curl -X DELETE "https://api2.freecustom.email/v1/inboxes/mytest@ditapi.info/messages/msg_abc123" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
       <ResponseBlock status={200} label="Deleted" body={`{

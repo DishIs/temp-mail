@@ -23,7 +23,7 @@ const SDKS = [
 const client = new FreecustomEmailClient({ apiKey: 'fce_...' });
 
 // Get OTP in one line
-const otp = await client.otp.waitFor('test@ditmail.info');
+const otp = await client.otp.waitFor('test@ditapi.info');
 console.log(otp); // '847291'`,
   },
   {
@@ -41,7 +41,7 @@ import asyncio
 client = FreeCustomEmail(api_key="fce_...")
 
 async def main():
-    otp = await client.otp.wait_for("test@ditmail.info")
+    otp = await client.otp.wait_for("test@ditapi.info")
     print(otp)  # '847291'
 
 asyncio.run(main())`,
@@ -64,8 +64,8 @@ const THIRTY_SECONDS = [
   {
     n: "03",
     title: "Register + get OTP",
-    js: `await client.inboxes.register('test@ditmail.info');\nconst otp = await client.otp.waitFor('test@ditmail.info');`,
-    py: `await client.inboxes.register("test@ditmail.info")\notp = await client.otp.wait_for("test@ditmail.info")`,
+    js: `await client.inboxes.register('test@ditapi.info');\nconst otp = await client.otp.waitFor('test@ditapi.info');`,
+    py: `await client.inboxes.register("test@ditapi.info")\notp = await client.otp.wait_for("test@ditapi.info")`,
   },
 ];
 

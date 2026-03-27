@@ -50,16 +50,16 @@ async def main():
     client = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"])
 
     # 1. Register a disposable inbox
-    await client.inboxes.register("test@ditmail.info")
+    await client.inboxes.register("test@ditapi.info")
 
     # 2. (trigger your app to send a verification email)
 
     # 3. Wait for OTP — polls until it arrives (Growth plan+)
-    otp = await client.otp.wait_for("test@ditmail.info", timeout_ms=30_000)
+    otp = await client.otp.wait_for("test@ditapi.info", timeout_ms=30_000)
     print(f"OTP: {otp}")  # '847291'
 
     # 4. Clean up
-    await client.inboxes.unregister("test@ditmail.info")
+    await client.inboxes.unregister("test@ditapi.info")
 
 asyncio.run(main())`} language="python" />
 
@@ -72,8 +72,8 @@ asyncio.run(main())`} language="python" />
 
 client = FreeCustomEmail(api_key="fce_...", sync=True)
 
-client.inboxes.register("test@ditmail.info")
-otp = client.otp.wait_for("test@ditmail.info", timeout_ms=30_000)
+client.inboxes.register("test@ditapi.info")
+otp = client.otp.wait_for("test@ditapi.info", timeout_ms=30_000)
 print(f"OTP: {otp}")`} language="python" />
 
       {/* Client config */}
@@ -92,33 +92,33 @@ client = FreeCustomEmail(
       {/* Inboxes */}
       <h2 id="inboxes" className="text-lg font-semibold mt-10 mb-3">Inboxes</h2>
       <CodeBlock code={`# Register
-result = await client.inboxes.register("mytest@ditmail.info")
-# RegisterInboxResult(success=True, message='Inbox registered.', inbox='mytest@ditmail.info')
+result = await client.inboxes.register("mytest@ditapi.info")
+# RegisterInboxResult(success=True, message='Inbox registered.', inbox='mytest@ditapi.info')
 
 # List all registered inboxes
 inboxes = await client.inboxes.list()
-# [InboxObject(inbox='mytest@ditmail.info', local='mytest', domain='ditmail.info')]
+# [InboxObject(inbox='mytest@ditapi.info', local='mytest', domain='ditapi.info')]
 
 # Unregister
-await client.inboxes.unregister("mytest@ditmail.info")`} language="python" />
+await client.inboxes.unregister("mytest@ditapi.info")`} language="python" />
 
       {/* Messages */}
       <h2 id="messages" className="text-lg font-semibold mt-10 mb-3">Messages</h2>
       <CodeBlock code={`# List all messages
-messages = await client.messages.list("mytest@ditmail.info")
+messages = await client.messages.list("mytest@ditapi.info")
 for msg in messages:
     print(msg.subject, msg.otp, msg.verification_link)
     print(msg.from_)  # Note: 'from_' not 'from' (Python keyword)
 
 # Get a single message
-msg = await client.messages.get("mytest@ditmail.info", "D3vt8NnEQ")
+msg = await client.messages.get("mytest@ditapi.info", "D3vt8NnEQ")
 
 # Delete
-await client.messages.delete("mytest@ditmail.info", "D3vt8NnEQ")
+await client.messages.delete("mytest@ditapi.info", "D3vt8NnEQ")
 
 # Wait for a message matching a condition
 msg = await client.messages.wait_for(
-    "mytest@ditmail.info",
+    "mytest@ditapi.info",
     timeout_ms=30_000,
     poll_interval_ms=2_000,
     match=lambda m: "github" in m.from_,
@@ -130,7 +130,7 @@ msg = await client.messages.wait_for(
         OTP extraction requires <strong>Growth plan or above</strong>.
       </p>
       <CodeBlock code={`# Get latest OTP (returns None if no OTP email found)
-result = await client.otp.get("mytest@ditmail.info")
+result = await client.otp.get("mytest@ditapi.info")
 if result.otp:
     print(f"OTP: {result.otp}")                       # '847291'
     print(f"Link: {result.verification_link}")         # 'https://...'
@@ -138,7 +138,7 @@ if result.otp:
 
 # Poll until OTP arrives — most common in test automation
 otp = await client.otp.wait_for(
-    "mytest@ditmail.info",
+    "mytest@ditapi.info",
     timeout_ms=30_000,      # raise WaitTimeoutError after 30s
     poll_interval_ms=2_000, # check every 2s
 )
@@ -153,11 +153,11 @@ async def trigger_signup():
     async with httpx.AsyncClient() as http:
         await http.post(
             "https://yourapp.com/api/send-verification",
-            json={"email": "mytest@ditmail.info"},
+            json={"email": "mytest@ditapi.info"},
         )
 
 otp = await client.get_otp_for_inbox(
-    inbox="mytest@ditmail.info",
+    inbox="mytest@ditapi.info",
     trigger_fn=trigger_signup,
     timeout_ms=30_000,
     auto_unregister=True,   # cleans up the inbox afterwards
@@ -170,7 +170,7 @@ print(f"Verified! OTP was: {otp}")`} language="python" />
         Requires <strong>Startup plan or above</strong>. Email events arrive in under 200ms with no polling.
       </p>
       <CodeBlock code={`ws = client.realtime(
-    mailbox="mytest@ditmail.info",  # omit to subscribe to all your inboxes
+    mailbox="mytest@ditapi.info",  # omit to subscribe to all your inboxes
     auto_reconnect=True,
     reconnect_delay=3.0,            # seconds between reconnect attempts
     max_reconnect_attempts=10,
@@ -215,7 +215,7 @@ await ws.disconnect()`} language="python" />
       <h2 id="webhooks" className="text-lg font-semibold mt-10 mb-3">Webhooks</h2>
       <CodeBlock code={`# Register a webhook — your URL gets a POST on every new email
 hook = await client.webhooks.register(
-    inbox="mytest@ditmail.info",
+    inbox="mytest@ditapi.info",
     url="https://your-server.com/hooks/email",
 )
 print(f"Webhook ID: {hook.id}")
@@ -273,7 +273,7 @@ print(f"Resets at: {usage.resets}")`} language="python" />
 )
 
 try:
-    otp = await client.otp.wait_for("mytest@ditmail.info")
+    otp = await client.otp.wait_for("mytest@ditapi.info")
 
 except AuthError:
     # 401 — invalid or revoked API key
@@ -336,7 +336,7 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_signup_verification(client, test_app):
-    inbox = "pytest-signup@ditmail.info"
+    inbox = "pytest-signup@ditapi.info"
     
     otp = await client.get_otp_for_inbox(
         inbox=inbox,

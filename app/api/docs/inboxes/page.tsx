@@ -60,12 +60,12 @@ export default function InboxesPage() {
       <CodeBlock code={`curl -X POST https://api2.freecustom.email/v1/inboxes \\
   -H "Authorization: Bearer fce_your_api_key" \\
   -H "Content-Type: application/json" \\
-  -d '{"inbox":"mytest@ditmail.info"}'`} language="curl" />
+  -d '{"inbox":"mytest@ditapi.info"}'`} language="curl" />
       <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
       <ResponseBlock status={201} label="Inbox registered" body={`{
   "success": true,
   "data": {
-    "inbox": "mytest@ditmail.info",
+    "inbox": "mytest@ditapi.info",
     "registered_at": "2026-03-04T10:00:00.000Z"
   }
 }`} />
@@ -88,22 +88,22 @@ export default function InboxesPage() {
       <ResponseBlock status={409} label="Already registered" body={`{
   "success": false,
   "error": "already_registered",
-  "message": "mytest@ditmail.info is already registered to this account."
+  "message": "mytest@ditapi.info is already registered to this account."
 }`} />
 
       <h2 id="delete" className="text-lg font-semibold mt-8 mb-2">DELETE /v1/inboxes/{`{inbox}`}</h2>
       <p className="text-sm text-muted-foreground mb-2">Unregisters the inbox. Path <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code> must be URL-encoded (e.g. test%40freecustom.email).</p>
-      <CodeBlock code={`curl -X DELETE "https://api2.freecustom.email/v1/inboxes/mytest%40ditmail.info" \\
+      <CodeBlock code={`curl -X DELETE "https://api2.freecustom.email/v1/inboxes/mytest%40ditapi.info" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
       <ResponseBlock status={200} label="Unregistered" body={`{
   "success": true,
-  "message": "mytest@ditmail.info has been unregistered."
+  "message": "mytest@ditapi.info has been unregistered."
 }`} />
       <ResponseBlock status={404} label="Not registered" body={`{
   "success": false,
   "error": "not_found",
-  "message": "mytest@ditmail.info is not registered on this account."
+  "message": "mytest@ditapi.info is not registered on this account."
 }`} />
 
       <DocPageNav prev={{ href: "/api/docs/authentication", label: "Authentication" }} next={{ href: "/api/docs/messages", label: "Reading messages" }} />

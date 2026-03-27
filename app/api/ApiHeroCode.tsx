@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import { CodeBlock } from "@/components/CodeBlock";
 
-const CURL = `curl "https://api2.freecustom.email/v1/inboxes/you@ditmail.info/otp" \\
+const CURL = `curl "https://api2.freecustom.email/v1/inboxes/you@ditapi.info/otp" \\
   -H "Authorization: Bearer fce_xxxx"`;
 
 const JSON_RESPONSE = `{
