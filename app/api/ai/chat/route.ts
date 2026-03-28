@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // Limit Session Tokens
     const session = await auth();
     const userEmail = session?.user?.email;
-    const ip = req.headers.get("x-forwarded-for") || req.ip || "unknown";
+    const ip = req.headers.get("x-forwarded-for") || (req as any).ip || "unknown";
     // Construct a simplistic fingerprint from user-agent and language
     const ua = req.headers.get("user-agent") || "unknown";
     const lang = req.headers.get("accept-language") || "unknown";
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
       config: {
         systemInstruction: SYSTEM_PROMPT, // Put system prompt here
         tools: TOOLS,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
         temperature: 0.7,
       },
     });

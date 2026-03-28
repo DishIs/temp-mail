@@ -137,7 +137,25 @@ function SectionMarker({ index, total, label }: { index: number; total: number; 
 }
 
 // ─── Markdown Renderer ─────────────────────────────────────────────────────
+const processThinkBlocks = (text: string) => {
+  if (!text.includes("<think>")) return text;
+  
+  let processed = text.replace(/<think>([\s\S]*?)<\/think>/gi, (match, p1) => {
+    return `\n\n> 🧠 **Thought Process**\n> \n> ${p1.trim().replace(/\n/g, '\n> ')}\n\n`;
+  });
+  
+  if (processed.includes("<think>")) {
+    const parts = processed.split("<think>");
+    const before = parts[0];
+    const thinking = parts[1];
+    return `${before}\n\n> 🧠 **Thinking...**\n> \n> ${thinking.replace(/\n/g, '\n> ')}`;
+  }
+  
+  return processed;
+};
+
 const Markdown = ({ children, isUser }: { children: string; isUser: boolean }) => {
+  const processedChildren = isUser ? children : processThinkBlocks(children);
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -187,7 +205,7 @@ const Markdown = ({ children, isUser }: { children: string; isUser: boolean }) =
         hr: ({ ...props }) => <hr className="my-8 border-border/40" {...props} />,
       }}
     >
-      {children}
+      {processedChildren}
     </ReactMarkdown>
   );
 };
@@ -343,7 +361,7 @@ export function FceAiInterface() {
     }
 
     setIsLoading(true);
-    if (!thinking) setThinking("Processing request...");
+    setThinking(retryCount > 0 ? "Analyzing tool results..." : "Processing request...");
 
     abortControllerRef.current = new AbortController();
 
@@ -394,7 +412,7 @@ export function FceAiInterface() {
       }
 
       if (toolCallsToExecute.length > 0) {
-        setThinking(null);
+        setThinking("Executing tools...");
         
         const executions = toolCallsToExecute.map(call => ({
           id: Math.random().toString(36).substring(7),
