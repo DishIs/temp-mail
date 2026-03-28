@@ -373,13 +373,12 @@ export function FceAiInterface() {
       });
 
       if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
+        let errorMsg = response.statusText || "API Error";
+        try {
           const errorBody = await response.json();
-          throw new Error(errorBody.error || "API Error");
-        } else {
-          throw new Error(response.statusText || "API Error");
-        }
+          if (errorBody.error) errorMsg = errorBody.error;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
       
       const reader = response.body?.getReader();

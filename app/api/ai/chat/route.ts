@@ -1,5 +1,5 @@
 import { ai, chooseModel, TOOLS, SYSTEM_PROMPT } from "@/lib/ai/gemini";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { Redis } from "@upstash/redis";
@@ -13,13 +13,13 @@ export async function POST(req: NextRequest) {
   try {
     const cookieStore = await cookies();
     if (!cookieStore.get("fce_ai_verified")?.value) {
-      return new Response(JSON.stringify({ error: "Unauthorized. Turnstile verification required." }), { status: 403 });
+      return NextResponse.json({ error: "Unauthorized. Turnstile verification required." }, { status: 403 });
     }
 
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return new Response(JSON.stringify({ error: "Invalid request" }), { status: 400 });
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
     const lastMessage = messages[messages.length - 1];
@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
     // Limit Session Tokens
     const session = await auth();
     const userEmail = session?.user?.email;
-    const ip = req.headers.get("x-forwarded-for") || (req as any).ip || "unknown";
     // Construct a simplistic fingerprint from user-agent and language
     const ua = req.headers.get("user-agent") || "unknown";
     const lang = req.headers.get("accept-language") || "unknown";
@@ -48,23 +47,20 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    const redisKeys = [
-      `ai_usage:ip:${ip}`,
-      `ai_usage:fp:${fingerprint}`,
-      userEmail ? `ai_usage:email:${userEmail}` : null
-    ].filter(Boolean) as string[];
+    const globalKey = "ai_usage:global";
+    const blockingKey = userEmail
+      ? `ai_usage:email:${userEmail}`
+      : `ai_usage:fp:${fingerprint}`;
 
     let isAnomaly = false;
-    for (const key of redisKeys) {
-      const currentUsage = await redis.get<number>(key) || 0;
-      if (currentUsage > MAX_TOKENS) {
-        isAnomaly = true;
-      }
+    const currentUsage = await redis.get<number>(blockingKey) || 0;
+    if (currentUsage > MAX_TOKENS) {
+      isAnomaly = true;
     }
 
     if (isAnomaly) {
       // Send anomaly alert if not already sent recently to avoid spamming the admin
-      const alertKey = `ai_alert_sent:${ip}`;
+      const alertKey = `ai_alert_sent:${blockingKey}`;
       const alertSent = await redis.get(alertKey);
       
       if (!alertSent) {
@@ -72,19 +68,20 @@ export async function POST(req: NextRequest) {
           from: `FreeCustom.Email <contact@freecustom.email>`,
           to: process.env.ADMIN_EMAIL || "admin@example.com",
           subject: `[ALERT] FCE AI Abuse Detected`,
-          text: `Anomaly detected. Usage exceeded limit for IP: ${ip}, Email: ${userEmail || "Guest"}\nFingerprint: ${fingerprint}`,
+          text: `Anomaly detected. Usage exceeded limit for: ${blockingKey}\nFingerprint: ${fingerprint}`,
         });
-        await redis.setex(alertKey, 3600, "1"); // Only alert once per hour per IP
+        await redis.setex(alertKey, 3600, "1"); // Only alert once per hour per key
       }
 
-      return new Response(JSON.stringify({ error: "Session token limit exceeded. Please try again later." }), { status: 429 });
+      return NextResponse.json({ error: "Session token limit exceeded. Please try again later." }, { status: 429 });
     }
 
     // Increment usage asynchronously
-    for (const key of redisKeys) {
+    const incrementKeys = [blockingKey, globalKey];
+    for (const key of incrementKeys) {
       const currentVal = await redis.incrby(key, estimatedTokens);
-      if (currentVal === estimatedTokens) {
-        // First time setting this key, set expiration
+      if (currentVal === estimatedTokens && key !== globalKey) {
+        // First time setting this key, set expiration (don't expire global counter)
         await redis.expire(key, 86400); // 24 hours reset
       }
     }
@@ -233,10 +230,8 @@ export async function POST(req: NextRequest) {
       userFacingError = `AI Error: ${error.message}`;
     }
 
-    return new Response(
-      JSON.stringify({
-        error: userFacingError,
-      }),
+    return NextResponse.json(
+      { error: userFacingError },
       { status: statusCode }
     );
   }
