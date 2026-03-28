@@ -33,38 +33,12 @@ export async function POST(req: NextRequest) {
       }
 
       const content = await res.text();
-      const endpoint = params?.endpoint?.toLowerCase();
-
-      if (!endpoint) {
-        return NextResponse.json({
-          result: content.substring(0, 100000), 
-        });
-      }
-
-      const lines = content.split("\n");
-
-      let result = "";
-      let found = false;
-      let indent = -1;
-
-      for (const line of lines) {
-        if (!found && line.toLowerCase().includes(endpoint)) {
-          found = true;
-          indent = line.search(/\S/);
-          result += line + "\n";
-          continue;
-        }
-
-        if (found) {
-          const currentIndent = line.search(/\S/);
-          if (currentIndent <= indent && line.trim()) break;
-          result += line + "\n";
-          if (result.length > 50000) break;
-        }
-      }
-
+      
+      // The OpenAPI file is ~52KB, well within Gemini's massive context window.
+      // Return the entire file so the AI has 100% full context of the structure,
+      // schemas, and related endpoints, preventing any parsing errors.
       return NextResponse.json({
-        result: result || "Not found",
+        result: content.substring(0, 150000),
       });
     }
 

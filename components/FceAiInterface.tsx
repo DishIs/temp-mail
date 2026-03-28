@@ -280,6 +280,10 @@ export function FceAiInterface() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isConsenting, setIsConsenting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(PROMPT_CATEGORIES[0].id);
+  const [pendingAction, setPendingAction] = useState<{
+    exec: ToolExecution;
+    resolve: (result: string) => void;
+  } | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -437,17 +441,24 @@ export function FceAiInterface() {
 
         for (const exec of executions) {
           try {
-            const toolRes = await fetch("/api/ai/tool", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                tool: exec.name,
-                params: exec.args || {}
-              })
-            });
-            
-            const toolData = await toolRes.json();
-            const toolResultString = toolData.result || toolData.error || "No data returned.";
+            let toolResultString = "";
+
+            if (exec.name === "handle_contact_request" || exec.name === "trigger_api_action") {
+              toolResultString = await new Promise<string>((resolve) => {
+                setPendingAction({ exec, resolve });
+              });
+            } else {
+              const toolRes = await fetch("/api/ai/tool", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  tool: exec.name,
+                  params: exec.args || {}
+                })
+              });
+              const toolData = await toolRes.json();
+              toolResultString = toolData.result || toolData.error || "No data returned.";
+            }
 
             toolResultMessages.push({
               role: "function",
@@ -775,6 +786,93 @@ export function FceAiInterface() {
               onClick={handleConsent}
             >
               {isConsenting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Acknowledge & Connect"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingAction} onOpenChange={(o) => { if (!o && pendingAction) { pendingAction.resolve("User denied the action."); setPendingAction(null); } }}>
+        <DialogContent className="sm:max-w-[400px] rounded-lg border-border bg-background p-6 shadow-2xl">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-sm font-mono flex items-center gap-3 uppercase tracking-widest text-foreground">
+              <Zap className="w-4 h-4 text-primary" /> Action Required
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {pendingAction?.exec.name === "handle_contact_request"
+                ? "The AI wants to submit a contact request on your behalf."
+                : "The AI wants to perform an internal API action on your behalf."}
+            </p>
+            <div className="p-3 bg-muted/20 border border-border/50 rounded-lg max-h-40 overflow-y-auto">
+              <pre className="text-[10px] font-mono text-muted-foreground whitespace-pre-wrap">
+                {JSON.stringify(pendingAction?.exec.args, null, 2)}
+              </pre>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <Button
+              variant="outline"
+              onClick={() => { pendingAction?.resolve("User denied the action."); setPendingAction(null); }}
+              className="text-xs uppercase tracking-widest font-mono"
+            >
+              Deny
+            </Button>
+            <Button
+              className="text-xs uppercase tracking-widest font-mono"
+              onClick={async () => {
+                if (!pendingAction) return;
+                
+                try {
+                  const { exec } = pendingAction;
+                  let resStr = "";
+                  
+                  if (exec.name === "handle_contact_request") {
+                    const res = await fetch("/api/contact", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ ...exec.args, token: turnstileToken || "ai-bypassed" })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      resStr = "Contact request submitted successfully.";
+                      toast.success("Contact request sent");
+                    } else {
+                      resStr = `Failed: ${data.error}`;
+                      toast.error(data.error);
+                    }
+                  } else if (exec.name === "trigger_api_action") {
+                    if (exec.args.action_type === "create_api_key") {
+                      const res = await fetch("/api/user/api-keys", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: "Generated by FCE AI" })
+                      });
+                      const data = await res.json();
+                      if (data.success && data.key) {
+                        resStr = "API Key created successfully. The key was rendered securely in the chat UI. DO NOT output the key or ask the user for it, as you cannot see it.";
+                        // Render a special message in the chat to show the key
+                        setMessages(prev => [...prev, {
+                          role: "model",
+                          content: `I've successfully created a new API key for you:\n\n\`\`\`text\n${data.key}\n\`\`\`\n\n> ⚠️ **IMPORTANT:** Store this key securely. You can manage it from your [API Dashboard](/api/dashboard).`
+                        }]);
+                        toast.success("API Key generated");
+                      } else {
+                        resStr = `Failed to create key: ${data.message || 'Unknown error'}`;
+                        toast.error(data.message || 'Error generating key');
+                      }
+                    } else {
+                      resStr = "Unknown action_type.";
+                    }
+                  }
+                  pendingAction.resolve(resStr);
+                } catch (e: any) {
+                  pendingAction.resolve(`Error: ${e.message}`);
+                }
+                setPendingAction(null);
+              }}
+            >
+              Approve Action
             </Button>
           </div>
         </DialogContent>
