@@ -320,5 +320,11 @@
       "fetch_error": "Tidak dapat mengambil data pengguna",
       "load_error": "Tidak memuat detail profil"
     }
+  },
+  "ai": {
+    "title": "FCE AI - Asisten API Cerdas Anda | FreeCustom.Email",
+    "description": "Tanyakan FCE AI tentang API, alat CLI, atau integrasi otomatisasi kami. Hasilkan kode, kelola kotak masuk, dan dapatkan dukungan instan.",
+    "chat_placeholder": "Tanyakan apa saja kepada AI...",
+    "send_button": "Kirim"
   }
 }

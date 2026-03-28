@@ -320,5 +320,11 @@
       "fetch_error": "无法检索用户数据",
       "load_error": "无法加载个人资料详情"
     }
+  },
+  "ai": {
+    "title": "FCE AI - 您的智能API助手 | FreeCustom.Email",
+    "description": "向FCE AI询问我们的API、CLI工具或自动化集成。生成代码、管理收件箱并获得即时支持。",
+    "chat_placeholder": "向AI提问...",
+    "send_button": "发送"
   }
 }

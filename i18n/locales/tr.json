@@ -320,5 +320,11 @@
       "fetch_error": "Kullanıcı verilerini alamadım",
       "load_error": "Profil detaylarını yüklemeyi başaramadım"
     }
+  },
+  "ai": {
+    "title": "FCE AI - Akıllı API Asistanınız | FreeCustom.Email",
+    "description": "API\\'mız, CLI aracımız veya otomasyon entegrasyonlarımız hakkında FCE AI\\'ya sorun. Kod oluşturun, gelen kutularını yönetin ve anında destek alın.",
+    "chat_placeholder": "Yapay Zeka'ya her şeyi sorun...",
+    "send_button": "Gönder"
   }
 }

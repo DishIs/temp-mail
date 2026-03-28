@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import AiClient from "./AiClient";
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
-  const t = await getTranslations("AI");
+  const t = await getTranslations("ai");
   return {
     title: t("title"),
     description: t("description"),

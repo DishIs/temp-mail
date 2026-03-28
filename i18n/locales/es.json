@@ -320,5 +320,11 @@
       "fetch_error": "No pudo recuperar los datos del usuario",
       "load_error": "No se cargaron los detalles del perfil"
     }
+  },
+  "ai": {
+    "title": "FCE AI - Su Asistente de API Inteligente | FreeCustom.Email",
+    "description": "Pregunte a FCE AI sobre nuestra API, herramienta CLI o integraciones de automatización. Genere código, administre bandejas de entrada y obtenga soporte instantáneo.",
+    "chat_placeholder": "Pregúntale cualquier cosa a la IA...",
+    "send_button": "Enviar"
   }
 }

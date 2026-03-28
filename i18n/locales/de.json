@@ -320,5 +320,11 @@
       "fetch_error": "Benutzerdaten nicht abrufen",
       "load_error": "Profildaten nicht geladen"
     }
+  },
+  "ai": {
+    "title": "FCE AI - Ihr Intelligenter API-Assistent | FreeCustom.Email",
+    "description": "Fragen Sie FCE AI nach unserer API, CLI-Tool oder Automatisierungs-Integrationen. Code generieren, Posteingänge verwalten und sofortige Unterstützung erhalten.",
+    "chat_placeholder": "Fragen Sie die KI alles...",
+    "send_button": "Senden"
   }
 }

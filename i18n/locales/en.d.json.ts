@@ -323,6 +323,12 @@ declare const messages: {
       "fetch_error": "Could not retrieve user data",
       "load_error": "Failed to load profile details"
     }
+  },
+  "ai": {
+    "title": "FCE AI - Your Intelligent API Assistant | FreeCustom.Email",
+    "description": "Ask FCE AI about our API, CLI tool, or automation integrations. Generate code, manage inboxes, and get instant support.",
+    "chat_placeholder": "Ask the AI anything...",
+    "send_button": "Send"
   }
 };
 export default messages;
