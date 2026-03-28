@@ -511,18 +511,31 @@ export function FceAiInterface() {
     } catch (e: any) {
       if (e.name === 'AbortError') return;
       
+      let systemErrorMessage = "";
+      
       if (e.message === "Unauthorized. Turnstile verification required.") {
         localStorage.removeItem("fce_ai_consent");
+        setTurnstileToken(null);
         setShowConsent(true);
         toast.error("Please complete verification to continue.");
+      } else if (e.message === "Session token limit exceeded. Please try again later.") {
+        toast.error(e.message);
+        systemErrorMessage = "\n\n> ⚠️ **SYSTEM ERROR:** You have exceeded your session token limit. Please wait and try again later.";
       } else {
         toast.error(e.message || "Failed to connect to FCE AI");
+        systemErrorMessage = `\n\n> ⚠️ **SYSTEM ERROR:** ${e.message || "Failed to connect to FCE AI"}`;
       }
       
-      setMessages(prev => prev.filter(m => m.content !== ""));
+      setMessages(prev => {
+        const cleaned = prev.filter(m => m.content !== "");
+        if (systemErrorMessage) {
+           cleaned.push({ role: "model", content: systemErrorMessage });
+        }
+        return cleaned;
+      });
     }
 
-    setIsLoading(false); 
+    setIsLoading(false);
     setThinking(null); 
     setTimeout(() => mainInputRef.current?.focus(), 100);
   };
