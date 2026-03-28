@@ -434,7 +434,7 @@ export function FceAiInterface() {
         });
         
         const toolResultMessages: Message[] = [];
-        const completedExecutions = [];
+        const completedExecutions = [] as ToolExecution[];
 
         for (const exec of executions) {
           try {
@@ -508,11 +508,19 @@ export function FceAiInterface() {
         return;
       }
 
-    } catch (e: any) { 
+    } catch (e: any) {
       if (e.name === 'AbortError') return;
-      toast.error("Failed to connect to FCE AI"); 
+      
+      if (e.message === "Unauthorized. Turnstile verification required.") {
+        localStorage.removeItem("fce_ai_consent");
+        setShowConsent(true);
+        toast.error("Please complete verification to continue.");
+      } else {
+        toast.error(e.message || "Failed to connect to FCE AI");
+      }
+      
       setMessages(prev => prev.filter(m => m.content !== ""));
-    } 
+    }
 
     setIsLoading(false); 
     setThinking(null); 
