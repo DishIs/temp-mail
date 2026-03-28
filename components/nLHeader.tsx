@@ -78,6 +78,7 @@ const NAV_LINKS =[
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },
   { href: "/api", label: "API", mono: true },
+  { href: "/ai", label: "FCE AI", mono: true },
 ];
 
 export function AppHeader() {
