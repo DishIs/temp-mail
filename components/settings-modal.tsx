@@ -181,7 +181,7 @@ export function SettingsModal({
             </div>
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Settings</span>
           </div>
-          <nav className="flex flex-col gap-0.5 p-3 flex-1">
+          <div className="flex flex-col gap-0.5 p-3 flex-1" role="navigation" aria-label="Settings Tabs">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setActiveTab(id)}
                 className={cn(
@@ -194,7 +194,7 @@ export function SettingsModal({
                 {label}
               </button>
             ))}
-          </nav>
+          </div>
         </aside>
 
         {/* ── Mobile header ── */}

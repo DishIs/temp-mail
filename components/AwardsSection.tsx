@@ -99,6 +99,12 @@ export function AwardsSection() {
       src: 'https://earlyhunt.com/badges/earlyhunt-badge-light.svg',
       alt: 'EarlyHunt badge',
     },
+    {
+      href: 'https://showmebest.ai',
+      title: 'Featured on ShowMeBestAI',
+      src: 'https://showmebest.ai/badge/feature-badge-white.webp',
+      alt: 'ShowMeBestAI badge',
+    },
   ];
 
   return (
