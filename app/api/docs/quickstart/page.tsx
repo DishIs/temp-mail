@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Script from "next/script";
 import { CodeBlock } from "@/components/CodeBlock";
 import { DocPageNav } from "../DocPageNav";
 
@@ -78,7 +79,25 @@ export default function QuickstartPage() {
       </ul>
 
       <div className="mt-8 p-4 rounded-lg border border-border bg-muted/20 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground mb-1">Full API reference</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3">
+          <p className="font-medium text-foreground mb-1 sm:mb-0">Full API reference</p>
+          <div className="postman-run-button"
+            data-postman-action="collection/fork"
+            data-postman-visibility="public"
+            data-postman-var-1="53581811-ebb488ee-fc2a-4234-b518-21d857d472b7"
+            data-postman-collection-url="entityId=53581811-ebb488ee-fc2a-4234-b518-21d857d472b7&entityType=collection&workspaceId=47981c31-02fb-4453-8b8c-734d70d4bc9a" />
+          <Script id="postman-run-button-script-quickstart" strategy="lazyOnload">
+            {`
+              (function (p,o,s,t,m,a,n) {
+                !p[s] && (p[s] = function () { (p[t] || (p[t] = [])).push(arguments); });
+                !o.getElementById(s+t) && o.getElementsByTagName("head")[0].appendChild((
+                  (n = o.createElement("script")),
+                  (n.id = s+t), (n.async = 1), (n.src = m), n
+                ));
+              }(window, document, "_pm", "PostmanRunObject", "https://run.pstmn.io/button.js"));
+            `}
+          </Script>
+        </div>
         <p className="mb-2">
           These docs cover every endpoint and feature in the API: authentication, inboxes, messages, OTP extraction, WebSocket, rate limits, credits, and errors. For a machine-readable spec (OpenAPI 3.1), use <a href="/openapi.yaml" target="_blank" rel="noopener noreferrer" className="text-primary underline">/openapi.yaml</a>. Try requests in the browser in the <Link href="/api/playground" className="text-primary underline">Playground</Link>.
         </p>

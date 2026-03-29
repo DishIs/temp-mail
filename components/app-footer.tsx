@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import Script from "next/script";
 import { Gift, ExternalLink, Clock } from "lucide-react";
 import {
   SiVisa, SiMastercard, SiAmericanexpress,
@@ -261,7 +262,7 @@ export function AppFooter() {
         </div>
 
         {/* ── buy me a coffee ─────────────────────────────────────────── */}
-        <div className="max-w-[90rem] mx-auto px-8 py-5">
+        <div className="max-w-[90rem] mx-auto px-8 py-5 flex items-center gap-4">
           <a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank" rel="noopener noreferrer">
             <Image
               src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
@@ -271,6 +272,22 @@ export function AppFooter() {
               className="h-7 w-auto"
             />
           </a>
+          <div className="postman-run-button"
+            data-postman-action="collection/fork"
+            data-postman-visibility="public"
+            data-postman-var-1="53581811-ebb488ee-fc2a-4234-b518-21d857d472b7"
+            data-postman-collection-url="entityId=53581811-ebb488ee-fc2a-4234-b518-21d857d472b7&entityType=collection&workspaceId=47981c31-02fb-4453-8b8c-734d70d4bc9a" />
+          <Script id="postman-run-button-script-footer" strategy="lazyOnload">
+            {`
+              (function (p,o,s,t,m,a,n) {
+                !p[s] && (p[s] = function () { (p[t] || (p[t] = [])).push(arguments); });
+                !o.getElementById(s+t) && o.getElementsByTagName("head")[0].appendChild((
+                  (n = o.createElement("script")),
+                  (n.id = s+t), (n.async = 1), (n.src = m), n
+                ));
+              }(window, document, "_pm", "PostmanRunObject", "https://run.pstmn.io/button.js"));
+            `}
+          </Script>
         </div>
 
       </footer>

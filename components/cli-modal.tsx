@@ -35,10 +35,10 @@ const ALL_COMMANDS = [
 export function CliModal({ isOpen, onClose, email }: CliModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
+      <DialogContent className="max-w-2xl w-[95vw] p-0 overflow-hidden bg-background border-border flex flex-col max-h-[90vh]">
 
         {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
+        <DialogHeader className="px-4 sm:px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-0.5 h-4 bg-border" aria-hidden />
             <span className="font-mono text-xs text-foreground font-semibold">fce</span>
@@ -53,15 +53,15 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh]">
-          <div className="p-6 space-y-7">
+        <ScrollArea className="flex-1 overflow-y-auto min-h-0">
+          <div className="p-4 sm:p-6 space-y-7">
 
             {/* Installation */}
             <section className="space-y-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Installation</p>
 
               <Tabs defaultValue="npm" className="w-full">
-                <TabsList className="bg-muted/30 p-0.5 h-8 border border-border rounded-md gap-0 flex-wrap">
+                <TabsList className="bg-muted/30 p-0.5 h-auto min-h-8 border border-border rounded-md gap-0 flex-wrap justify-start">
                   <TabsTrigger value="npm"   className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">npm</TabsTrigger>
                   <TabsTrigger value="shell" className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">Shell</TabsTrigger>
                   <TabsTrigger value="brew"  className="text-[10px] font-mono h-7 px-3 rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-none">Homebrew</TabsTrigger>
@@ -157,15 +157,17 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
                   </span>
                   <span className="ml-auto font-mono text-[9px] border border-amber-500/20 text-amber-600/70 rounded px-1.5 py-px">Growth+</span>
                 </div>
-                <div className="p-4 font-mono text-xs text-muted-foreground space-y-0.5">
-                  <p className="text-muted-foreground/30">────────────────────────────────────────────────</p>
+                <div className="p-4 font-mono text-[10px] sm:text-xs text-muted-foreground space-y-0.5 overflow-x-auto">
+                  <p className="text-muted-foreground/30 hidden sm:block">────────────────────────────────────────────────</p>
+                  <p className="text-muted-foreground/30 sm:hidden">──────────────────────────────</p>
                   <p className="text-foreground/70">  OTP</p>
-                  <p className="text-muted-foreground/30">────────────────────────────────────────────────</p>
+                  <p className="text-muted-foreground/30 hidden sm:block">────────────────────────────────────────────────</p>
+                  <p className="text-muted-foreground/30 sm:hidden">──────────────────────────────</p>
                   <p className="mt-1">&nbsp;</p>
-                  <p><span className="text-muted-foreground">  OTP   · </span><span className="text-emerald-400 font-semibold"> 212342</span></p>
-                  <p><span className="text-muted-foreground">  From  · </span><span className="text-foreground/60"> "Dishant Singh" &lt;dishupandey57@gmail.com&gt;</span></p>
-                  <p><span className="text-muted-foreground">  Subj  · </span><span className="text-foreground/60"> Your OTP for FCE: 212342</span></p>
-                  <p><span className="text-muted-foreground">  Time  · </span><span className="text-foreground/60"> 20:19:54</span></p>
+                  <p className="whitespace-nowrap"><span className="text-muted-foreground">  OTP   · </span><span className="text-emerald-400 font-semibold"> 212342</span></p>
+                  <p className="whitespace-nowrap"><span className="text-muted-foreground">  From  · </span><span className="text-foreground/60"> "Dishant Singh" &lt;dishupandey57@gmail.com&gt;</span></p>
+                  <p className="whitespace-nowrap"><span className="text-muted-foreground">  Subj  · </span><span className="text-foreground/60"> Your OTP for FCE: 212342</span></p>
+                  <p className="whitespace-nowrap"><span className="text-muted-foreground">  Time  · </span><span className="text-foreground/60"> 20:19:54</span></p>
                 </div>
               </div>
             </section>
@@ -173,15 +175,15 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
             {/* Commands grid */}
             <section className="space-y-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Commands</p>
-              <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
+              <div className="rounded-lg border border-border overflow-hidden divide-y divide-border overflow-x-auto">
                 {ALL_COMMANDS.map((cmd) => (
                   <div
                     key={cmd.c}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/10 transition-colors cursor-pointer group"
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/10 transition-colors cursor-pointer group min-w-max"
                     onClick={() => navigator.clipboard?.writeText(cmd.c)}
                   >
-                    <code className="font-mono text-xs text-foreground w-44 shrink-0">{cmd.c}</code>
-                    <span className="text-xs text-muted-foreground flex-1 leading-snug">{cmd.d}</span>
+                    <code className="font-mono text-[10px] sm:text-xs text-foreground w-32 sm:w-44 shrink-0">{cmd.c}</code>
+                    <span className="text-[10px] sm:text-xs text-muted-foreground flex-1 leading-snug">{cmd.d}</span>
                     <span className={`font-mono text-[9px] border rounded px-1.5 py-px shrink-0 ${
                       cmd.plan === "Any" ? "border-border text-muted-foreground/50"
                         : cmd.plan.includes("Growth") ? "border-amber-500/20 text-amber-600/70"
@@ -208,9 +210,9 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
         </ScrollArea>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border bg-muted/10 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <p className="font-mono text-[9px] text-muted-foreground/40">MIT · v0.1.12 · FreeCustom.Email</p>
+        <div className="px-4 sm:px-6 py-4 border-t border-border bg-muted/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <p className="font-mono text-[9px] text-muted-foreground/40 hidden sm:block">MIT · v0.1.12 · FreeCustom.Email</p>
             <div className="flex items-center gap-3">
               {["CLI docs", "Automation"].map((label, i) => (
                 <Link key={label} href={i === 0 ? "/api/cli" : "/api/automation"} onClick={onClose}
@@ -221,7 +223,7 @@ export function CliModal({ isOpen, onClose, email }: CliModalProps) {
             </div>
           </div>
           <button onClick={onClose}
-            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors self-end sm:self-auto">
             Close
           </button>
         </div>
