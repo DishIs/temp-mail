@@ -252,7 +252,9 @@ export default async function Page({ params }: Props) {
                 <Link href="/disposable-email" className="text-foreground/70 hover:text-foreground transition-colors underline underline-offset-2 decoration-border">disposable email</Link>{" "}
                 to receive{" "}
                 <Link href="/temp-mail-for-otp" className="text-foreground/70 hover:text-foreground transition-colors underline underline-offset-2 decoration-border">OTP and verification codes</Link>
-                {t("p1")}
+                {t.rich("p1", {
+                  strong: (chunks) => <strong className="font-semibold text-foreground">{chunks}</strong>,
+                })}
               </p>
             </div>
           </section>
@@ -274,7 +276,9 @@ export default async function Page({ params }: Props) {
                     <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-4 leading-snug">{t("h1")}</p>
                     <p className="text-sm text-muted-foreground leading-relaxed mb-3">{t("p1")}</p>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      {t("p2_part1")}
+                      {t.rich("p2_part1", {
+                        strong: (chunks) => <strong className="font-semibold text-foreground">{chunks}</strong>,
+                      })}
                       <Link className="text-foreground underline underline-offset-2 hover:no-underline" href="/blog/forever-free-and-ad-free">{t("p2_link1")}</Link>
                       {t("p2_part2")}
                       <Link className="text-foreground underline underline-offset-2 hover:no-underline" href="/blog/why-we-are-fastest">{t("p2_link2")}</Link>

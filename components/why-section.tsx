@@ -62,7 +62,7 @@ export async function WhySection() {
       icon: <FaStar className="text-primary mt-1" />,
       title: t('updates_item3_title'),
       description: t.rich('updates_item3_desc', {
-        strong: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+        strong: (chunks) => <strong className="font-semibold text-foreground">{chunks}</strong>,
       }),
     },
   ];
@@ -77,7 +77,7 @@ export async function WhySection() {
         </h2>
         <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
           {t.rich('definition_p', {
-            strong: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+            strong: (chunks) => <strong className="font-semibold text-foreground">{chunks}</strong>,
             em: (chunks) => <em>{chunks}</em>,
             link: (chunks) => (
               <Link
@@ -176,7 +176,7 @@ export async function WhySection() {
                 {item.rich
                   ? t.rich(item.key as WhySectionKeys, {
                       strong: (chunks) => (
-                        <strong className="text-foreground">{chunks}</strong>
+                        <strong className="font-semibold text-foreground">{chunks}</strong>
                       ),
                     })
                   : t(item.key as WhySectionKeys)}
@@ -238,7 +238,7 @@ export async function WhySection() {
                 {item.rich
                   ? t.rich(item.key as WhySectionKeys, {
                       strong: (chunks) => (
-                        <strong className="text-foreground">{chunks}</strong>
+                        <strong className="font-semibold text-foreground">{chunks}</strong>
                       ),
                     })
                   : t(item.key as WhySectionKeys)}

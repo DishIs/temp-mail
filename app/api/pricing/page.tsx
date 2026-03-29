@@ -24,11 +24,11 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free"      , label: "Free",       desc: "Only for trying the API", price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false, pool: "shared",    planId: null as string | null },
-  { name: "developer" , label: "Developer",  desc: null,                      price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, pool: "dedicated", planId: "developer" },
-  { name: "startup"   , label: "Startup",    desc: null,                      price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "Free (24h)",      freshDomains: false, pool: "dedicated", planId: "startup" },
-  { name: "growth"    , label: "Growth",     desc: null,                      price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  pool: "dedicated", planId: "growth" },
-  { name: "enterprise", label: "Enterprise", desc: null,                      price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true,  pool: "dedicated", planId: "enterprise" },
+  { name: "free"      , label: "Free",       desc: "Only for trying the API", price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared",    planId: null as string | null, imap: false, wait: false as boolean | string },
+  { name: "developer" , label: "Developer",  desc: "For small scripts & testing",                      price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "24h",      freshDomains: false as const, pool: "shared", planId: "developer", imap: false, wait: false as boolean | string },
+  { name: "startup"   , label: "Startup",    desc: "Best for automation & production apps",                      price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "24h",      freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: true as boolean | string },
+  { name: "growth"    , label: "Growth",     desc: "High-scale workflows & power users",                      price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,  pool: "dedicated", planId: "growth", imap: true, wait: true as boolean | string },
+  { name: "enterprise", label: "Enterprise", desc: "Heavy usage & business-critical systems",                      price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,  pool: "dedicated", planId: "enterprise", imap: true, wait: true as boolean | string },
 ] as const;
 
 const CREDITS = [
@@ -446,17 +446,22 @@ function PlanCta({
   scheduledDowngradePlan, onUpgrade, onDowngrade, onGetStarted,
 }: PlanCtaProps) {
   const planName = plan.name as ApiPlanName;
+  const currentIdxVal = currentPlan ? PLAN_ORDER.indexOf(currentPlan) : 0;
+  const startupIdxVal = PLAN_ORDER.indexOf("startup");
+  const isPopular = planName === "startup" && currentIdxVal <= startupIdxVal;
+  const btnSize = isPopular ? "default" : "sm";
+  const btnClass = isPopular ? "w-full py-5 text-sm font-semibold shadow-md" : "w-full";
 
   if (!isLoggedIn || !currentPlan) {
     if (planName === "free") {
       return (
-        <Button asChild variant="outline" size="sm" className="w-full">
+        <Button asChild variant="outline" size={btnSize} className={btnClass}>
           <Link href="/auth?callbackUrl=/api/dashboard">Get started</Link>
         </Button>
       );
     }
     return (
-      <Button size="sm" className="w-full" disabled={busy} onClick={() => onGetStarted(plan)}>
+      <Button size={btnSize} className={btnClass} disabled={busy} onClick={() => onGetStarted(plan)}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Get started"}
       </Button>
     );
@@ -468,7 +473,7 @@ function PlanCta({
   if (planName === currentPlan) {
     const isScheduledDown = scheduledDowngradePlan != null;
     return (
-      <Button size="sm" variant="outline" className="w-full cursor-default" disabled>
+      <Button size={btnSize} variant="outline" className={`${btnClass} cursor-default`} disabled>
         {isScheduledDown ? "Changing soon" : "Current plan"}
       </Button>
     );
@@ -476,7 +481,7 @@ function PlanCta({
 
   if (planIdx > currentIdx) {
     return (
-      <Button size="sm" className="w-full" disabled={busy} onClick={() => onUpgrade(plan)}>
+      <Button size={btnSize} className={btnClass} disabled={busy} onClick={() => onUpgrade(plan)}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Upgrade"}
       </Button>
     );
@@ -484,14 +489,14 @@ function PlanCta({
 
   if (planName === "free") {
     return (
-      <Button asChild size="sm" variant="ghost" className="w-full text-muted-foreground">
+      <Button asChild size={btnSize} variant="ghost" className={`${btnClass} text-muted-foreground`}>
         <Link href="/api/dashboard">Cancel plan</Link>
       </Button>
     );
   }
 
   return (
-    <Button size="sm" variant="outline" className="w-full text-muted-foreground hover:text-foreground" disabled={busy} onClick={() => onDowngrade(plan)}>
+    <Button size={btnSize} variant="outline" className={`${btnClass} text-muted-foreground hover:text-foreground`} disabled={busy} onClick={() => onDowngrade(plan)}>
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Downgrade"}
     </Button>
   );
@@ -669,6 +674,16 @@ export default function ApiPricingPage() {
   // ─── Fresh domains cell renderer ─────────────────────────────────────
   const renderFreshDomains = (plan: typeof PLANS[number]) => {
     if (!plan.freshDomains) return <Cross />;
+    if (plan.freshDomains === "partial") {
+      return (
+        <div className="flex flex-col items-center gap-0.5">
+          <Check className="h-4 w-4 mx-auto text-muted-foreground" />
+          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground border border-border rounded-sm px-1 py-px leading-none">
+            Partial
+          </span>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center gap-0.5">
         <Check className="h-4 w-4 mx-auto" />
@@ -684,15 +699,15 @@ export default function ApiPricingPage() {
     if (plan.pool === "shared") {
       return (
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-xs text-muted-foreground text-right leading-tight">Shared</span>
-          <span className="font-mono text-[9px] text-muted-foreground/60 leading-tight">high latency</span>
+          <span className="text-xs text-muted-foreground text-right leading-tight">Shared MX</span>
+          <span className="font-mono text-[9px] text-muted-foreground/60 leading-tight">medium latency</span>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-end gap-0.5">
-        <span className="text-xs text-foreground text-right leading-tight">Dedicated</span>
-        <span className="font-mono text-[9px] text-emerald-600/80 leading-tight">lowest latency</span>
+        <span className="text-xs text-foreground text-right leading-tight">Dedicated MX</span>
+        <span className="font-mono text-[9px] text-emerald-600/80 leading-tight">⚡ fast delivery</span>
       </div>
     );
   };
@@ -763,7 +778,10 @@ export default function ApiPricingPage() {
               const planName = plan.name as ApiPlanName;
               const isCurrent = isLoggedIn && currentPlan === planName;
               const isScheduledTarget = scheduledDowngradePlan === planName;
-              const isPopular = planName === "growth";
+              
+              const currentIdx = currentPlan ? PLAN_ORDER.indexOf(currentPlan) : 0;
+              const startupIdx = PLAN_ORDER.indexOf("startup");
+              const isPopular = planName === "startup" && currentIdx <= startupIdx;
 
               return (
                 <div
@@ -776,10 +794,10 @@ export default function ApiPricingPage() {
                         : ""
                   }`}
                 >
-                  {/* Popular badge (Growth only) */}
+                  {/* Popular badge */}
                   {isPopular && !isCurrent && !isScheduledTarget && (
                     <span className="absolute top-0 right-0 text-[10px] font-semibold font-mono uppercase tracking-widest text-background bg-foreground px-2 py-1 rounded-bl-lg">
-                      Popular
+                      🔥 Most Popular
                     </span>
                   )}
 
@@ -801,32 +819,44 @@ export default function ApiPricingPage() {
                     <p className="text-[10px] font-mono text-muted-foreground/60 mb-3 leading-snug">{plan.desc}</p>
                   )}
 
-                  <div className="flex items-baseline gap-0.5 mb-6">
-                    <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                    <span className="text-sm text-muted-foreground">{plan.sub}</span>
+                  <div className="flex flex-col mb-6">
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-3xl font-bold text-foreground">{plan.price}</span>
+                      <span className="text-sm text-muted-foreground">{plan.sub}</span>
+                    </div>
+                    {plan.price !== "$0" && (
+                      <span className="text-[10px] font-medium text-emerald-600/90 mt-1">Save 20% yearly</span>
+                    )}
                   </div>
 
                   <div className="space-y-3 text-sm flex-1">
                     {[
+                      {
+                        label: "Real-time Email",
+                        value: typeof plan.wait === "string" ? <span className="text-xs font-medium text-muted-foreground">{plan.wait}</span> : (plan.wait ? <Check className="h-4 w-4 mx-auto" /> : <Cross />),
+                        hint: "WebSocket & Wait API without polling",
+                      },
+                      { label: "OTP Extraction", value: plan.otp ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
+                      {
+                        label: "IMAP Access",
+                        value: plan.imap ? <span className="text-[10px] font-medium text-emerald-600/90">Coming soon</span> : <Cross />
+                      },
+                      { label: "Custom Domains",  value: plan.customDomains ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
+                      {
+                        label: "Speed / Latency",
+                        value: renderPool(plan),
+                      },
                       { label: "Req/sec",        value: plan.reqSec },
                       { label: "Req/month",      value: plan.reqMonth },
-                      { label: "OTP",            value: plan.otp ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
                       { label: "Attachments",    value: plan.attachments ? <span className="text-xs">{plan.maxAttachment}</span> : <Cross /> },
-                      { label: "WebSocket",      value: plan.ws ? <span className="text-xs">{plan.maxWs} conn</span> : <Cross /> },
-                      { label: "Custom domain",  value: plan.customDomains ? <Check className="h-4 w-4 mx-auto" /> : <Cross /> },
                       {
-                        label: "Fresh domains",
+                        label: "Fresh Domains",
                         value: renderFreshDomains(plan),
-                        hint: plan.freshDomains ? "Inboxes provisioned on newly added, unblocked domains" : undefined,
+                        hint: plan.freshDomains ? "Inboxes provisioned on newly added domains" : undefined,
                       },
                       {
-                        label: "Persistence",
+                        label: "Inbox Retention",
                         value: renderPersistence(plan),
-                      },
-                      {
-                        label: "Pool",
-                        value: renderPool(plan),
-                        hint: plan.pool === "shared" ? "Shared MX pool" : "Dedicated MX pool",
                       },
                       {
                         label: "CLI",

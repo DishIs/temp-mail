@@ -66,43 +66,43 @@ const ASCII_FRAGMENTS =[
 
 const PROMPT_CATEGORIES = [
   {
-    id: "getting_started",
-    name: "Getting Started",
+    id: "automation",
+    name: "Test Automation",
     prompts: [
-      "What is the rate limit for the Free plan?",
-      "Explain how the credits system works",
-      "How do I create my first private inbox?",
-      "Give me a quickstart guide for the FCE API"
+      "Generate a Selenium Python script to register an account and extract the email OTP.",
+      "Write a Playwright Node.js script to test a password reset flow using a temp inbox.",
+      "How do I use Cypress with the Wait API to click a magic login link?",
+      "Show me a Puppeteer example that waits for a 2FA code from a newly created inbox."
     ]
   },
   {
     id: "sdk",
     name: "SDK & Code",
     prompts: [
-      "Generate a Python script to watch emails via WebSocket",
-      "Create a Node.js example for extracting OTPs",
-      "How to initialize the npm SDK and list messages?",
-      "Write a PHP script to fetch emails using REST API"
+      "Generate a robust Python script to watch emails in real-time via WebSocket.",
+      "Create a Node.js TypeScript example for polling and extracting regex-matched OTPs.",
+      "Write a Go tool to create disposable inboxes concurrently for load testing.",
+      "Show me a Ruby script to fetch emails using the REST API."
     ]
   },
   {
     id: "cli",
     name: "CLI Tool",
     prompts: [
-      "How do I add a custom domain using the CLI?",
-      "Write a cURL command to list all my inboxes",
-      "Show me how to fetch the latest OTP using the CLI",
-      "What does 'fce watch' do?"
+      "How can I use 'fce watch' to pipe incoming emails into a local jq script?",
+      "Write a bash script using the CLI to automate creating 100 test accounts.",
+      "Show me how to fetch the latest OTP using the CLI and save it to an env file.",
+      "How to quickly provision a private inbox on a custom domain via CLI?"
     ]
   },
   {
-    id: "advanced",
-    name: "Automation",
+    id: "integrations",
+    name: "CI/CD & Webhooks",
     prompts: [
-      "How to connect FCE to Make.com for email parsing?",
-      "Explain the n8n automation flow for FCE",
-      "What is the exact OpenAPI specification for the OTP endpoint?",
-      "How to set up custom domain DNS records securely?"
+      "How do I integrate FCE into GitHub Actions for end-to-end email testing?",
+      "Explain the n8n automation flow for parsing automated reports.",
+      "How to connect FCE to Make.com to trigger workflows on new incoming emails?",
+      "What is the exact OpenAPI specification for the OTP endpoint?"
     ]
   }
 ];
