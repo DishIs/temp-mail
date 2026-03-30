@@ -9,6 +9,7 @@ import { Check, Bot } from "lucide-react";
 import { ApiHeroCode } from "@/app/api/ApiHeroCode";
 import { ApiCodeExamples } from "@/app/api/ApiCodeExamples";
 import { EmailFlowAnimation } from "@/app/api/EmailFlowAnimation";
+import { ApiPricingTeaser } from "@/app/api/ApiPricingTeaser";
 
 // ─── data ──────────────────────────────────────────────────────────────────
 const FEATURES = [
@@ -149,7 +150,7 @@ const Cross = () => <span className="block h-3.5 w-3.5 mx-auto rounded-full bord
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function APIClient() {
-  const T = 8; // total sections
+  const T = 7; // total sections
 
   return (
     <div className="bg-background text-foreground overflow-x-hidden">
@@ -359,6 +360,14 @@ export default function APIClient() {
         </div>
       </section>
 
+      {/* ── PRICING TEASER ────────────────────────────────────────────── */}
+      <section className="relative border-t border-border px-6 py-24">
+        <Cols />
+        <div className="relative z-10 max-w-5xl mx-auto">
+            <ApiPricingTeaser />
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ──────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24">
         <Cols />
@@ -383,56 +392,7 @@ export default function APIClient() {
         </div>
       </section>
 
-      {/* ── PLAN COMPARISON ───────────────────────────────────────────── */}
-      <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
-        <AsciiLayer />
-        <Cols />
-        <div className="relative z-10 max-w-5xl mx-auto">
-          <FadeIn>
-            <SectionMarker index={7} total={T} label="Plan comparison" />
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-14">Simple, predictable pricing</h2>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-sm min-w-[640px]">
-                <thead>
-                  <tr className="border-b border-border bg-muted/20">
-                    <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-widest text-muted-foreground w-36">Feature</th>
-                    {PLANS.map(p => <th key={p.name} className="py-3 px-3 text-center text-sm font-semibold text-foreground">{p.name}</th>)}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {[
-                    { label: "Price",          fn: (p: typeof PLANS[0]) => <span className="font-semibold text-foreground">{p.price}</span> },
-                    { label: "Req/sec",        fn: (p: typeof PLANS[0]) => p.reqSec },
-                    { label: "Req/month",      fn: (p: typeof PLANS[0]) => p.reqMonth },
-                    { label: "OTP extract",    fn: (p: typeof PLANS[0]) => p.otp  ? <Tick /> : <Cross /> },
-                    { label: "WebSocket",      fn: (p: typeof PLANS[0]) => p.ws   ? <Tick /> : <Cross /> },
-                    { label: "Attachments",    fn: (p: typeof PLANS[0]) => p.att  ? <Tick /> : <Cross /> },
-                    { label: "Custom domains", fn: (p: typeof PLANS[0]) => p.cd   ? <Tick /> : <Cross /> },
-                    { label: "Support",        fn: (p: typeof PLANS[0]) => <span className="text-xs">{p.support}</span> },
-                  ].map(row => (
-                    <tr key={row.label} className="hover:bg-muted/10 transition-colors">
-                      <td className="py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground">{row.label}</td>
-                      {PLANS.map(p => <td key={p.name} className="py-3 px-3 text-center">{row.fn(p)}</td>)}
-                    </tr>
-                  ))}
-                  <tr className="bg-muted/10 border-t border-border">
-                    <td className="py-4 px-4" />
-                    {PLANS.map(p => (
-                      <td key={p.name} className="py-4 px-3 text-center">
-                        <Button asChild size="sm" variant={p.name === "Free" ? "outline" : "default"}>
-                          <Link href={p.name === "Free" ? "/auth?callbackUrl=/api/dashboard" : "/api/pricing"}>Get started</Link>
-                        </Button>
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
+
 
       {/* ── CODE EXAMPLES ─────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24">

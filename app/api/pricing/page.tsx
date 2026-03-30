@@ -24,11 +24,11 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free"      , label: "Free",       desc: "Only for trying the API", price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared",    planId: null as string | null, imap: false, wait: false as boolean | string },
-  { name: "developer" , label: "Developer",  desc: "For small scripts & testing",                      price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "24h",      freshDomains: false as const, pool: "shared", planId: "developer", imap: false, wait: false as boolean | string },
-  { name: "startup"   , label: "Startup",    desc: "Best for automation & production apps",                      price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "24h",      freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: true as boolean | string },
-  { name: "growth"    , label: "Growth",     desc: "High-scale workflows & power users",                      price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,  pool: "dedicated", planId: "growth", imap: true, wait: true as boolean | string },
-  { name: "enterprise", label: "Enterprise", desc: "Heavy usage & business-critical systems",                      price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,  pool: "dedicated", planId: "enterprise", imap: true, wait: true as boolean | string },
+  { name: "free"      , label: "Free",       desc: "Only for trying the API",                       price: "$0",   sub: "/mo", reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared",    planId: null as string | null, imap: false, wait: false as boolean | string, sla: false },
+  { name: "developer" , label: "Developer",  desc: "For small scripts & testing",                   price: "$7",   sub: "/mo", reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "24h",             freshDomains: false as const, pool: "shared",    planId: "developer",           imap: false, wait: false as boolean | string, sla: false },
+  { name: "startup"   , label: "Startup",    desc: "Best for automation & production apps",         price: "$19",  sub: "/mo", reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "24h",             freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: true as boolean | string, sla: false },
+  { name: "growth"    , label: "Growth",     desc: "High-scale workflows & power users",            price: "$49",  sub: "/mo", reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,  pool: "dedicated", planId: "growth",              imap: true,  wait: true as boolean | string, sla: false },
+  { name: "enterprise", label: "Enterprise", desc: "Heavy usage & business-critical systems",       price: "$149", sub: "/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,  pool: "dedicated", planId: "enterprise",          imap: true,  wait: true as boolean | string, sla: true },
 ] as const;
 
 const CREDITS = [
@@ -51,6 +51,17 @@ const FAQ_ITEMS = [
   {
     q: "Can we use pro features by just buying credits with no plans (free)?",
     a: "No. Features (OTP extraction, attachments, WebSocket, custom domains) are determined by your API plan only. Credits only add request capacity; they don't change your plan or unlock paid features.",
+  },
+  {
+    q: "Is there a guaranteed uptime SLA?",
+    a: (
+      <>
+        Yes, the Enterprise plan includes a 99.5% uptime SLA with real-time monitoring, based on real production performance. You can check our system health anytime at{" "}
+        <a href="https://status.freecustom.email" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          status.freecustom.email
+        </a>.
+      </>
+    ),
   },
   {
     q: "What's the difference between credits and API plans?",
@@ -285,6 +296,67 @@ function CliWatchBadge() {
                 <ExternalLink className="h-3 w-3 shrink-0" />
                 Full CLI documentation →
               </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── SLA info popover ───────────────────────────────────────────────────────────
+function SlaBadge() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-flex flex-col items-end gap-0.5">
+      <div className="flex items-center justify-end gap-1">
+        <span className="text-xs text-foreground text-right leading-tight">99.5%</span>
+        <button
+          type="button"
+          aria-label="What is the Uptime SLA?"
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-border"
+        >
+          <Info className="h-3 w-3" />
+        </button>
+      </div>
+      <span className="font-mono text-[9px] text-emerald-600/80 leading-tight whitespace-nowrap">real-time monitoring</span>
+
+      {open && (
+        <div className="absolute bottom-full right-0 mb-2 w-64 z-50 rounded-lg border border-border bg-background shadow-lg text-left">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Uptime SLA Guarantee</span>
+            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              We provide a 99.5% uptime SLA with real-time monitoring, based on real production performance.
+            </p>
+            <div className="border-t border-border pt-2 mt-2">
+              <a
+                href="https://status.freecustom.email"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setOpen(false)}
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                Live Status Page →
+              </a>
             </div>
           </div>
         </div>
@@ -853,6 +925,11 @@ export default function ApiPricingPage() {
                         label: "Fresh Domains",
                         value: renderFreshDomains(plan),
                         hint: plan.freshDomains ? "Inboxes provisioned on newly added domains" : undefined,
+                      },
+                      {
+                        label: "Uptime SLA",
+                        value: plan.sla ? <SlaBadge /> : <Cross />,
+                        hint: plan.sla ? "Based on real production performance" : undefined,
                       },
                       {
                         label: "Inbox Retention",
