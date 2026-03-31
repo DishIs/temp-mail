@@ -36,6 +36,7 @@ const ALIASES: Record<string, string> = {
   js: "javascript", jsx: "javascript",
   py: "python", rb: "ruby",
   sh: "bash", shell: "bash",
+  curl: "bash",
   cmd: "dos", bat: "dos",
   ps1: "powershell", ps: "powershell",
   yml: "yaml", tf: "hcl",

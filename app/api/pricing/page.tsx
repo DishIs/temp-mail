@@ -28,34 +28,34 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free",       label: "Free",       desc: "Try the API",               price: "$0",   reqSec: "1",   reqMonth: "5,000",      otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const,     pool: "shared",    planId: null as string | null, imap: false, wait: false as boolean | string, sla: false },
-  { name: "developer",  label: "Developer",  desc: "Scripts & testing",          price: "$7",   reqSec: "10",  reqMonth: "100,000",    otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",    customDomains: false, persistence: "24h",             freshDomains: false as const,     pool: "shared",    planId: "developer",           imap: false, wait: false as boolean | string, sla: false },
-  { name: "startup",    label: "Startup",    desc: "Automation & production",    price: "$19",  reqSec: "25",  reqMonth: "500,000",    otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",    customDomains: false, persistence: "24h",             freshDomains: "partial" as const, pool: "dedicated", planId: "startup",             imap: false, wait: true as boolean | string, sla: false },
-  { name: "growth",     label: "Growth",     desc: "High-scale workflows",       price: "$49",  reqSec: "50",  reqMonth: "2,000,000",  otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",   customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,      pool: "dedicated", planId: "growth",              imap: true,  wait: true as boolean | string, sla: false },
-  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems",  price: "$149", reqSec: "100", reqMonth: "10,000,000", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,      pool: "dedicated", planId: "enterprise",          imap: true,  wait: true as boolean | string, sla: true },
+  { name: "free", label: "Free", desc: "Try the API", price: "$0", reqSec: "1", reqMonth: "5,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared", planId: null as string | null, imap: false, wait: false as boolean | string, sla: false },
+  { name: "developer", label: "Developer", desc: "Scripts & testing", price: "$7", reqSec: "10", reqMonth: "100,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "24h", freshDomains: false as const, pool: "shared", planId: "developer", imap: false, wait: false as boolean | string, sla: false },
+  { name: "startup", label: "Startup", desc: "Automation & production", price: "$19", reqSec: "25", reqMonth: "500,000", otp: false, attachments: true, maxAttachment: "5 MB", ws: true, maxWs: "5", customDomains: false, persistence: "24h", freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: true as boolean | string, sla: false },
+  { name: "growth", label: "Growth", desc: "High-scale workflows", price: "$49", reqSec: "50", reqMonth: "2,000,000", otp: true, attachments: true, maxAttachment: "25 MB", ws: true, maxWs: "20", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "growth", imap: true, wait: true as boolean | string, sla: false },
+  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems", price: "$149", reqSec: "100", reqMonth: "10,000,000", otp: true, attachments: true, maxAttachment: "50 MB", ws: true, maxWs: "100", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "enterprise", imap: true, wait: true as boolean | string, sla: true },
 ] as const;
 
 const CREDITS = [
-  { amount: "$10",  requests: "200,000", perK: "$0.05",  package: "starter" as const },
-  { amount: "$25",  requests: "600,000", perK: "$0.042", package: "builder" as const },
-  { amount: "$50",  requests: "1.5M",    perK: "$0.033", package: "scale"   as const },
-  { amount: "$100", requests: "4M",      perK: "$0.025", package: "pro"     as const },
+  { amount: "$10", requests: "200,000", perK: "$0.05", package: "starter" as const },
+  { amount: "$25", requests: "600,000", perK: "$0.042", package: "builder" as const },
+  { amount: "$50", requests: "1.5M", perK: "$0.033", package: "scale" as const },
+  { amount: "$100", requests: "4M", perK: "$0.025", package: "pro" as const },
 ];
 
 const YEARLY_PRICING: Record<string, { total: string; effective: string; planIdYearly: string }> = {
-  developer:  { total: "$67",    effective: "~$5.6",  planIdYearly: "developer-yearly"  },
-  startup:    { total: "$182",   effective: "~$15.2", planIdYearly: "startup-yearly"    },
-  growth:     { total: "$470",   effective: "~$39.1", planIdYearly: "growth-yearly"     },
-  enterprise: { total: "$1,430", effective: "~$119",  planIdYearly: "enterprise-yearly" },
+  developer: { total: "$67", effective: "~$5.6", planIdYearly: "developer-yearly" },
+  startup: { total: "$182", effective: "~$15.2", planIdYearly: "startup-yearly" },
+  growth: { total: "$470", effective: "~$39.1", planIdYearly: "growth-yearly" },
+  enterprise: { total: "$1,430", effective: "~$119", planIdYearly: "enterprise-yearly" },
 };
 
 const DOWNGRADE_REASONS = [
-  { value: "too_expensive",  label: "Too expensive" },
-  { value: "not_using",      label: "Not using all features" },
-  { value: "switching",      label: "Switching to another service" },
-  { value: "personal_use",   label: "Personal / hobby use only" },
-  { value: "lower_volume",   label: "My request volume is lower than expected" },
-  { value: "other",          label: "Other" },
+  { value: "too_expensive", label: "Too expensive" },
+  { value: "not_using", label: "Not using all features" },
+  { value: "switching", label: "Switching to another service" },
+  { value: "personal_use", label: "Personal / hobby use only" },
+  { value: "lower_volume", label: "My request volume is lower than expected" },
+  { value: "other", label: "Other" },
 ];
 
 const FAQ_ITEMS = [
@@ -73,24 +73,24 @@ const FAQ_ITEMS = [
 ];
 
 const PAYMENT_METHODS = [
-  { icon: SiVisa,            label: "Visa"       },
-  { icon: SiMastercard,      label: "Mastercard" },
-  { icon: SiAmericanexpress, label: "Amex"       },
-  { icon: SiPaypal,          label: "PayPal"     },
-  { icon: SiApplepay,        label: "Apple Pay"  },
-  { icon: SiGooglepay,       label: "Google Pay" },
+  { icon: SiVisa, label: "Visa" },
+  { icon: SiMastercard, label: "Mastercard" },
+  { icon: SiAmericanexpress, label: "Amex" },
+  { icon: SiPaypal, label: "PayPal" },
+  { icon: SiApplepay, label: "Apple Pay" },
+  { icon: SiGooglepay, label: "Google Pay" },
 ];
 
 // ─── feature row groups ───────────────────────────────────────────────────────
 type FeatureRowDef = {
-  label:  string;
-  hint?:  string;
+  label: string;
+  hint?: string;
   render: (plan: typeof PLANS[number]) => React.ReactNode;
 };
 type FeatureGroup = { group: string; rows: FeatureRowDef[] };
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-const Tick  = () => <Check className="h-4 w-4 text-foreground mx-auto shrink-0" />;
+const Tick = () => <Check className="h-4 w-4 text-foreground mx-auto shrink-0" />;
 const Cross = () => <span className="h-4 w-4 rounded-full border border-border block mx-auto" />;
 
 // ─── small popovers ───────────────────────────────────────────────────────────
@@ -176,6 +176,147 @@ function CliBadge({ withWatch }: { withWatch: boolean }) {
   );
 }
 
+// ─── Upgrade modal ────────────────────────────────────────────────────────────
+// ─── Billing preview helpers ──────────────────────────────────────────────────
+const PLAN_PRICES: Record<string, number> = {
+  developer: 7,
+  startup: 19,
+  growth: 49,
+  enterprise: 149,
+};
+
+interface UpgradePreview {
+  proratedToday: number;   // charge right now
+  nextMonthly: number;   // clean charge next cycle
+  nextBilledAt: Date | null;
+  daysRemaining: number;
+  totalDays: number;
+}
+
+function calcUpgradePreview(
+  fromPlan: string,
+  toPlan: string,
+  nextBilledAtStr: string | null,
+): UpgradePreview {
+  const fromPrice = PLAN_PRICES[fromPlan] ?? 0;
+  const toPrice = PLAN_PRICES[toPlan] ?? 0;
+  const diff = toPrice - fromPrice;
+
+  const now = new Date();
+  const nextBilledAt = nextBilledAtStr ? new Date(nextBilledAtStr) : null;
+
+  // If we can't determine the period end, fall back to assuming 30-day month
+  const msRemaining = nextBilledAt ? nextBilledAt.getTime() - now.getTime() : 0;
+  const daysRemaining = Math.max(1, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+
+  // Approximate billing period as 30 days if we don't have a start date
+  const totalDays = 30;
+  const fraction = Math.min(daysRemaining / totalDays, 1);
+  const proratedToday = Math.max(0, parseFloat((diff * fraction).toFixed(2)));
+
+  return { proratedToday, nextMonthly: toPrice, nextBilledAt, daysRemaining, totalDays };
+}
+
+// ─── Upgrade modal ────────────────────────────────────────────────────────────
+interface UpgradeModalProps {
+  open: boolean;
+  fromPlan: string;
+  toPlan: string;
+  nextBilledAt: string | null;   // ← new: from api-status subscription.next_billed_at
+  onConfirm: () => Promise<void>;
+  onClose: () => void;
+}
+function UpgradeModal({ open, fromPlan, toPlan, nextBilledAt, onConfirm, onClose }: UpgradeModalProps) {
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (open) setBusy(false); }, [open]);
+
+  const handleConfirm = async () => {
+    setBusy(true);
+    try { await onConfirm(); } finally { setBusy(false); }
+  };
+
+  const preview = calcUpgradePreview(fromPlan, toPlan, nextBilledAt);
+
+  const fmtDate = (d: Date | null) =>
+    d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "next billing date";
+
+  const fmtUSD = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500" />
+            Upgrade to {toPlan}
+          </DialogTitle>
+          <DialogDescription>
+            Upgrading from <strong>{fromPlan}</strong> to <strong>{toPlan}</strong>.
+            Features unlock immediately.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* ── Billing breakdown ─────────────────────────────────────── */}
+        <div className="rounded-lg border border-border overflow-hidden text-sm">
+
+          {/* Today's charge */}
+          <div className="px-4 py-3 bg-muted/20 border-b border-border">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">
+              Charged today
+            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-foreground">Prorated difference</p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                  {preview.daysRemaining} days remaining in current period
+                </p>
+              </div>
+              <span className="text-lg font-bold text-foreground tabular-nums">
+                {fmtUSD(preview.proratedToday)}
+              </span>
+            </div>
+          </div>
+
+          {/* Next cycle */}
+          <div className="px-4 py-3">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">
+              From {fmtDate(preview.nextBilledAt)} onwards
+            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-foreground capitalize">{toPlan} plan</p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                  Normal monthly billing
+                </p>
+              </div>
+              <span className="text-lg font-bold text-foreground tabular-nums">
+                {fmtUSD(preview.nextMonthly)}<span className="text-xs font-normal text-muted-foreground">/mo</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="px-4 py-2.5 bg-muted/10 border-t border-border">
+            <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">
+              * Prorated estimate before tax. Exact amount billed by Paddle may differ slightly.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button onClick={handleConfirm} disabled={busy}>
+            {busy
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <>Pay {fmtUSD(preview.proratedToday)} now</>
+            }
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 // ─── Downgrade modal ──────────────────────────────────────────────────────────
 interface DowngradeModalProps {
   open: boolean; fromPlan: string; toPlan: string;
@@ -183,9 +324,9 @@ interface DowngradeModalProps {
   onClose: () => void;
 }
 function DowngradeModal({ open, fromPlan, toPlan, onConfirm, onClose }: DowngradeModalProps) {
-  const [reason, setReason]   = useState("");
+  const [reason, setReason] = useState("");
   const [comment, setComment] = useState("");
-  const [busy, setBusy]       = useState(false);
+  const [busy, setBusy] = useState(false);
   useEffect(() => { if (open) { setReason(""); setComment(""); } }, [open]);
   const handleConfirm = async () => {
     if (!reason) { toast.error("Please select a reason."); return; }
@@ -241,10 +382,10 @@ function PlanCta({ plan, currentPlan, isLoggedIn, busy, scheduledDowngradePlan, 
     return <Button size="sm" className="w-full" disabled={busy} onClick={() => onGetStarted(plan)}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Get started"}</Button>;
   }
   const currentIdx = PLAN_ORDER.indexOf(currentPlan);
-  const planIdx    = PLAN_ORDER.indexOf(planName);
+  const planIdx = PLAN_ORDER.indexOf(planName);
   if (planName === currentPlan) return <Button size="sm" variant="outline" className="w-full cursor-default" disabled>{scheduledDowngradePlan ? "Changing soon" : "Current plan"}</Button>;
-  if (planIdx > currentIdx)    return <Button size="sm" className="w-full" disabled={busy} onClick={() => onUpgrade(plan)}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Upgrade"}</Button>;
-  if (planName === "free")     return <Button asChild size="sm" variant="ghost" className="w-full text-muted-foreground"><Link href="/api/dashboard">Cancel plan</Link></Button>;
+  if (planIdx > currentIdx) return <Button size="sm" className="w-full" disabled={busy} onClick={() => onUpgrade(plan)}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Upgrade"}</Button>;
+  if (planName === "free") return <Button asChild size="sm" variant="ghost" className="w-full text-muted-foreground"><Link href="/api/dashboard">Cancel plan</Link></Button>;
   return <Button size="sm" variant="outline" className="w-full text-muted-foreground hover:text-foreground" disabled={busy} onClick={() => onDowngrade(plan)}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Downgrade"}</Button>;
 }
 
@@ -272,8 +413,8 @@ function MobilePlanCard({
   plan, billing, currentPlan, isLoggedIn, busy, scheduledDowngradePlan,
   featureGroups, onUpgrade, onDowngrade, onGetStarted,
 }: MobilePlanCardProps) {
-  const isPopular  = plan.name === "startup";
-  const isCurrent  = isLoggedIn && currentPlan === plan.name;
+  const isPopular = plan.name === "startup";
+  const isCurrent = isLoggedIn && currentPlan === plan.name;
   const yearlyData = plan.planId ? YEARLY_PRICING[plan.planId] : null;
 
   return (
@@ -364,15 +505,38 @@ function MobilePlanCard({
 export default function ApiPricingPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [currentPlan, setCurrentPlan]                = useState<ApiPlanName | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<ApiPlanName | null>(null);
   const [scheduledDowngradePlan, setScheduledDnPlan] = useState<string | null>(null);
-  const [planLoading, setPlanLoading]                = useState(false);
-  const [busyPlanId, setBusyPlanId]                  = useState<string | null>(null);
-  const [busyCredits, setBusyCredits]                = useState<string | null>(null);
-  const [downgradeTarget, setDowngradeTarget]        = useState<typeof PLANS[number] | null>(null);
-  const [billing, setBilling]                        = useState<"monthly" | "yearly">("monthly");
+  const [planLoading, setPlanLoading] = useState(false);
+  const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
+  const [busyCredits, setBusyCredits] = useState<string | null>(null);
+  const [upgradeTarget, setUpgradeTarget] = useState<typeof PLANS[number] | null>(null);
+  const [downgradeTarget, setDowngradeTarget] = useState<typeof PLANS[number] | null>(null);
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
 
   const isLoggedIn = status === "authenticated" && !!session?.user;
+
+  const [nextBilledAt, setNextBilledAt] = useState<string | null>(null);
+
+  // update the useEffect that fetches /api/user/api-status
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    setPlanLoading(true);
+    fetch("/api/user/api-status")
+      .then(r => r.json())
+      .then(d => {
+        const data = d?.data ?? d;
+        const name = typeof data?.plan === "object"
+          ? (data.plan?.name as ApiPlanName)
+          : (data?.plan as ApiPlanName) ?? "free";
+        setCurrentPlan(name ?? "free");
+        setScheduledDnPlan(data?.scheduledDowngradePlan ?? null);
+        setNextBilledAt(data?.subscription?.next_billed_at ?? null); // ← add this
+      })
+      .catch(() => setCurrentPlan("free"))
+      .finally(() => setPlanLoading(false));
+  }, [isLoggedIn]);
+
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -406,11 +570,11 @@ export default function ApiPricingPage() {
       if (d.apiPlan) customData.apiPlan = d.apiPlan;
       if (d.creditsToAdd != null) customData.creditsToAdd = d.creditsToAdd;
       Paddle.Checkout.open({
-        settings: { displayMode: "overlay", theme: "light", successUrl: `${window.location.origin}/api/dashboard?checkout=success` },
+        settings: { displayMode: "overlay", theme: "light", successUrl: `${window.location.origin}/payment/success?type=api` },
         items: [{ priceId: d.priceId, quantity: 1 }],
         customer: session.user?.email ? { email: session.user.email as string } : undefined,
         customData,
-        onEvent: (event: any) => { if (event.name === "checkout.completed") router.push("/api/dashboard?checkout=success"); },
+        onEvent: (event: any) => { if (event.name === "checkout.completed") router.push("/payment/success?type=api"); },
       });
     } catch { toast.error("Something went wrong.", { id: tid }); }
     finally { setBusyPlanId(null); setBusyCredits(null); }
@@ -430,10 +594,11 @@ export default function ApiPricingPage() {
     finally { setBusyPlanId(null); }
   };
 
-  const handleUpgrade    = (plan: typeof PLANS[number]) => { if (!plan.planId) return; setBusyPlanId(plan.planId); if (currentPlan && currentPlan !== "free") changePlan(plan); else openCheckout({ productType: "api", apiPlan: plan.planId, billing }); };
-  const handleDowngrade  = (plan: typeof PLANS[number]) => setDowngradeTarget(plan);
+  const handleUpgrade = (plan: typeof PLANS[number]) => { if (!plan.planId) return; if (currentPlan && currentPlan !== "free") setUpgradeTarget(plan); else { setBusyPlanId(plan.planId); openCheckout({ productType: "api", apiPlan: plan.planId, billing }); } };
+  const handleDowngrade = (plan: typeof PLANS[number]) => setDowngradeTarget(plan);
   const handleGetStarted = (plan: typeof PLANS[number]) => { if (!plan.planId) return; setBusyPlanId(plan.planId); openCheckout({ productType: "api", apiPlan: plan.planId, billing }); };
-  const handleCredits    = (pkg: typeof CREDITS[number]) => { setBusyCredits(pkg.package); openCheckout({ productType: "credits", package: pkg.package }); };
+  const handleCredits = (pkg: typeof CREDITS[number]) => { setBusyCredits(pkg.package); openCheckout({ productType: "credits", package: pkg.package }); };
+  const confirmUpgrade = async () => { if (!upgradeTarget) return; setBusyPlanId(upgradeTarget.planId ?? null); await changePlan(upgradeTarget); setUpgradeTarget(null); };
   const confirmDowngrade = async (reason: string, comment: string) => { if (!downgradeTarget) return; setBusyPlanId(downgradeTarget.planId ?? null); await changePlan(downgradeTarget, reason, comment); };
 
   // ─── feature groups ──────────────────────────────────────────────────────────
@@ -637,8 +802,8 @@ export default function ApiPricingPage() {
                       <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Plan</span>
                     </div>
                     {PLANS.map((plan) => {
-                      const isPopular   = plan.name === "startup";
-                      const isCurrent   = isLoggedIn && currentPlan === plan.name;
+                      const isPopular = plan.name === "startup";
+                      const isCurrent = isLoggedIn && currentPlan === plan.name;
                       const isScheduled = scheduledDowngradePlan === plan.name;
                       return (
                         <div key={plan.name} className={cn(getColClass(plan.name), "px-4 py-5 relative")}>
@@ -833,10 +998,10 @@ export default function ApiPricingPage() {
 
             <div className="mt-4 grid gap-px bg-border rounded-lg overflow-hidden grid-cols-2 sm:grid-cols-4">
               {[
-                { v: "Never expire",  l: "use whenever you need" },
-                { v: "Stackable",     l: "with any plan" },
+                { v: "Never expire", l: "use whenever you need" },
+                { v: "Stackable", l: "with any plan" },
                 { v: "Auto-consumed", l: "after monthly quota" },
-                { v: "Any time",      l: "buy more anytime" },
+                { v: "Any time", l: "buy more anytime" },
               ].map(({ v, l }) => (
                 <div key={v} className="bg-background px-4 py-3 text-center">
                   <p className="font-mono text-xs font-semibold text-foreground">{v}</p>
@@ -871,9 +1036,19 @@ export default function ApiPricingPage() {
         </div>
       </div>
 
+      <UpgradeModal
+        open={upgradeTarget != null}
+        fromPlan={PLANS.find(p => p.name === currentPlan)?.label ?? ""}
+        toPlan={upgradeTarget?.label ?? ""}
+        nextBilledAt={nextBilledAt}              // ← add this
+        onConfirm={confirmUpgrade}
+        onClose={() => { setUpgradeTarget(null); setBusyPlanId(null); }}
+      />
+
+
       <DowngradeModal
         open={downgradeTarget != null}
-        fromPlan={currentPlan ? (currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)) : ""}
+        fromPlan={PLANS.find(p => p.name === currentPlan)?.label ?? ""}
         toPlan={downgradeTarget?.label ?? ""}
         onConfirm={confirmDowngrade}
         onClose={() => { setDowngradeTarget(null); setBusyPlanId(null); }}

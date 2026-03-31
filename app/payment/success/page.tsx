@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const { data: session, status, update } = useSession();
+  const searchParams = useSearchParams();
+  const type = searchParams.get("type");
   const hasStarted = useRef(false);
   const [loadingText, setLoadingText] = useState("Verifying payment status...");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -22,7 +25,8 @@ export default function PaymentSuccessPage() {
       let isPro = session?.user?.plan === "pro";
 
       // Loop until the database reflects the Webhook's update
-      while (!isPro && attempts < maxAttempts) {
+      // If it's an API payment, we don't necessarily wait for 'pro' plan in session
+      while (!isPro && attempts < maxAttempts && type !== "api") {
         setLoadingText(
           attempts === 0 
             ? "Verifying payment status..." 
@@ -46,9 +50,9 @@ export default function PaymentSuccessPage() {
       setIsSuccess(true);
       setLoadingText("Success! Taking you to your dashboard...");
 
-      // Final redirect only AFTER the loop successfully confirmed the Pro status
+      // Final redirect only AFTER the loop successfully confirmed the status
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        window.location.href = type === "api" ? "/api/dashboard" : "/dashboard";
       }, 800);
     };
 
@@ -79,5 +83,29 @@ export default function PaymentSuccessPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md text-center shadow-lg">
+          <CardHeader>
+            <CardTitle>Payment received</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center space-y-5 py-8">
+            <Loader2 className="h-16 w-16 text-amber-500 animate-spin" />
+            <div className="space-y-2">
+              <p className="text-muted-foreground transition-all duration-300">
+                Initialising...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }
