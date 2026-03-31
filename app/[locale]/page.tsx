@@ -418,6 +418,8 @@ export default async function Page({ params }: Props) {
                           { href: "/throwaway-email", label: "Throwaway email" },
                           { href: "/receive-email-online", label: "Receive email online" },
                           { href: "/fake-email-generator", label: "Fake email generator" },
+                          { href: "/fake-email-address", label: "Fake email address" },
+                          { href: "/temp-mail-for-business", label: "Temp mail for business" },
                         ].map(({ href, label }) => (
                           <li key={href}>
                             <Link href={href} className="text-sm text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors block">{label}</Link>

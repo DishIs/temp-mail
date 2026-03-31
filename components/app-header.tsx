@@ -17,6 +17,7 @@ import { Session } from "next-auth";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import LocaleSwitcher from "./LocaleSwitcher";
+import { SearchModal } from "@/components/search-modal";
 
 function useThemeRipple() {
   const { theme, setTheme } = useTheme();
@@ -254,8 +255,9 @@ export function AppHeader() {
             })}
           </nav>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 lg:gap-2">
             <LocaleSwitcher />
+            <SearchModal />
             <button
               onClick={toggle}
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -269,7 +271,7 @@ export function AppHeader() {
             </div>
           </div>
 
-          <div className="md:hidden flex items-center gap-1.5">
+          <div className="md:hidden flex items-center gap-1">
             <button
               onClick={toggle}
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground shrink-0"
@@ -277,6 +279,7 @@ export function AppHeader() {
             >
               <ThemeIcon theme={theme} mounted={mounted} />
             </button>
+            <SearchModal triggerClass="h-8 w-8 !px-0 flex justify-center shrink-0" />
             {/* Stable Width Wrapper prevents Layout Shift */}
             <div className="flex items-center justify-center min-w-[76px] shrink-0">
               <AuthSection />

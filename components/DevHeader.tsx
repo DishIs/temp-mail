@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
+import { SearchModal } from "@/components/search-modal";
 
 const NAV_LINKS = [
   { href: "/api",                label: "Overview"   },
@@ -170,6 +171,7 @@ export function DevHeader() {
 
           {/* Right */}
           <div className="hidden md:flex items-center gap-2">
+            <SearchModal />
             <button ref={btnRef} onClick={toggle}
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Toggle theme"
@@ -222,13 +224,16 @@ export function DevHeader() {
           </div>
 
           {/* Mobile hamburger */}
-          <button
-            className="md:hidden h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-          </button>
+          <div className="md:hidden flex items-center gap-1">
+            <SearchModal triggerClass="h-8 w-8 !px-0 flex justify-center" />
+            <button
+              className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile menu */}

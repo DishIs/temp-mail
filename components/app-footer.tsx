@@ -267,17 +267,6 @@ export function AppFooter() {
             data-postman-visibility="public"
             data-postman-var-1="53581811-ebb488ee-fc2a-4234-b518-21d857d472b7"
             data-postman-collection-url="entityId=53581811-ebb488ee-fc2a-4234-b518-21d857d472b7&entityType=collection&workspaceId=47981c31-02fb-4453-8b8c-734d70d4bc9a" />
-          <Script id="postman-run-button-script-footer" strategy="lazyOnload">
-            {`
-              (function (p,o,s,t,m,a,n) {
-                !p[s] && (p[s] = function () { (p[t] || (p[t] = [])).push(arguments); });
-                !o.getElementById(s+t) && o.getElementsByTagName("head")[0].appendChild((
-                  (n = o.createElement("script")),
-                  (n.id = s+t), (n.async = 1), (n.src = m), n
-                ));
-              }(window, document, "_pm", "PostmanRunObject", "https://run.pstmn.io/button.js"));
-            `}
-          </Script>
         </div>
 
       </footer>

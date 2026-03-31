@@ -7,6 +7,8 @@ import { AppFooter } from "@/components/app-footer";
 import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
+import { HighlightSearch } from "@/components/highlight-search";
+import { Suspense } from "react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function formatDate(dateString: string) {
@@ -213,6 +215,9 @@ export default async function BlogPage({
 
         <div className="relative z-10 flex flex-col min-h-screen">
           <AppHeader initialSession={null} />
+          <Suspense fallback={null}>
+            <HighlightSearch />
+          </Suspense>
 
           {/* Hero */}
           <section className="border-b border-border">

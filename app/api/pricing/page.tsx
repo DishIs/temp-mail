@@ -198,8 +198,8 @@ function calcUpgradePreview(
   toPlan: string,
   nextBilledAtStr: string | null,
 ): UpgradePreview {
-  const fromPrice = PLAN_PRICES[fromPlan] ?? 0;
-  const toPrice = PLAN_PRICES[toPlan] ?? 0;
+  const fromPrice = PLAN_PRICES[fromPlan.toLowerCase()] ?? 0;
+  const toPrice = PLAN_PRICES[toPlan.toLowerCase()] ?? 0;
   const diff = toPrice - fromPrice;
 
   const now = new Date();
@@ -209,9 +209,17 @@ function calcUpgradePreview(
   const msRemaining = nextBilledAt ? nextBilledAt.getTime() - now.getTime() : 0;
   const daysRemaining = Math.max(1, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
 
-  // Approximate billing period as 30 days if we don't have a start date
-  const totalDays = 30;
-  const fraction = Math.min(daysRemaining / totalDays, 1);
+  let totalDays = 30;
+  let fraction = Math.min(daysRemaining / totalDays, 1);
+
+  if (nextBilledAt) {
+    const lastBilledAt = new Date(nextBilledAt);
+    lastBilledAt.setMonth(lastBilledAt.getMonth() - 1);
+    const totalMs = nextBilledAt.getTime() - lastBilledAt.getTime();
+    totalDays = Math.round(totalMs / (1000 * 60 * 60 * 24));
+    fraction = Math.min(Math.max(msRemaining / totalMs, 0), 1);
+  }
+
   const proratedToday = Math.max(0, parseFloat((diff * fraction).toFixed(2)));
 
   return { proratedToday, nextMonthly: toPrice, nextBilledAt, daysRemaining, totalDays };

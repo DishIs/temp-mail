@@ -16,6 +16,7 @@ import { signOut, useSession } from "next-auth/react";
 import { Session } from "next-auth";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SearchModal } from "@/components/search-modal";
 
 function useThemeRipple() {
   const { theme, setTheme } = useTheme();
@@ -254,6 +255,7 @@ export function AppHeader() {
           </nav>
 
           <div className="hidden md:flex items-center gap-2">
+            <SearchModal />
             <button
               onClick={toggle}
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -268,6 +270,7 @@ export function AppHeader() {
           </div>
 
           <div className="md:hidden flex items-center gap-1.5">
+            <SearchModal triggerClass="h-8 w-8 !px-0 flex justify-center" />
             <button
               onClick={toggle}
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground shrink-0"

@@ -12,6 +12,8 @@ import { AppFooter } from "@/components/app-footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TableOfContents } from "@/components/blog/TableOfContents";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { HighlightSearch } from "@/components/highlight-search";
+import { Suspense } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Heading { id: string; text: string; level: number; }
@@ -157,6 +159,9 @@ export default async function SinglePostPage({ params }: { params: { slug: strin
 
         <div className="relative z-10 flex flex-col min-h-screen">
           <AppHeader />
+          <Suspense fallback={null}>
+            <HighlightSearch />
+          </Suspense>
 
           {/* ── Post hero ────────────────────────────────────────────── */}
           <div className="border-b border-border">

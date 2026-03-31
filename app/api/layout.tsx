@@ -3,6 +3,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { DevHeader } from "@/components/DevHeader";
 import { AppFooter } from "@/components/app-footer";
 import { ApiLayoutClient } from "@/components/ApiLayoutClient";
+import { HighlightSearch } from "@/components/highlight-search";
+import { Suspense } from "react";
 
 export const metadata = {
   title: "API – FreeCustom.Email",
@@ -12,7 +14,12 @@ export const metadata = {
 export default function ApiLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <ApiLayoutClient>{children}</ApiLayoutClient>
+      <ApiLayoutClient>
+        {children}
+        <Suspense fallback={null}>
+          <HighlightSearch />
+        </Suspense>
+      </ApiLayoutClient>
     </ThemeProvider>
   );
 }

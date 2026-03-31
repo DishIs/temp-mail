@@ -52,6 +52,8 @@ export const LANDING_PAGES: LandingPageConfig[] = [
   { slug: 'throwaway-email', translationKey: 'throwawayEmail', priority: 'medium' },
   { slug: 'receive-email-online', translationKey: 'receiveEmailOnline', priority: 'medium' },
   { slug: 'fake-email-generator', translationKey: 'fakeEmailGenerator', priority: 'medium' },
+  { slug: 'temp-mail-for-business', translationKey: 'tempMailBusiness', priority: 'medium' },
+  { slug: 'fake-email-address', translationKey: 'fakeEmailAddress', priority: 'medium' },
 ];
 
 export const LANDING_PAGE_SLUGS = LANDING_PAGES.map(p => p.slug);
