@@ -12,7 +12,6 @@ import {
 } from "react-icons/si";
 import { LATEST_CHANGELOG_VERSION } from "@/lib/changelog";
 import { WhatsNewModal } from "./WhatsNewModal";
-import Image from "next/image";
 
 // ── link data ─────────────────────────────────────────────────────────────
 const FOOTER_COLS = [
@@ -263,15 +262,6 @@ export function AppFooter() {
 
         {/* ── buy me a coffee ─────────────────────────────────────────── */}
         <div className="max-w-[90rem] mx-auto px-8 py-5 flex items-center gap-4">
-          <a href="https://www.buymeacoffee.com/dishantsinghdev" target="_blank" rel="noopener noreferrer">
-            <Image
-              src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
-              alt="Buy Me A Coffee"
-              width={175}
-              height={49}
-              className="h-7 w-auto"
-            />
-          </a>
           <div className="postman-run-button"
             data-postman-action="collection/fork"
             data-postman-visibility="public"

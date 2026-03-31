@@ -41,6 +41,7 @@
     "critters": "^0.0.23",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.12",
+    "highlight.js": "^11.11.1",
     "jose": "^5.9.6",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
