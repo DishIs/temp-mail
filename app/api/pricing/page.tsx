@@ -28,11 +28,11 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free", label: "Free", desc: "Try the API", price: "$0", reqSec: "1", reqMonth: "5,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared", planId: null as string | null, imap: false, wait: false as boolean | string, sla: false },
-  { name: "developer", label: "Developer", desc: "Scripts & testing", price: "$7", reqSec: "10", reqMonth: "100,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "24h", freshDomains: false as const, pool: "shared", planId: "developer", imap: false, wait: false as boolean | string, sla: false },
-  { name: "startup", label: "Startup", desc: "Automation & production", price: "$19", reqSec: "25", reqMonth: "500,000", otp: false, attachments: true, maxAttachment: "5 MB", ws: true, maxWs: "5", customDomains: false, persistence: "24h", freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: true as boolean | string, sla: false },
-  { name: "growth", label: "Growth", desc: "High-scale workflows", price: "$49", reqSec: "50", reqMonth: "2,000,000", otp: true, attachments: true, maxAttachment: "25 MB", ws: true, maxWs: "20", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "growth", imap: true, wait: true as boolean | string, sla: false },
-  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems", price: "$149", reqSec: "100", reqMonth: "10,000,000", otp: true, attachments: true, maxAttachment: "50 MB", ws: true, maxWs: "100", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "enterprise", imap: true, wait: true as boolean | string, sla: true },
+  { name: "free", label: "Free", desc: "Try the API", price: "$0", reqSec: "1", reqMonth: "5,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared", planId: null as string | null, imap: false, wait: false as boolean | string, mcp: false as boolean | string, webhooks: false, sla: false },
+  { name: "developer", label: "Developer", desc: "Scripts & testing", price: "$7", reqSec: "10", reqMonth: "100,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "24h", freshDomains: false as const, pool: "shared", planId: "developer", imap: false, wait: "Yes (10 req/call)", mcp: false as boolean | string, webhooks: false, sla: false },
+  { name: "startup", label: "Startup", desc: "Automation & production", price: "$19", reqSec: "25", reqMonth: "500,000", otp: false, attachments: true, maxAttachment: "5 MB", ws: true, maxWs: "5", customDomains: false, persistence: "24h", freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: "Yes (10 req/call)", mcp: false as boolean | string, webhooks: false, sla: false },
+  { name: "growth", label: "Growth", desc: "High-scale workflows", price: "$49", reqSec: "50", reqMonth: "2,000,000", otp: true, attachments: true, maxAttachment: "25 MB", ws: true, maxWs: "20", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "growth", imap: true, wait: "Yes (10 req/call)", mcp: "60 ops/min", webhooks: true, sla: false },
+  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems", price: "$149", reqSec: "100", reqMonth: "10,000,000", otp: true, attachments: true, maxAttachment: "50 MB", ws: true, maxWs: "100", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "enterprise", imap: true, wait: "Yes (10 req/call)", mcp: "200 ops/min", webhooks: true, sla: true },
 ] as const;
 
 const CREDITS = [
@@ -197,26 +197,42 @@ function calcUpgradePreview(
   fromPlan: string,
   toPlan: string,
   nextBilledAtStr: string | null,
+  billing: "monthly" | "yearly" = "monthly"
 ): UpgradePreview {
-  const fromPrice = PLAN_PRICES[fromPlan.toLowerCase()] ?? 0;
-  const toPrice = PLAN_PRICES[toPlan.toLowerCase()] ?? 0;
-  const diff = toPrice - fromPrice;
+  const fromKey = fromPlan.toLowerCase();
+  const toKey = toPlan.toLowerCase();
+
+  let fromPrice = PLAN_PRICES[fromKey] ?? 0;
+  let toPrice = PLAN_PRICES[toKey] ?? 0;
 
   const now = new Date();
   const nextBilledAt = nextBilledAtStr ? new Date(nextBilledAtStr) : null;
-
-  // If we can't determine the period end, fall back to assuming 30-day month
   const msRemaining = nextBilledAt ? nextBilledAt.getTime() - now.getTime() : 0;
   const daysRemaining = Math.max(1, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
 
-  let totalDays = 30;
+  // If nextBilledAt is more than ~60 days away, user is currently on a yearly plan
+  const isCurrentYearly = daysRemaining > 60;
+  if (isCurrentYearly && YEARLY_PRICING[fromKey]) {
+    fromPrice = parseInt(YEARLY_PRICING[fromKey].total.replace(/[^0-9]/g, ""), 10);
+  }
+  if (billing === "yearly" && YEARLY_PRICING[toKey]) {
+    toPrice = parseInt(YEARLY_PRICING[toKey].total.replace(/[^0-9]/g, ""), 10);
+  }
+
+  const diff = toPrice - fromPrice;
+
+  let totalDays = isCurrentYearly ? 365 : 30;
   let fraction = Math.min(daysRemaining / totalDays, 1);
 
   if (nextBilledAt) {
     const lastBilledAt = new Date(nextBilledAt);
-    lastBilledAt.setMonth(lastBilledAt.getMonth() - 1);
+    if (isCurrentYearly) {
+      lastBilledAt.setFullYear(lastBilledAt.getFullYear() - 1);
+    } else {
+      lastBilledAt.setMonth(lastBilledAt.getMonth() - 1);
+    }
     const totalMs = nextBilledAt.getTime() - lastBilledAt.getTime();
-    totalDays = Math.round(totalMs / (1000 * 60 * 60 * 24));
+    totalDays = Math.max(1, Math.round(totalMs / (1000 * 60 * 60 * 24)));
     fraction = Math.min(Math.max(msRemaining / totalMs, 0), 1);
   }
 
@@ -230,11 +246,12 @@ interface UpgradeModalProps {
   open: boolean;
   fromPlan: string;
   toPlan: string;
+  billing: "monthly" | "yearly";
   nextBilledAt: string | null;   // ← new: from api-status subscription.next_billed_at
   onConfirm: () => Promise<void>;
   onClose: () => void;
 }
-function UpgradeModal({ open, fromPlan, toPlan, nextBilledAt, onConfirm, onClose }: UpgradeModalProps) {
+function UpgradeModal({ open, fromPlan, toPlan, billing, nextBilledAt, onConfirm, onClose }: UpgradeModalProps) {
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (open) setBusy(false); }, [open]);
 
@@ -243,7 +260,7 @@ function UpgradeModal({ open, fromPlan, toPlan, nextBilledAt, onConfirm, onClose
     try { await onConfirm(); } finally { setBusy(false); }
   };
 
-  const preview = calcUpgradePreview(fromPlan, toPlan, nextBilledAt);
+  const preview = calcUpgradePreview(fromPlan, toPlan, nextBilledAt, billing);
 
   const fmtDate = (d: Date | null) =>
     d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "next billing date";
@@ -295,11 +312,11 @@ function UpgradeModal({ open, fromPlan, toPlan, nextBilledAt, onConfirm, onClose
               <div>
                 <p className="font-medium text-foreground capitalize">{toPlan} plan</p>
                 <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
-                  Normal monthly billing
+                  Normal {billing} billing
                 </p>
               </div>
               <span className="text-lg font-bold text-foreground tabular-nums">
-                {fmtUSD(preview.nextMonthly)}<span className="text-xs font-normal text-muted-foreground">/mo</span>
+                {fmtUSD(preview.nextMonthly)}<span className="text-xs font-normal text-muted-foreground">/{billing === "yearly" ? "yr" : "mo"}</span>
               </span>
             </div>
           </div>
@@ -372,6 +389,103 @@ function DowngradeModal({ open, fromPlan, toPlan, onConfirm, onClose }: Downgrad
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Auto Billing Modal ───────────────────────────────────────────────────────
+interface AutoBillingModalProps {
+  open: boolean;
+  type: 'plan' | 'credits';
+  productName: string;
+  priceLabel: string;
+  isYearly: boolean;
+  onConfirm: () => Promise<void>;
+  onClose: () => void;
+  onOpenPaddleCheckout: () => void;
+}
+
+function AutoBillingModal({ open, type, productName, priceLabel, isYearly, onConfirm, onClose, onOpenPaddleCheckout }: AutoBillingModalProps) {
+  const [busy, setBusy] = useState(false);
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (open) {
+      setBusy(false);
+      setError(null);
+      // Fetch portal URL
+      fetch('/api/paddle/portal-session')
+          .then(res => res.json())
+          .then(data => {
+              if (data.url) setPortalUrl(data.url);
+          })
+          .catch(() => setPortalUrl(null));
+    }
+  }, [open]);
+
+  const handleConfirm = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onConfirm();
+    } catch (e: any) {
+      setError(e.message);
+      // If the error indicates a manual checkout is needed, we can trigger paddle.
+      if (e.message.includes("Manual checkout required")) {
+        onOpenPaddleCheckout();
+        onClose();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+      <Dialog open={open} onOpenChange={v => !v && onClose()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Purchase</DialogTitle>
+            <DialogDescription>
+              Your saved payment method will be charged for the <strong>{productName}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-lg border border-border overflow-hidden text-sm">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="font-medium text-foreground">{productName}</p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                  {isYearly ? "Billed annually" : "Billed monthly"}
+                </p>
+              </div>
+              <span className="text-lg font-bold text-foreground tabular-nums">
+                {priceLabel}
+              </span>
+            </div>
+          </div>
+          
+          {error && <p className="text-xs text-destructive text-center px-4">{error}</p>}
+
+          <div className="text-xs text-muted-foreground px-1">
+              Your payment method is managed securely via Paddle.
+              {portalUrl && (
+                  <a href={portalUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline underline-offset-2 hover:text-foreground">
+                      Update payment method →
+                  </a>
+              )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+            <Button onClick={handleConfirm} disabled={busy}>
+              {busy
+                  ? <Loader2 className="h-4 w-4 animate-spin"/>
+                  : <>Pay Now</>
+              }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
   );
 }
 
@@ -521,6 +635,7 @@ export default function ApiPricingPage() {
   const [upgradeTarget, setUpgradeTarget] = useState<typeof PLANS[number] | null>(null);
   const [downgradeTarget, setDowngradeTarget] = useState<typeof PLANS[number] | null>(null);
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+  const [autoBillingTarget, setAutoBillingTarget] = useState<{ type: 'plan' | 'credits', id: string, name: string, priceLabel: string, isYearly: boolean } | null>(null);
 
   const isLoggedIn = status === "authenticated" && !!session?.user;
 
@@ -602,10 +717,70 @@ export default function ApiPricingPage() {
     finally { setBusyPlanId(null); }
   };
 
-  const handleUpgrade = (plan: typeof PLANS[number]) => { if (!plan.planId) return; if (currentPlan && currentPlan !== "free") setUpgradeTarget(plan); else { setBusyPlanId(plan.planId); openCheckout({ productType: "api", apiPlan: plan.planId, billing }); } };
+  const handleUpgrade = (plan: typeof PLANS[number]) => {
+    if (!plan.planId) return;
+    if (currentPlan && currentPlan !== "free") {
+      setUpgradeTarget(plan);
+    } else {
+      setBusyPlanId(plan.planId);
+      setAutoBillingTarget({
+        type: 'plan',
+        id: plan.planId,
+        name: plan.label,
+        priceLabel: billing === 'yearly' && YEARLY_PRICING[plan.planId] ? YEARLY_PRICING[plan.planId].total : plan.price,
+        isYearly: billing === 'yearly'
+      });
+    }
+  };
   const handleDowngrade = (plan: typeof PLANS[number]) => setDowngradeTarget(plan);
-  const handleGetStarted = (plan: typeof PLANS[number]) => { if (!plan.planId) return; setBusyPlanId(plan.planId); openCheckout({ productType: "api", apiPlan: plan.planId, billing }); };
-  const handleCredits = (pkg: typeof CREDITS[number]) => { setBusyCredits(pkg.package); openCheckout({ productType: "credits", package: pkg.package }); };
+  const handleGetStarted = (plan: typeof PLANS[number]) => {
+    if (!plan.planId) return;
+    setBusyPlanId(plan.planId);
+    setAutoBillingTarget({
+      type: 'plan',
+      id: plan.planId,
+      name: plan.label,
+      priceLabel: billing === 'yearly' && YEARLY_PRICING[plan.planId] ? YEARLY_PRICING[plan.planId].total : plan.price,
+      isYearly: billing === 'yearly'
+    });
+  };
+  const handleCredits = (pkg: typeof CREDITS[number]) => {
+    setBusyCredits(pkg.package);
+    setAutoBillingTarget({
+      type: 'credits',
+      id: pkg.package,
+      name: `${pkg.requests} Credits`,
+      priceLabel: pkg.amount,
+      isYearly: false
+    });
+  };
+
+  const attemptAutoCharge = async () => {
+    if (!autoBillingTarget) return;
+
+    const url = autoBillingTarget.type === 'plan' ? '/api/user/billing/auto-charge-plan' : '/api/user/billing/auto-buy-credits';
+    const body = autoBillingTarget.type === 'plan'
+        ? { targetPlan: autoBillingTarget.id, interval: autoBillingTarget.isYearly ? 'yearly' : 'monthly' }
+        : { priceId: autoBillingTarget.id }; // Assuming the package name is the priceId for credits
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(data.message || 'Auto-charge failed. Please proceed with manual checkout.');
+    }
+    
+    toast.success(data.message || 'Purchase successful!');
+    setAutoBillingTarget(null);
+    // Optionally, refresh user status here
+    // fetch("/api/user/api-status")...
+  };
+
   const confirmUpgrade = async () => { if (!upgradeTarget) return; setBusyPlanId(upgradeTarget.planId ?? null); await changePlan(upgradeTarget); setUpgradeTarget(null); };
   const confirmDowngrade = async (reason: string, comment: string) => { if (!downgradeTarget) return; setBusyPlanId(downgradeTarget.planId ?? null); await changePlan(downgradeTarget, reason, comment); };
 
@@ -616,8 +791,22 @@ export default function ApiPricingPage() {
       rows: [
         {
           label: "Real-time Email",
-          hint: "WebSocket push + Wait API, no polling",
-          render: (p) => p.wait ? <Tick /> : <Cross />,
+          hint: "Wait API (long polling), no standard polling required",
+          render: (p) => p.wait 
+            ? (typeof p.wait === 'string' ? <span className="text-xs font-medium text-foreground">{p.wait}</span> : <Tick />)
+            : <Cross />,
+        },
+        {
+          label: "Webhooks",
+          hint: "Real-time HTTP push notifications for new emails",
+          render: (p) => p.webhooks ? <Tick /> : <Cross />,
+        },
+        {
+          label: "MCP Access",
+          hint: "Model Context Protocol for AI agents/LLMs",
+          render: (p) => p.mcp 
+            ? (typeof p.mcp === 'string' ? <span className="text-xs font-medium text-foreground">{p.mcp}</span> : <Tick />)
+            : <Cross />,
         },
         {
           label: "OTP Extraction",
@@ -1048,6 +1237,7 @@ export default function ApiPricingPage() {
         open={upgradeTarget != null}
         fromPlan={PLANS.find(p => p.name === currentPlan)?.label ?? ""}
         toPlan={upgradeTarget?.label ?? ""}
+        billing={billing}
         nextBilledAt={nextBilledAt}              // ← add this
         onConfirm={confirmUpgrade}
         onClose={() => { setUpgradeTarget(null); setBusyPlanId(null); }}
@@ -1061,6 +1251,24 @@ export default function ApiPricingPage() {
         onConfirm={confirmDowngrade}
         onClose={() => { setDowngradeTarget(null); setBusyPlanId(null); }}
       />
+      
+      <AutoBillingModal
+        open={autoBillingTarget !== null}
+        type={autoBillingTarget?.type!}
+        productName={autoBillingTarget?.name!}
+        priceLabel={autoBillingTarget?.priceLabel!}
+        isYearly={autoBillingTarget?.isYearly!}
+        onConfirm={attemptAutoCharge}
+        onClose={() => { setAutoBillingTarget(null); setBusyPlanId(null); setBusyCredits(null); }}
+        onOpenPaddleCheckout={() => {
+            if (autoBillingTarget?.type === 'plan') {
+                openCheckout({ productType: "api", apiPlan: autoBillingTarget.id, billing: autoBillingTarget.isYearly ? 'yearly' : 'monthly' });
+            } else {
+                openCheckout({ productType: "credits", package: autoBillingTarget!.id });
+            }
+        }}
+      />
+      
       <PaddleInit />
     </>
   );
