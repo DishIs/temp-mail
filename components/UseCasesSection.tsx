@@ -54,7 +54,7 @@ await page.fill('[name="otp"]', otp);`,
     desc: "Give Claude or any LLM agent the ability to sign up for services and verify emails autonomously via MCP.",
     snippet: `// Claude Desktop — one config line
 "fce-mcp": { "command": "npx", 
-  "args": ["-y", "maildrop-mcp-server"] }`,
+  "args": ["-y", "fce-mcp-server"] }`,
     tags: ["MCP", "Claude"],
     surface: ["api", "mcp"],
   },

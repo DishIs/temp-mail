@@ -79,7 +79,7 @@ type NodeDef = {
 
 const NODES: NodeDef[] = [
   { id: "agent",   x: 0.12, y: 0.5,  label: "AI Agent",    sub: "Claude / GPT / Custom" },
-  { id: "mcp",     x: 0.38, y: 0.18, label: "MCP Server",  sub: "maildrop-mcp-server",   badge: "npx" },
+  { id: "mcp",     x: 0.38, y: 0.18, label: "MCP Server",  sub: "fce-mcp-server",   badge: "npx" },
   { id: "fce",     x: 0.62, y: 0.5,  label: "FCE Backend", sub: "Redis pub/sub" },
   { id: "smtp",    x: 0.38, y: 0.82, label: "SMTP Ingest",  sub: "Any email sender" },
   { id: "otp",     x: 0.88, y: 0.5,  label: "OTP Returned", sub: "Structured JSON",       badge: "< 200ms" },
@@ -587,7 +587,7 @@ export function MCPClient() {
   "mcpServers": {
     "fce-mcp": {
       "command": "npx",
-      "args": ["-y", "maildrop-mcp-server"],
+      "args": ["-y", "fce-mcp-server"],
       "env": {
         "FCE_API_KEY": "your_growth_or_enterprise_api_key"
       }
@@ -597,17 +597,29 @@ export function MCPClient() {
               />
             </FadeIn>
             <FadeIn delay={0.15}>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-lg border border-border p-4">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Claude Desktop</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Paste the config into <code className="text-[10px] bg-muted/40 px-1 rounded">claude_desktop_config.json</code>. Restart Claude. The tools appear automatically.
+                    Paste the config into <code className="text-[10px] bg-muted/40 px-1 rounded">claude_desktop_config.json</code>. Restart Claude.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Cursor & Windsurf</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Add the <code className="text-[10px] bg-muted/40 px-1 rounded">npx</code> command in the MCP Servers UI or <code className="text-[10px] bg-muted/40 px-1 rounded">mcp_config.json</code>.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Kilo CLI</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Add to your <code className="text-[10px] bg-muted/40 px-1 rounded">kilo.json</code> under the <code className="text-[10px] bg-muted/40 px-1 rounded">mcp</code> section.
                   </p>
                 </div>
                 <div className="rounded-lg border border-border p-4">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Custom Agent</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Use any MCP SDK (Python <code className="text-[10px] bg-muted/40 px-1 rounded">mcp</code>, JS <code className="text-[10px] bg-muted/40 px-1 rounded">@modelcontextprotocol/sdk</code>) to connect programmatically.
+                    Use any SDK (Python <code className="text-[10px] bg-muted/40 px-1 rounded">mcp</code>, JS <code className="text-[10px] bg-muted/40 px-1 rounded">@modelcontextprotocol/sdk</code>) to connect.
                   </p>
                 </div>
               </div>
