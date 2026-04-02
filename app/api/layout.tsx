@@ -7,7 +7,7 @@ import { HighlightSearch } from "@/components/highlight-search";
 import { Suspense } from "react";
 
 export const metadata = {
-  title: "API – FreeCustom.Email",
+  title: "Temp Mail API – FreeCustom.Email",
   description: "Disposable email infrastructure for developers. Programmatic temporary inboxes, real-time WebSocket, OTP extraction.",
 };
 

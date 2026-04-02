@@ -64,7 +64,7 @@ export function CodeBlock({
   language,
   className = "",
   accent = true,
-  lineNumbers = true,
+  lineNumbers = false,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLElement>(null);
@@ -145,7 +145,7 @@ export function CodeBlock({
 
         {/* Highlighted code */}
         <pre
-          className={`flex-1 min-w-0 text-xs sm:text-sm font-mono text-foreground leading-[1.7] whitespace-pre-wrap break-words overflow-x-hidden ${
+          className={`flex-1 min-w-0 text-xs sm:text-sm font-mono text-foreground leading-[1.7] whitespace-pre overflow-x-auto ${
             language ? "p-5" : "p-5 pr-14"
           } ${lineNumbers ? "!pl-4" : ""}`}
         >

@@ -10,6 +10,8 @@ import { ApiHeroCode } from "@/app/api/ApiHeroCode";
 import { ApiCodeExamples } from "@/app/api/ApiCodeExamples";
 import { EmailFlowAnimation } from "@/app/api/EmailFlowAnimation";
 import { ApiPricingTeaser } from "@/app/api/ApiPricingTeaser";
+import { ApiStats } from "@/components/ApiStats";
+import { UseCasesSection } from "@/components/UseCasesSection";
 
 // ─── data ──────────────────────────────────────────────────────────────────
 const FEATURES = [
@@ -166,7 +168,7 @@ export default function APIClient() {
           </motion.div>
 
           <motion.h1
-            className="text-4xl sm:text-5xl lg:text-[3.75rem] font-bold tracking-tight text-foreground leading-[1.1] mb-5"
+            className="text-4xl sm:text-5xl lg:text-[3.75rem] font-bold tracking-tight text-foreground leading-[1.1] mb-5 text-balance break-words"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}>
@@ -204,14 +206,16 @@ export default function APIClient() {
         </div>
       </section>
 
+      <ApiStats />
+
       {/* ── HOW IT WORKS — ANIMATED FLOW ──────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
         <AsciiLayer />
         <Cols />
-        <div className="relative z-10 max-w-3xl mx-auto">
+        <div className="relative z-10 max-w-3xl w-full mx-auto">
           <FadeIn>
             <SectionMarker index={2} total={T} label="Email journey" />
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4 leading-tight">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4 leading-tight text-balance break-words">
               From sent to extracted<br />in under 200ms
             </h2>
             <p className="text-sm text-muted-foreground mb-10 max-w-lg leading-relaxed">
@@ -227,7 +231,7 @@ export default function APIClient() {
       {/* ── ABOUT ─────────────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-20" style={DOT_BG}>
         <Cols />
-        <div className="relative z-10 max-w-3xl mx-auto">
+        <div className="relative z-10 max-w-3xl w-full mx-auto">
           <FadeIn>
             <SectionMarker index={3} total={T} label="About this API" />
             <div className="rounded-lg border border-border bg-background/90 p-6 sm:p-8 space-y-4 text-sm text-muted-foreground leading-relaxed">
@@ -238,8 +242,8 @@ export default function APIClient() {
                 { label: "WebSocket",    body: <>Real-time inbox updates at <code className="rounded bg-muted/60 px-1.5 py-0.5 text-xs font-mono">wss://api2.freecustom.email/v1/ws</code> (Startup plan and above).</> },
               ].map(({ label, body }) => (
                 <div key={label} className="border-t border-border pt-4 first:border-t-0 first:pt-0 flex gap-3">
-                  <span className="font-medium text-foreground shrink-0 w-28">{label}</span>
-                  <span>{body}</span>
+                  <span className="font-medium text-foreground shrink-0 w-20 sm:w-28">{label}</span>
+                  <span className="flex-1 break-words min-w-0">{body}</span>
                 </div>
               ))}
             </div>
@@ -250,12 +254,12 @@ export default function APIClient() {
       {/* ── SDK SECTION ───────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24">
         <Cols />
-        <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="relative z-10 max-w-5xl w-full mx-auto">
           <FadeIn>
             <SectionMarker index={4} total={T} label="Official SDKs" />
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
               <div>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2 leading-tight">
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2 leading-tight text-balance break-words">
                   Up and running<br />in 30 seconds
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
@@ -271,7 +275,7 @@ export default function APIClient() {
           <div className="grid gap-px bg-border sm:grid-cols-2 rounded-lg overflow-hidden">
             {SDK_LANGS.map((sdk, i) => (
               <FadeIn key={sdk.id} delay={i * 0.08}>
-                <div className="bg-background h-full flex flex-col">
+                <div className="bg-background h-full flex flex-col min-w-0">
                   {/* header */}
                   <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                     <div className="flex items-center gap-2.5">
@@ -325,7 +329,7 @@ export default function APIClient() {
                 { v: "ESM + CJS",   l: "dual format" },
                 { v: "0 deps*",     l: "* except httpx/ws" },
               ].map(({ v, l }) => (
-                <div key={v} className="px-5 py-4 text-center">
+                <div key={v} className="p-3 sm:p-5 text-center break-words">
                   <p className="font-mono text-xs font-semibold text-foreground">{v}</p>
                   <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{l}</p>
                 </div>
@@ -339,10 +343,10 @@ export default function APIClient() {
       <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
         <AsciiLayer />
         <Cols />
-        <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="relative z-10 max-w-5xl w-full mx-auto">
           <FadeIn>
             <SectionMarker index={5} total={T} label="Features" />
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-14 max-w-lg leading-tight">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-14 max-w-lg leading-tight text-balance break-words">
               Everything you need to handle email programmatically
             </h2>
           </FadeIn>
@@ -360,10 +364,12 @@ export default function APIClient() {
         </div>
       </section>
 
+      <UseCasesSection surface="api" sectionIndex={6} sectionTotal={T} />
+
       {/* ── PRICING TEASER ────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24">
         <Cols />
-        <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="relative z-10 max-w-5xl w-full mx-auto">
             <ApiPricingTeaser />
         </div>
       </section>
@@ -371,10 +377,10 @@ export default function APIClient() {
       {/* ── HOW IT WORKS ──────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24">
         <Cols />
-        <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="relative z-10 max-w-5xl w-full mx-auto">
           <FadeIn>
             <SectionMarker index={6} total={T} label="How it works" />
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-14 text-balance break-words">
               Three steps to production
             </h2>
           </FadeIn>
@@ -392,15 +398,13 @@ export default function APIClient() {
         </div>
       </section>
 
-
-
       {/* ── CODE EXAMPLES ─────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24">
         <Cols />
-        <div className="relative z-10 max-w-3xl mx-auto">
+        <div className="relative z-10 max-w-3xl w-full mx-auto">
           <FadeIn>
             <SectionMarker index={8} total={T} label="Quickstart" />
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-10">Up and running in minutes</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-10 text-balance break-words">Up and running in minutes</h2>
           </FadeIn>
           <FadeIn delay={0.1}><ApiCodeExamples /></FadeIn>
         </div>
@@ -410,13 +414,13 @@ export default function APIClient() {
       <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
         <AsciiLayer />
         <Cols />
-        <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="relative z-10 max-w-5xl w-full mx-auto">
           <FadeIn>
             <div className="flex items-center gap-2 mb-10">
               <div className="w-0.5 h-4 bg-border" />
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Credits — never expire</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">Need more capacity?</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3 text-balance break-words">Need more capacity?</h2>
             <p className="text-sm text-muted-foreground mb-12 max-w-lg leading-relaxed">Credits never expire. Top up once, use forever. Consumed automatically when you exceed your monthly quota.</p>
           </FadeIn>
           <div className="grid gap-px bg-border grid-cols-2 sm:grid-cols-4 rounded-lg overflow-hidden mb-8">
@@ -439,9 +443,9 @@ export default function APIClient() {
       {/* ── FAQ ───────────────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24" aria-labelledby="api-faq-heading">
         <Cols />
-        <div className="relative z-10 max-w-2xl mx-auto">
+        <div className="relative z-10 max-w-2xl w-full mx-auto">
           <FadeIn>
-            <h2 id="api-faq-heading" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-12">
+            <h2 id="api-faq-heading" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-12 text-balance break-words">
               Frequently asked questions
             </h2>
           </FadeIn>
@@ -450,7 +454,7 @@ export default function APIClient() {
               <FadeIn key={i} delay={i * 0.04}>
                 <details className="group border-t border-border py-5 last:border-b">
                   <summary className="cursor-pointer list-none flex items-start justify-between gap-4 text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
-                    <span className="leading-relaxed">{item.q}</span>
+                    <span className="leading-relaxed break-words text-left">{item.q}</span>
                     <span className="shrink-0 text-muted-foreground mt-0.5 group-open:rotate-45 transition-transform duration-200 text-lg leading-none">+</span>
                   </summary>
                   <p className="mt-3 text-sm text-muted-foreground leading-relaxed pr-8">{item.a}</p>

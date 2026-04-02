@@ -10,6 +10,8 @@ import {
   ArrowRight, Cpu, RotateCcw
 } from "lucide-react";
 import { CodeBlock } from "@/components/CodeBlock";
+import { ApiStats } from "@/components/ApiStats";
+import { UseCasesSection } from "@/components/UseCasesSection";
 
 // ─── data ──────────────────────────────────────────────────────────────────
 
@@ -1287,7 +1289,7 @@ function InteractiveTerminal() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function CLIClient() {
-  const T = 6;
+  const T = 7;
 
   return (
     <div className="bg-background text-foreground overflow-x-hidden min-h-screen">
@@ -1355,11 +1357,15 @@ export default function CLIClient() {
         </div>
       </section>
 
+      <ApiStats />
+
+      <UseCasesSection surface="cli" sectionIndex={2} sectionTotal={T} />
+
       {/* ── INSTALL ──────────────────────────────────────────────────── */}
       <section id="install" className="relative border-t border-border px-6 py-24" style={DOT_BG}>
         <div className="max-w-5xl mx-auto">
           <FadeIn>
-            <SectionMarker index={2} total={T} label="Installation" />
+            <SectionMarker index={3} total={T} label="Installation" />
             <div className="grid lg:grid-cols-2 gap-14 items-start">
               <div>
                 <h2 className="text-3xl font-bold mb-4 tracking-tight">Get started in seconds</h2>
@@ -1392,7 +1398,7 @@ export default function CLIClient() {
       {/* ── fce dev SHOWCASE ─────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24">
         <div className="max-w-5xl mx-auto">
-          <SectionMarker index={3} total={T} label="fce dev — start here" />
+          <SectionMarker index={4} total={T} label="fce dev — start here" />
           <div className="grid lg:grid-cols-2 gap-14 items-center">
             <FadeIn>
               <div className="inline-flex items-center gap-2 font-mono text-[10px] bg-foreground text-background px-3 py-1.5 rounded mb-6">
@@ -1429,7 +1435,7 @@ export default function CLIClient() {
       {/* ── INTERACTIVE TERMINAL ─────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
         <div className="max-w-5xl mx-auto">
-          <SectionMarker index={4} total={T} label="Try It — Interactive Demo" />
+          <SectionMarker index={5} total={T} label="Try It — Interactive Demo" />
           <FadeIn>
             <div className="mb-8">
               <h2 className="text-3xl font-bold mb-3 tracking-tight">Run commands in your browser</h2>

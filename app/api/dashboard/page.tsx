@@ -338,6 +338,105 @@ function InboxesTab({
   );
 }
 
+// ─── Webhooks tab content ──────────────────────────────────────────────────────
+function WebhooksTab() {
+  const [webhooks, setWebhooks] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchWebhooks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/webhooks");
+      const data = await res.json();
+      if (res.ok) {
+        setWebhooks(data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/webhooks/logs");
+      const data = await res.json();
+      if (res.ok) {
+        setLogs(data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([fetchWebhooks(), fetchLogs()]).finally(() => setLoading(false));
+  }, [fetchWebhooks, fetchLogs]);
+
+  if (loading) {
+    return (
+        <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+    );
+  }
+
+  return (
+      <div className="space-y-10">
+          <div>
+              <SectionLabel>Active Webhooks</SectionLabel>
+              <p className="text-sm text-muted-foreground mt-0.5 mb-4">
+                  Endpoints that will be notified when new emails arrive.
+              </p>
+              <div className="border-t border-border" />
+              {webhooks.length === 0 ? (
+                  <p className="py-8 text-sm text-muted-foreground text-center">No active webhooks.</p>
+              ) : (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                      {webhooks.map((hook, i) => (
+                          <div key={hook._id} className={`flex items-center justify-between px-4 py-2.5 text-sm ${i !== 0 ? "border-t border-border" : ""}`}>
+                              <div>
+                                  <p className="font-mono text-foreground text-xs">{hook.url}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">Inbox: {hook.inbox}</p>
+                              </div>
+                              <Button variant="ghost" size="sm" disabled>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                          </div>
+                      ))}
+                  </div>
+              )}
+          </div>
+          <div>
+              <SectionLabel>Recent Webhook Logs</SectionLabel>
+              <p className="text-sm text-muted-foreground mt-0.5 mb-4">
+                  Delivery status for recent webhook notifications.
+              </p>
+              <div className="border-t border-border" />
+              {logs.length === 0 ? (
+                  <p className="py-8 text-sm text-muted-foreground text-center">No webhook logs found.</p>
+              ) : (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                      {logs.map((log, i) => (
+                          <div key={log._id} className={`px-4 py-2.5 text-sm ${i !== 0 ? "border-t border-border" : ""}`}>
+                              <div className="flex items-center justify-between">
+                                  <p className="font-mono text-foreground text-xs">{log.targetUrl}</p>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border ${log.status === 'success' ? 'text-green-500 border-green-500/20' : 'text-red-500 border-red-500/20'}`}>
+                                      {log.status} - {log.responseCode}
+                                  </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                  {new Date(log.timestamp).toLocaleString()}
+                              </p>
+                          </div>
+                      ))}
+                  </div>
+              )}
+          </div>
+      </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Dashboard Content
 // ─────────────────────────────────────────────────────────────────────────────
@@ -512,7 +611,7 @@ function ApiDashboardContent() {
   }
 
   const dataReady = !loading && apiStatus != null;
-  const TABS = ["overview", "keys", "inboxes", "domains", "usage", "billing"] as const;
+  const TABS = ["overview", "keys", "inboxes", "domains", "webhooks", "usage", "billing"] as const;
 
   return (
     <>
@@ -734,6 +833,13 @@ function ApiDashboardContent() {
                 ══════════════════════════════════════════════════════ */}
                 <TabsContent value="domains" className="mt-0">
                   <ApiCustomDomainManager canUseCustomDomains={canUseCustomDomains} />
+                </TabsContent>
+                
+                {/* ══════════════════════════════════════════════════════
+                    WEBHOOKS
+                ══════════════════════════════════════════════════════ */}
+                <TabsContent value="webhooks" className="mt-0">
+                  <WebhooksTab />
                 </TabsContent>
 
                 {/* ══════════════════════════════════════════════════════

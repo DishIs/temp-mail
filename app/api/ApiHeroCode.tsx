@@ -37,7 +37,7 @@ export function ApiHeroCode() {
       className="grid gap-3 sm:grid-cols-2"
     >
       {/* Request */}
-      <motion.div variants={item} className="flex flex-col gap-2">
+      <motion.div variants={item} className="flex flex-col gap-2 min-w-0">
         <div className="flex items-center gap-2 px-0.5">
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Request</span>
           {/* animated status dot */}
@@ -50,7 +50,7 @@ export function ApiHeroCode() {
       </motion.div>
 
       {/* Response */}
-      <motion.div variants={item} className="flex flex-col gap-2">
+      <motion.div variants={item} className="flex flex-col gap-2 min-w-0">
         <div className="flex items-center gap-2 px-0.5">
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Response</span>
           <span className="font-mono text-[10px] text-muted-foreground/60 border border-border rounded px-1 py-px">200 OK</span>

@@ -19,6 +19,7 @@ const NAV_LINKS = [
   { href: "/ai",                 label: "FCE AI"     },
   { href: "/api/docs",           label: "Docs"       },
   { href: "/api/cli",            label: "CLI"        },
+  { href: "/api/mcp",            label: "MCP"        },
   { href: "/api/automation",     label: "Automation" },
   { href: "/api/playground",     label: "Playground" },
   { href: "/api/pricing",        label: "Pricing"    },

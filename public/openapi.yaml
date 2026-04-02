@@ -822,6 +822,196 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
+  /v1/inboxes/{inbox}/wait:
+    get:
+      summary: Wait for next message (Long Polling)
+      operationId: waitMessage
+      tags: [Public v1 - Messages]
+      description: |
+        Wait for a new email to arrive in the specified mailbox (Long Polling).
+        This eliminates the need for rapid polling and reduces request overhead.
+        
+        **Plan Requirement**: Developer or above.
+        **Billing**: High-value endpoint; 1 wait call consumes **10 monthly requests**.
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          schema: { type: string }
+        - name: timeout
+          in: query
+          description: Max seconds to wait (10-60 recommended, default 30).
+          schema: { type: integer, default: 30, minimum: 1, maximum: 60 }
+        - name: since
+          in: query
+          description: Last seen message ID. Return immediately if a newer message exists, otherwise wait.
+          schema: { type: string }
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: New message received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "New message received" }
+                  data: { $ref: "#/components/schemas/MessageSummary" }
+        "408":
+          description: Timeout reached
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  message: { type: string, example: "Timeout reached" }
+        "403":
+          description: Plan too low — requires Developer plan or above
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — Webhooks
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/webhooks:
+    get:
+      summary: List active webhooks
+      operationId: listWebhooks
+      tags: [Public v1 - Webhooks]
+      description: |
+        List all active webhook subscriptions for your account.
+        
+        **Plan Requirement**: Growth or above.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  count: { type: integer, example: 1 }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id: { type: string }
+                        inbox: { type: string }
+                        url: { type: string }
+                        createdAt: { type: string, format: date-time }
+                        failureCount: { type: integer }
+        "403":
+          description: Plan too low
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+    post:
+      summary: Register a webhook
+      operationId: createWebhook
+      tags: [Public v1 - Webhooks]
+      description: |
+        Subscribe to real-time message notifications via webhook.
+        
+        **Plan Requirement**: Growth or above.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, inbox]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: The HTTPS URL to receive the POST request.
+                  example: "https://your-server.com/callback"
+                inbox:
+                  type: string
+                  format: email
+                  description: The registered inbox to subscribe to.
+                  example: "target@domain.com"
+      responses:
+        "201":
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  id: { type: string }
+                  inbox: { type: string }
+                  url: { type: string }
+        "400":
+          description: Missing fields
+        "403":
+          description: Inbox not owned or plan too low
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/webhooks/{id}:
+    delete:
+      summary: Unregister a webhook
+      operationId: deleteWebhook
+      tags: [Public v1 - Webhooks]
+      description: |
+        Delete an existing webhook subscription by ID.
+        
+        **Plan Requirement**: Growth or above.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Webhook unregistered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string }
+        "404":
+          description: Webhook not found
+        "403":
+          description: Plan too low
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1386,6 +1576,8 @@ tags:
     description: List, get, and delete messages
   - name: Public v1 - OTP
     description: OTP and verification link extraction (Growth+ only)
+  - name: Public v1 - Webhooks
+    description: Subscribe to real-time message notifications via HTTP webhooks (Growth+ only).
 
 x-websocket:
   url: "wss://api2.freecustom.email/v1/ws"

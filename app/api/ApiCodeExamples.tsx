@@ -85,7 +85,7 @@ export function ApiCodeExamples() {
   const current = TABS.find(t => t.id === active)!;
 
   return (
-    <div className="w-full rounded-lg border border-border overflow-hidden">
+    <div className="w-full min-w-0 rounded-lg border border-border overflow-hidden">
       {/* Tab bar */}
       <div className="flex items-center border-b border-border bg-muted/10 px-4 gap-0 overflow-x-auto">
         {/* Terminal dots */}
@@ -153,6 +153,7 @@ export function ApiCodeExamples() {
           animate={{ opacity: 1, y: 0 }}
           exit={{    opacity: 0, y: -4 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
+          className="min-w-0"
         >
           <CodeBlock
             code={current.code}

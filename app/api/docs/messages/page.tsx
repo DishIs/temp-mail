@@ -73,6 +73,32 @@ export default function MessagesPage() {
   "message": "Message msg_abc123 not found in mytest@ditapi.info."
 }`} />
 
+      <h2 id="wait" className="text-lg font-semibold mt-8 mb-2">GET /v1/inboxes/{`{inbox}`}/wait</h2>
+      <p className="text-sm text-muted-foreground mb-2">Wait for a new email to arrive in the specified mailbox (Long Polling). This eliminates the need for rapid polling and reduces request overhead.</p>
+      <ul className="text-sm text-muted-foreground list-disc list-inside mb-2">
+        <li>Query Params:</li>
+        <li className="ml-4"><code className="rounded bg-muted px-1 py-0.5 text-xs">timeout</code>: Max seconds to wait (10–60 recommended, default 30).</li>
+        <li className="ml-4"><code className="rounded bg-muted px-1 py-0.5 text-xs">since</code>: (Optional) Last seen message ID. Return immediately if a newer message exists, otherwise wait.</li>
+        <li>Plan Requirement: <strong>Developer</strong> or above.</li>
+        <li>Billing: High-value endpoint; 1 wait call consumes <strong>10 monthly requests</strong>.</li>
+      </ul>
+      <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditapi.info/wait?timeout=45" \\
+  -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
+      <h3 className="text-sm font-semibold mt-4 mb-1">Responses</h3>
+      <ResponseBlock status={200} label="New message received" body={`{
+  "success": true,
+  "message": "New message received",
+  "data": {
+    "id": "wNp8N0KoV",
+    "subject": "Your OTP",
+    "from": "service@example.com"
+  }
+}`} />
+      <ResponseBlock status={200} label="Timeout" body={`{
+  "success": false,
+  "message": "Timeout reached"
+}`} />
+
       <h2 id="delete" className="text-lg font-semibold mt-8 mb-2">DELETE /v1/inboxes/{`{inbox}`}/messages/{`{id}`}</h2>
       <p className="text-sm text-muted-foreground mb-2">Deletes a single message.</p>
       <CodeBlock code={`curl -X DELETE "https://api2.freecustom.email/v1/inboxes/mytest@ditapi.info/messages/msg_abc123" \\

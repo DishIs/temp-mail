@@ -36,9 +36,15 @@ const SIDEBAR_GROUPS: { label: string; links: { href: string; label: string }[] 
       { href: "/api/docs/messages", label: "Reading messages" },
       { href: "/api/docs/otp", label: "OTP extraction" },
     ],
-  },
-  {
-    label: "Domains",
+      },
+      {
+        label: "AI",
+        links: [
+          { href: "/api/docs/mcp", label: "MCP" },
+        ],
+      },
+      {
+        label: "Domains",
     links: [
       { href: "/api/docs/platform-domains", label: "Platform domains" },
       { href: "/api/docs/custom-domains", label: "Custom domains" },
@@ -49,9 +55,15 @@ const SIDEBAR_GROUPS: { label: string; links: { href: string; label: string }[] 
     links: [
       { href: "/api/docs/websocket", label: "WebSocket" },
     ],
-  },
-  {
-    label: "Billing",
+      },
+      {
+        label: "Webhooks",
+        links: [
+            { href: "/api/docs/webhooks", label: "Webhooks" },
+        ],
+      },
+      {
+        label: "Billing",
     links: [
       { href: "/api/docs/rate-limits", label: "Rate limits" },
       { href: "/api/docs/credits", label: "Credits" },

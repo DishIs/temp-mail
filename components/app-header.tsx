@@ -80,8 +80,9 @@ const NAV_LINKS =[
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },
   { href: "/api", label: "API", mono: true },
-  { href: "/ai", label: "FCE AI", mono: true },
-];
+    { href: "/api/mcp", label: "MCP", mono: true },
+    { href: "/ai", label: "FCE AI", mono: true },
+  ];
 
 export function AppHeader() {
   const { data: session, status } = useSession();

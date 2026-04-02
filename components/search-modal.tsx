@@ -175,7 +175,7 @@ export function SearchModal({ triggerClass }: { triggerClass?: string }) {
                         className="w-full flex items-center gap-3 px-2 py-2.5 text-sm rounded-md hover:bg-muted/50 transition-colors group text-left overflow-hidden"
                       >
                         <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="flex-1 truncate min-w-0 text-foreground">{item.title}</span>
+                        <span className="flex-1 line-clamp-2 break-words min-w-0 text-foreground text-sm">{item.title}</span>
                         <span className="text-[10px] font-mono border border-border bg-muted/30 px-1 py-0 rounded text-muted-foreground uppercase tracking-widest hidden sm:block shrink-0">
                           {item.type}
                         </span>
@@ -209,13 +209,13 @@ export function SearchModal({ triggerClass }: { triggerClass?: string }) {
                         {item.type === "api" ? <FileText className="h-4 w-4" /> : <Rss className="h-4 w-4" />}
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="font-medium text-foreground truncate">{item.title}</span>
-                          <span className="text-[9px] font-mono border border-border bg-muted/30 px-1 py-0 rounded text-muted-foreground uppercase tracking-widest shrink-0">
+                        <div className="flex items-start justify-between gap-2 mb-0.5">
+                          <span className="font-medium text-foreground line-clamp-2 break-words">{item.title}</span>
+                          <span className="text-[9px] mt-0.5 font-mono border border-border bg-muted/30 px-1 py-0 rounded text-muted-foreground uppercase tracking-widest shrink-0">
                             {item.type}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words mt-1">{item.description}</p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-foreground shrink-0 mt-2 transition-colors" />
                     </button>

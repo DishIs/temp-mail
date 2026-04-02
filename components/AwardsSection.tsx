@@ -40,7 +40,7 @@ export function AwardsSection() {
       alt: 'Listed — StartupFound',
     },
     {
-      href: 'https://yo.directory/',
+      href: 'https://yo.directory/directory/temporary-email-generator-freecustomemail',
       title: 'Listed on Yo Directory',
       src: 'https://cdn.prod.website-files.com/65c1546fa73ea974db789e3d/65e1e171f89ebfa7bd0129ac_yodirectory-featured.png',
       alt: 'Featured — Yo Directory',
@@ -83,9 +83,9 @@ export function AwardsSection() {
     },
     {
       href: 'https://auraplusplus.com/projects/freecustom-email-disposable-temp-mail',
-      title: 'Featured on Aura++',
-      src: 'https://auraplusplus.com/images/badges/featured-on-light.svg',
-      alt: 'Aura++ badge',
+      title: 'Featured #2 on Aura++',
+      src: 'https://auraplusplus.com/images/badges/top2-light.svg',
+      alt: 'Aura++ top 2 badge',
     },
     {
       href: 'https://indiehunt.io/project/temp-mail-free-temporary-email-address-no-signup-no-ads',
