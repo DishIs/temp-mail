@@ -82,11 +82,11 @@ await client.inboxes.register("verify@ditapi.info");
 
 // Trigger your signup flow here...
 
-// Wait for and extract OTP
+// Wait for and extract OTP automatically
 const otp = await client.otp.waitFor("verify@ditapi.info");
 console.log("OTP:", otp); // "847291"
 
-// Or get OTP + verification link together
+// Or get OTP + verification link together (without waiting)
 const result = await client.otp.get("verify@ditapi.info");
 console.log(result.otp, result.verification_link);`}
       />
@@ -105,7 +105,7 @@ async def main():
     
     # Trigger your signup flow here...
     
-    # Wait for and extract OTP
+    # Wait for and extract OTP automatically
     otp = await client.otp.wait_for("verify@ditapi.info")
     print("OTP:", otp)
 
@@ -117,22 +117,18 @@ asyncio.run(main())`}
         Verification Links
       </h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        Some services send a click-to-verify link instead of a numeric OTP. The API extracts both — use{" "}
-        <code className="text-xs bg-muted/60 rounded px-1">verification_link</code> in the response:
+        Some services send a click-to-verify link instead of a numeric OTP. The API and SDKs extract both:
       </p>
       <CodeBlock
         language="typescript"
-        code={`const { data } = await fetch(
-  \`https://api2.freecustom.email/v1/inboxes/\${inbox}/otp\`,
-  { headers: { Authorization: \`Bearer \${apiKey}\` } }
-).then(r => r.json());
+        code={`const result = await client.otp.waitFor("verify@ditapi.info");
 
-if (data.verification_link) {
+if (result.verification_link) {
   // Navigate to the link in Playwright
-  await page.goto(data.verification_link);
-} else if (data.otp) {
+  await page.goto(result.verification_link);
+} else if (result.otp) {
   // Enter the code in the form
-  await page.fill('[name="otp"]', data.otp);
+  await page.fill('[name="otp"]', result.otp);
   await page.click('[type="submit"]');
 }`}
       />

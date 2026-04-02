@@ -37,31 +37,21 @@ export default function MultiAccountTestingPage() {
       {/* ── Parallel Provisioning ── */}
       <h2 id="parallel-provisioning" className="text-lg font-semibold mt-10 mb-2">Mass Inbox Provisioning</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        You can create hundreds of inboxes concurrently. On the Enterprise plan, your rate limit allows up to 100 requests per second.
+        You can create hundreds of inboxes concurrently using the SDK. On the Enterprise plan, your rate limit allows up to 100 requests per second.
       </p>
       <CodeBlock
         language="typescript"
         code={`import { randomBytes } from "crypto";
+import { FreecustomEmailClient } from "freecustom-email";
 
-const FCE_API = "https://api2.freecustom.email";
-const API_KEY = process.env.FCE_API_KEY!;
+const fce = new FreecustomEmailClient({ apiKey: process.env.FCE_API_KEY! });
 
-// Generate a random inbox name
 const genInbox = () => \`user-\${randomBytes(4).toString("hex")}@ditapi.info\`;
 
 async function provisionInboxes(count: number): Promise<string[]> {
   const tasks = Array.from({ length: count }).map(async () => {
     const inbox = genInbox();
-    const res = await fetch(\`\${FCE_API}/v1/inboxes\`, {
-      method: "POST",
-      headers: {
-        Authorization: \`Bearer \${API_KEY}\`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inbox }),
-    });
-    
-    if (!res.ok) throw new Error(\`Failed to create: \${inbox}\`);
+    await fce.inboxes.register(inbox);
     return inbox;
   });
 
@@ -77,49 +67,27 @@ console.log(accounts);`}
       {/* ── WebSockets for Scale ── */}
       <h2 id="websocket-scale" className="text-lg font-semibold mt-10 mb-2">Real-time Bulk Listening (WebSockets)</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        Polling 50+ inboxes via REST would quickly exhaust your rate limits and become sluggish. Instead, use WebSockets to listen to all inboxes with a single connection.
+        Polling 50+ inboxes via REST would quickly exhaust your rate limits and become sluggish. The Node.js SDK makes it trivial to subscribe to hundreds of inboxes over a single WebSocket connection.
       </p>
       <CodeBlock
         language="typescript"
-        code={`import WebSocket from "ws";
+        code={`// 1. Listen for new emails globally
+fce.ws.on("new_message", (event) => {
+  console.log(\`[NEW EMAIL] \${event.inbox}: \${event.message.subject}\`);
+  
+  if (event.message.otp) {
+    console.log(\`Extracted OTP for \${event.inbox}: \${event.message.otp}\`);
+    // Emit to your test framework's event bus...
+  }
+});
 
-async function listenToAllInboxes(inboxes: string[]) {
-  // 1. Get a WebSocket ticket
-  const ticketRes = await fetch(\`\${FCE_API}/v1/ws-ticket\`, {
-    method: "POST",
-    headers: { Authorization: \`Bearer \${API_KEY}\` }
-  });
-  const { ticket } = await ticketRes.json();
+// 2. Connect the WebSocket (automatically fetches a ticket)
+await fce.ws.connect();
 
-  // 2. Connect
-  const ws = new WebSocket(\`wss://api2.freecustom.email/v1/ws?ticket=\${ticket}\`);
-
-  ws.on("open", () => {
-    console.log("WebSocket connected.");
-    // Subscribe to all inboxes
-    inboxes.forEach(inbox => {
-      ws.send(JSON.stringify({ type: "subscribe", inbox }));
-    });
-  });
-
-  ws.on("message", (data) => {
-    const event = JSON.parse(data.toString());
-    
-    if (event.type === "new_message") {
-      console.log(\`[NEW EMAIL] \${event.inbox}: \${event.message.subject}\`);
-      
-      // Check if it's an OTP message
-      if (event.message.otp) {
-        console.log(\`Extracted OTP for \${event.inbox}: \${event.message.otp}\`);
-        // Emit to your test framework's event bus...
-      }
-    }
-  });
-
-  return ws;
-}
-
-const wsConnection = await listenToAllInboxes(accounts);`}
+// 3. Subscribe to all the inboxes you just provisioned
+accounts.forEach((inbox) => {
+  fce.ws.subscribe(inbox);
+});`}
       />
 
       {/* ── Webhooks Alternative ── */}

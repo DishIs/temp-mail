@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "Playwright & Selenium – FreeCustom.Email Use Cases",
-  description: "Automate email verification in Playwright and Selenium E2E tests using disposable inboxes.",
+  description: "Automate email verification in Playwright and Selenium E2E tests using the official SDKs.",
 };
 
 export default function PlaywrightSeleniumPage() {
@@ -22,138 +22,84 @@ export default function PlaywrightSeleniumPage() {
         Playwright & Selenium — Email Verification Testing
       </h1>
       <p className="text-muted-foreground mt-2 leading-relaxed">
-        Automate signup flows that require email OTP verification using disposable inboxes. No shared test accounts, no flaky email state, no cleanup overhead.
+        Automate signup flows that require email OTP verification using disposable inboxes. No shared test accounts, no flaky email state, no cleanup overhead. The official SDKs handle polling and extraction automatically.
       </p>
 
       <div className="rounded-lg border border-border bg-muted/5 px-5 py-4 my-6">
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">What you&apos;ll need</p>
         <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-1 mb-0">
-          <li>A FreeCustom.Email API key (Free plan works for basic polling; Developer+ for long-poll)</li>
-          <li>Playwright or Selenium installed in your project</li>
+          <li>A FreeCustom.Email API key</li>
+          <li>Playwright (TypeScript) or Selenium (Python) installed in your project</li>
           <li>
-            <code className="text-xs bg-muted/60 rounded px-1">npm install freecustom-email</code> (optional SDK) or raw{" "}
-            <code className="text-xs bg-muted/60 rounded px-1">fetch</code>
+            <code className="text-xs bg-muted/60 rounded px-1">npm install freecustom-email</code> (for Playwright) or <code className="text-xs bg-muted/60 rounded px-1">pip install freecustom-email</code> (for Selenium)
           </li>
         </ul>
       </div>
 
       {/* ── Playwright ── */}
-      <h2 id="playwright" className="text-lg font-semibold mt-10 mb-2">Playwright</h2>
+      <h2 id="playwright" className="text-lg font-semibold mt-10 mb-2">Playwright (TypeScript)</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        The pattern: generate a unique inbox per test, fill the signup form, then call the FCE API to wait for the OTP and complete verification.
+        Using the Node SDK, you can generate an inbox, trigger the signup, and wait for the OTP in just three lines of code. The SDK uses long-polling internally so tests remain perfectly fast and stable.
       </p>
 
-      <h3 className="text-base font-semibold mt-6 mb-2">TypeScript — full example</h3>
+      <h3 className="text-base font-semibold mt-6 mb-2">Full Playwright Test</h3>
       <CodeBlock
         language="typescript"
         code={`import { test, expect } from "@playwright/test";
+import { FreecustomEmailClient } from "freecustom-email";
 
-const FCE_API = "https://api2.freecustom.email";
-const API_KEY = process.env.FCE_API_KEY!;
-
-async function createInbox(): Promise<string> {
-  const res = await fetch(\`\${FCE_API}/v1/inboxes\`, {
-    method: "POST",
-    headers: {
-      Authorization: \`Bearer \${API_KEY}\`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ inbox: \`pw-test-\${Date.now()}@ditapi.info\` }),
-  });
-  const data = await res.json();
-  return data.data.inbox;
-}
-
-async function waitForOtp(inbox: string, timeoutMs = 30_000): Promise<string> {
-  // Long-poll — one request, waits up to 30s for the email (Developer+ plan)
-  const res = await fetch(
-    \`\${FCE_API}/v1/inboxes/\${encodeURIComponent(inbox)}/wait?timeout=30\`,
-    { headers: { Authorization: \`Bearer \${API_KEY}\` } }
-  );
-  if (!res.ok) throw new Error("wait endpoint failed");
-  
-  // Then fetch the OTP
-  const otpRes = await fetch(
-    \`\${FCE_API}/v1/inboxes/\${encodeURIComponent(inbox)}/otp\`,
-    { headers: { Authorization: \`Bearer \${API_KEY}\` } }
-  );
-  const { data } = await otpRes.json();
-  if (!data?.otp) throw new Error("No OTP found");
-  return data.otp;
-}
+// Initialize the FCE client globally for your tests
+const fce = new FreecustomEmailClient({ apiKey: process.env.FCE_API_KEY! });
 
 test("signup with email verification", async ({ page }) => {
-  const inbox = await createInbox();
+  // 1. Create a dynamic inbox
+  const inbox = \`pw-test-\${Date.now()}@ditapi.info\`;
+  await fce.inboxes.register(inbox);
 
-  // Fill the signup form
+  // 2. Fill the signup form in your app
   await page.goto("https://your-app.com/signup");
   await page.fill('[name="email"]', inbox);
   await page.fill('[name="password"]', "Str0ng!Pass#99");
   await page.click('[type="submit"]');
 
-  // Wait for OTP email and extract the code
-  const otp = await waitForOtp(inbox);
+  // 3. Wait for the OTP email and extract the code automatically (Wait API)
+  const otp = await fce.otp.waitFor(inbox, { timeoutMs: 30_000 });
 
-  // Enter OTP in the verification step
+  // 4. Enter OTP in the verification step
   await page.fill('[name="otp"]', otp);
   await page.click('[data-testid="verify-btn"]');
 
+  // Assert successful verification
   await expect(page).toHaveURL("/dashboard");
-});`}
-      />
+});
 
-      <h3 className="text-base font-semibold mt-8 mb-2">Cleanup (afterEach)</h3>
-      <CodeBlock
-        language="typescript"
-        code={`// Optionally delete the inbox after each test to keep your account tidy.
-// Not required — inboxes are isolated by their unique address.
-test.afterEach(async ({ }, testInfo) => {
-  if (testInfo.status !== testInfo.expectedStatus) {
-    console.log("Test failed — leaving inbox for debugging");
+// Optionally cleanup (though not strictly necessary as inboxes are isolated)
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) {
+    // Only cleanup on success; leave failed tests for debugging
+    // await fce.inboxes.unregister(inbox);
   }
-  // await deleteInbox(inbox); // implement as needed
 });`}
       />
 
       {/* ── Selenium ── */}
       <h2 id="selenium" className="text-lg font-semibold mt-12 mb-2">Selenium (Python)</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        Same pattern works with any Selenium binding. This example uses Python + <code className="text-xs bg-muted/60 rounded px-1">requests</code>.
+        The Python SDK supports a <code className="text-xs bg-muted/60 rounded px-1">sync=True</code> mode, which is perfect for traditional, synchronous Selenium test runners like pytest without needing <code className="text-xs bg-muted/60 rounded px-1">asyncio</code> wrappers.
       </p>
       <CodeBlock
         language="python"
-        code={`import time, os, requests
+        code={`import time, os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from freecustom_email import FreeCustomEmail
 
-FCE_API = "https://api2.freecustom.email"
-API_KEY = os.environ["FCE_API_KEY"]
-HEADERS = {"Authorization": f"Bearer {API_KEY}"}
-
-def create_inbox(address: str) -> str:
-    r = requests.post(
-        f"{FCE_API}/v1/inboxes",
-        headers={**HEADERS, "Content-Type": "application/json"},
-        json={"inbox": address},
-    )
-    return r.json()["data"]["inbox"]
-
-def wait_for_otp(inbox: str, timeout: int = 30) -> str:
-    # Long-poll (Developer+ plan)
-    requests.get(
-        f"{FCE_API}/v1/inboxes/{inbox}/wait",
-        headers=HEADERS,
-        params={"timeout": timeout},
-        timeout=timeout + 5,
-    )
-    r = requests.get(f"{FCE_API}/v1/inboxes/{inbox}/otp", headers=HEADERS)
-    otp = r.json()["data"]["otp"]
-    if not otp:
-        raise RuntimeError("No OTP found")
-    return otp
+# Initialize synchronous client
+fce = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"], sync=True)
 
 def test_signup_with_otp():
-    inbox = create_inbox(f"sel-{int(time.time())}@ditapi.info")
+    inbox = f"sel-{int(time.time())}@ditapi.info"
+    fce.inboxes.register(inbox)
     
     driver = webdriver.Chrome()
     try:
@@ -162,13 +108,15 @@ def test_signup_with_otp():
         driver.find_element(By.NAME, "password").send_keys("Str0ng!Pass#99")
         driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
 
-        otp = wait_for_otp(inbox)
+        # SDK automatically waits for the email and extracts the 6 digit OTP
+        otp = fce.otp.wait_for(inbox, timeout_ms=30000)
 
         driver.find_element(By.NAME, "otp").send_keys(otp)
         driver.find_element(By.CSS_SELECTOR, '[data-testid="verify-btn"]').click()
 
         assert "/dashboard" in driver.current_url
     finally:
+        fce.inboxes.unregister(inbox)
         driver.quit()
 
 if __name__ == "__main__":
@@ -196,7 +144,7 @@ export default defineConfig({
 
       <div className="mt-10 flex gap-3 flex-wrap">
         <Button asChild size="sm">
-          <Link href="/api/docs/quickstart">API Quickstart</Link>
+          <Link href="/api/docs/sdk/npm">Node SDK Docs</Link>
         </Button>
         <Button asChild size="sm" variant="outline">
           <Link href="/api/use-cases/ci-cd-pipelines">CI / CD integration →</Link>

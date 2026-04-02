@@ -65,27 +65,29 @@ jobs:
           FCE_API_KEY: \${{ secrets.FCE_API_KEY }}`}
       />
 
-      <h3 className="text-base font-semibold mt-6 mb-2">Jest setup helper</h3>
+      <h3 className="text-base font-semibold mt-6 mb-2">Playwright / Jest Setup Helper</h3>
+      <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+        Wrap the FreeCustom.Email Node SDK in a reusable helper that you can inject into any test file.
+      </p>
       <CodeBlock
         language="typescript"
-        code={`// helpers/inbox.ts — reusable across all tests
-const FCE = "https://api2.freecustom.email";
-const KEY = process.env.FCE_API_KEY!;
-const h = { Authorization: \`Bearer \${KEY}\`, "Content-Type": "application/json" };
+        code={`// helpers/inbox.ts
+import { FreecustomEmailClient } from "freecustom-email";
+
+// Ensure FCE_API_KEY is available in your CI environment secrets
+export const fce = new FreecustomEmailClient({ apiKey: process.env.FCE_API_KEY! });
 
 export async function createInbox(prefix = "ci"): Promise<string> {
   const inbox = \`\${prefix}-\${Date.now()}-\${Math.random().toString(36).slice(2,6)}@ditapi.info\`;
-  await fetch(\`\${FCE}/v1/inboxes\`, { method: "POST", headers: h, body: JSON.stringify({ inbox }) });
+  await fce.inboxes.register(inbox);
   return inbox;
 }
 
-export async function waitForOtp(inbox: string, timeoutSec = 30): Promise<string> {
-  // Long-poll waits server-side (Developer+ plan)
-  await fetch(\`\${FCE}/v1/inboxes/\${encodeURIComponent(inbox)}/wait?timeout=\${timeoutSec}\`, { headers: h });
-  const r = await fetch(\`\${FCE}/v1/inboxes/\${encodeURIComponent(inbox)}/otp\`, { headers: h });
-  const { data } = await r.json();
-  if (!data?.otp) throw new Error("No OTP received within timeout");
-  return data.otp;
+export async function waitForOtp(inbox: string, timeoutMs = 30_000): Promise<string> {
+  // Uses long-polling automatically, handles retries and extraction
+  const otp = await fce.otp.waitFor(inbox, { timeoutMs });
+  if (!otp) throw new Error("No OTP received within timeout");
+  return otp;
 }`}
       />
 
@@ -142,39 +144,27 @@ workflows:
       {/* ── pytest ── */}
       <h2 id="pytest" className="text-lg font-semibold mt-12 mb-2">pytest fixture (Python)</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        Provide a fresh inbox as a pytest fixture with automatic teardown.
+        Provide a fresh inbox as a pytest fixture with automatic teardown using the Python SDK.
       </p>
       <CodeBlock
         language="python"
         code={`# conftest.py
-import time, os, pytest, requests
+import time, os, pytest
+from freecustom_email import FreeCustomEmail
 
-FCE_API = "https://api2.freecustom.email"
-HEADERS = {"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
+# Use sync=True to work easily inside synchronous pytest fixtures
+fce = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"], sync=True)
 
 @pytest.fixture
 def disposable_inbox():
     """Yields a unique inbox address; registers it before and unregisters after."""
     inbox = f"pytest-{int(time.time())}@ditapi.info"
-    requests.post(
-        f"{FCE_API}/v1/inboxes",
-        headers={**HEADERS, "Content-Type": "application/json"},
-        json={"inbox": inbox},
-    )
+    fce.inboxes.register(inbox)
+    
     yield inbox
-    requests.delete(f"{FCE_API}/v1/inboxes/{inbox}", headers=HEADERS)
-
-def wait_for_otp(inbox: str, timeout: int = 30) -> str:
-    requests.get(
-        f"{FCE_API}/v1/inboxes/{inbox}/wait",
-        headers=HEADERS,
-        params={"timeout": timeout},
-        timeout=timeout + 5,
-    )
-    r = requests.get(f"{FCE_API}/v1/inboxes/{inbox}/otp", headers=HEADERS)
-    otp = r.json()["data"]["otp"]
-    assert otp, "No OTP received"
-    return otp
+    
+    # Cleanup after test completes
+    fce.inboxes.unregister(inbox)
 
 # --- example test ---
 # def test_signup(browser, disposable_inbox):
@@ -183,7 +173,11 @@ def wait_for_otp(inbox: str, timeout: int = 30) -> str:
 #     page.fill('[name="email"]', disposable_inbox)
 #     page.fill('[name="password"]', "Test1234!")
 #     page.click('[type="submit"]')
-#     otp = wait_for_otp(disposable_inbox)
+#
+#     # SDK handles waiting and OTP extraction
+#     otp = fce.otp.wait_for(disposable_inbox, timeout_ms=30000)
+#     assert otp, "No OTP received"
+#
 #     page.fill('[name="otp"]', otp)
 #     page.click('[data-testid="verify-btn"]')
 #     assert "/dashboard" in page.url`}

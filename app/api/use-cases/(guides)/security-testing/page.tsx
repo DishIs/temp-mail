@@ -37,23 +37,20 @@ export default function SecurityTestingPage() {
       {/* ── Host Header Poisoning ── */}
       <h2 id="host-header" className="text-lg font-semibold mt-10 mb-2">Password Reset Poisoning</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        You can dynamically provision an inbox to receive a password reset email and verify if the application leaks the reset token via Host header injection.
+        You can dynamically provision an inbox using the Python SDK to receive a password reset email and verify if the application leaks the reset token via Host header injection.
       </p>
       <CodeBlock
         language="python"
         code={`import requests, os, time
+from freecustom_email import FreeCustomEmail
 
-FCE_API = "https://api2.freecustom.email"
-API_KEY = os.environ.get("FCE_API_KEY")
+fce = FreeCustomEmail(api_key=os.environ.get("FCE_API_KEY"), sync=True)
 TARGET_URL = "https://target-app.local/forgot-password"
 
 def run_poisoning_test():
     # 1. Provision target inbox
     inbox = f"sec-target-{int(time.time())}@ditapi.info"
-    requests.post(f"{FCE_API}/v1/inboxes", 
-        headers={"Authorization": f"Bearer {API_KEY}"},
-        json={"inbox": inbox}
-    )
+    fce.inboxes.register(inbox)
 
     # 2. Trigger reset with malicious Host header
     malicious_host = "evil.com"
@@ -62,21 +59,18 @@ def run_poisoning_test():
         data={"email": inbox}
     )
 
-    # 3. Wait for the email and extract the link
-    r = requests.get(f"{FCE_API}/v1/inboxes/{inbox}/wait?timeout=30",
-        headers={"Authorization": f"Bearer {API_KEY}"}
-    )
-    
-    if r.status_code == 200:
-        email_data = r.json().get("data", {})
-        link = email_data.get("verification_link", "")
+    # 3. Wait for the email and check the verification link
+    try:
+        # wait_for automatically handles polling and returns an OTP/link object
+        result = fce.otp.wait_for(inbox, timeout_ms=30000)
+        link = result.verification_link if hasattr(result, "verification_link") else str(result)
         
         if malicious_host in link:
             print(f"[!] VULNERABLE: Token leaked to {malicious_host}. Link: {link}")
         else:
             print("[+] SAFE: Host header ignored.")
-    else:
-        print("[-] No email received.")
+    except Exception as e:
+        print(f"[-] No email received or error: {e}")
 
 run_poisoning_test()`}
       />
@@ -106,24 +100,27 @@ done`}
       {/* ── HTML Injection / XSS ── */}
       <h2 id="html-injection" className="text-lg font-semibold mt-10 mb-2">Email HTML Injection (XSS)</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        Verify how your system sanitizes input reflected in emails (like usernames or profile data). The API returns the raw HTML body, making it easy to parse and check for executable scripts.
+        Verify how your system sanitizes input reflected in emails (like usernames or profile data). Using the Python SDK, you can quickly fetch the raw HTML body to check for executable scripts.
       </p>
       <CodeBlock
         language="python"
-        code={`import requests, os
+        code={`import os
+from freecustom_email import FreeCustomEmail
+
+fce = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"], sync=True)
 
 def check_email_for_xss(inbox: str, payload: str):
     # Fetch the latest message
-    r = requests.get(f"https://api2.freecustom.email/v1/inboxes/{inbox}/messages?limit=1",
-        headers={"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
-    )
-    msg_id = r.json()["data"][0]["id"]
+    messages = fce.messages.list(inbox, limit=1)
+    if not messages:
+        print("[-] No messages found")
+        return
+        
+    msg_id = messages[0].id
     
-    # Fetch full HTML
-    r_full = requests.get(f"https://api2.freecustom.email/v1/inboxes/{inbox}/messages/{msg_id}",
-        headers={"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
-    )
-    html_body = r_full.json()["data"]["html"]
+    # Fetch full HTML content
+    full_msg = fce.messages.get(inbox, msg_id)
+    html_body = full_msg.html
     
     if payload in html_body:
         print("[!] HTML Payload reflected without sanitization!")

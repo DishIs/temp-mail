@@ -77,18 +77,18 @@ export default function AiAgentsPage() {
       {/* ── LangChain ── */}
       <h2 id="langchain" className="text-lg font-semibold mt-10 mb-2">LangChain (Python)</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        Wrap the FCE API as a LangChain tool so any chain or agent can call it.
+        Wrap the FCE Python SDK as LangChain tools so any chain or agent can easily handle email verifications.
       </p>
       <CodeBlock
         language="python"
-        code={`import os, requests
+        code={`import os
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
+from freecustom_email import FreeCustomEmail
 
-FCE_API = "https://api2.freecustom.email"
-HEADERS = {"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
+fce = FreeCustomEmail(api_key=os.environ['FCE_API_KEY'], sync=True)
 
 @tool
 def create_inbox_and_wait_for_otp(domain: str = "ditapi.info", timeout: int = 45) -> dict:
@@ -96,19 +96,20 @@ def create_inbox_and_wait_for_otp(domain: str = "ditapi.info", timeout: int = 45
     Creates a disposable email inbox and waits up to \`timeout\` seconds for
     an OTP email to arrive. Returns the inbox address and OTP.
     """
-    r = requests.post(
-        f"{FCE_API}/v1/mcp/create-and-wait-otp",
-        headers={**HEADERS, "Content-Type": "application/json"},
-        json={"domain": domain, "timeout": timeout},
-        timeout=timeout + 5,
-    )
-    return r.json()
+    import time
+    inbox = f"agent-{int(time.time())}@{domain}"
+    fce.inboxes.register(inbox)
+    
+    # We yield control, letting the agent trigger signup, but for this demo tool
+    # we assume the signup is triggered externally or we wait immediately.
+    # In a real agent, you would split this into \`create_inbox\` and \`wait_for_otp\` tools.
+    otp = fce.otp.wait_for(inbox, timeout_ms=timeout * 1000)
+    return {"inbox": inbox, "otp": otp}
 
 @tool
-def get_otp_for_inbox(inbox: str) -> dict:
+def get_otp_for_inbox(inbox: str) -> str:
     """Extracts the most recent OTP from an already-registered inbox."""
-    r = requests.get(f"{FCE_API}/v1/inboxes/{inbox}/otp", headers=HEADERS)
-    return r.json()
+    return fce.otp.wait_for(inbox, timeout_ms=30000)
 
 llm = ChatOpenAI(model="gpt-4o")
 tools = [create_inbox_and_wait_for_otp, get_otp_for_inbox]
@@ -131,15 +132,16 @@ print(result["output"])`}
       {/* ── LangGraph ── */}
       <h2 id="langgraph" className="text-lg font-semibold mt-10 mb-2">LangGraph — Agent Node</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        Use FCE as a dedicated node in a LangGraph workflow, keeping email logic isolated.
+        Use the FCE SDK inside a dedicated node in a LangGraph workflow, keeping email logic cleanly isolated.
       </p>
       <CodeBlock
         language="python"
         code={`from langgraph.graph import StateGraph, END
 from typing import TypedDict
-import requests, os
+import os, time
+from freecustom_email import FreeCustomEmail
 
-FCE_HEADERS = {"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
+fce = FreeCustomEmail(api_key=os.environ['FCE_API_KEY'], sync=True)
 
 class State(TypedDict):
     url: str
@@ -147,24 +149,23 @@ class State(TypedDict):
     otp: str | None
     verified: bool
 
-def provision_email(state: State) -> State:
+def provision_email_and_wait(state: State) -> State:
     """LangGraph node: create inbox + wait for OTP."""
-    r = requests.post(
-        "https://api2.freecustom.email/v1/mcp/create-and-wait-otp",
-        headers={**FCE_HEADERS, "Content-Type": "application/json"},
-        json={"timeout": 45},
-        timeout=50,
-    )
-    data = r.json()
-    return {**state, "inbox": data.get("inbox"), "otp": data.get("otp")}
+    inbox = f"graph-{int(time.time())}@ditapi.info"
+    fce.inboxes.register(inbox)
+    
+    # Ideally, trigger your app's signup request here before waiting
+    otp = fce.otp.wait_for(inbox, timeout_ms=45000)
+    
+    return {**state, "inbox": inbox, "otp": otp}
 
 def verify_account(state: State) -> State:
-    # Your verification logic here
+    # Your verification logic here using the extracted OTP
     print(f"Verifying with OTP: {state['otp']} for {state['inbox']}")
     return {**state, "verified": True}
 
 graph = StateGraph(State)
-graph.add_node("provision_email", provision_email)
+graph.add_node("provision_email", provision_email_and_wait)
 graph.add_node("verify_account", verify_account)
 graph.set_entry_point("provision_email")
 graph.add_edge("provision_email", "verify_account")
@@ -179,11 +180,12 @@ print(result)`}
       <h2 id="openai" className="text-lg font-semibold mt-10 mb-2">OpenAI — Function Calling</h2>
       <CodeBlock
         language="python"
-        code={`import json, os, requests
+        code={`import json, os, time
 from openai import OpenAI
+from freecustom_email import FreeCustomEmail
 
 client = OpenAI()
-FCE_HEADERS = {"Authorization": f"Bearer {os.environ['FCE_API_KEY']}"}
+fce = FreeCustomEmail(api_key=os.environ['FCE_API_KEY'], sync=True)
 
 tools = [
     {
@@ -203,13 +205,13 @@ tools = [
 
 def call_fce(name: str, args: dict) -> str:
     if name == "create_inbox_and_wait_for_otp":
-        r = requests.post(
-            "https://api2.freecustom.email/v1/mcp/create-and-wait-otp",
-            headers={**FCE_HEADERS, "Content-Type": "application/json"},
-            json=args,
-            timeout=args.get("timeout", 45) + 5,
-        )
-        return json.dumps(r.json())
+        inbox = f"ai-{int(time.time())}@ditapi.info"
+        fce.inboxes.register(inbox)
+        
+        # Note: In a real flow, you'd tell the LLM the inbox first, let it
+        # sign up, and then call a separate wait_for_otp tool.
+        otp = fce.otp.wait_for(inbox, timeout_ms=args.get("timeout", 45) * 1000)
+        return json.dumps({"inbox": inbox, "otp": otp})
     return json.dumps({"error": "unknown tool"})
 
 messages = [{"role": "user", "content": "Create a disposable inbox and give me the OTP."}]
