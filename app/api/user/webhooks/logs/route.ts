@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   try {
     const data = await callInternalAPI(
         request,
-        `/user/webhooks/logs?wyiUserId=${encodeURIComponent(session.user.id)}`,
+        `/user/webhooks/logs/${session.user.id}`,
         { method: 'GET' },
         { id: session.user.id }
     );
