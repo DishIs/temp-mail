@@ -23,6 +23,72 @@ export interface ChangelogEntry {
 
 export const changelogData: ChangelogEntry[] = [
     {
+        version: "3.3.0",
+        date: "April 3, 2026",
+        title: "Webhooks, MCP & Wait API",
+        features: [
+            {
+                icon: Server,
+                tag: 'New',
+                title: "Webhooks Integration",
+                description: "Real-time HTTP push notifications for incoming emails, fully configurable from the API dashboard.",
+            },
+            {
+                icon: Bot,
+                tag: 'New',
+                title: "MCP (Model Context Protocol)",
+                description: "Run our MCP server to let AI agents natively read and extract codes from your disposable inboxes.",
+                link: '/api/docs/mcp'
+            },
+            {
+                icon: Clock,
+                tag: 'New',
+                title: "Wait API (Long Polling)",
+                description: "Pass `wait=true` to our endpoints to hold the connection until an email arrives—no WebSockets or complex polling logic needed.",
+            },
+            {
+                icon: Shield,
+                tag: 'Improved',
+                title: "Max Inbox Limits",
+                description: "Introduced transparent active inbox limits across all API pricing plans to optimize dedicated infrastructure performance.",
+                link: '/api/pricing'
+            }
+        ]
+    },
+    {
+        version: "3.2.0",
+        date: "March 30, 2026",
+        title: "AI Assistant & Yearly Billing",
+        features: [
+            {
+                icon: Sparkles,
+                tag: 'New',
+                title: "FCE AI Assistant",
+                description: "Meet your new AI assistant. Ask questions, navigate docs, and let it write integration tests for you directly.",
+                link: '/ai'
+            },
+            {
+                icon: Crown,
+                tag: 'Pro',
+                title: "Yearly API Billing",
+                description: "Save more with yearly API billing options. Pay for 10 months and get 2 months free across all paid API plans.",
+                link: '/api/pricing'
+            },
+            {
+                icon: BookOpen,
+                tag: 'New',
+                title: "Global Search & Use Cases",
+                description: "Powerful global documentation search and comprehensive new use-case guides with native SDK examples.",
+            },
+            {
+                icon: LayoutList,
+                tag: 'Improved',
+                title: "Postman Integration",
+                description: "New 'Run in Postman' buttons added to documentation for one-click API collection imports.",
+            }
+        ]
+    },
+    {
         version: "3.1.0",
         date: "January 30, 2026",
         title: "Social Auth, Security & UI Polish",

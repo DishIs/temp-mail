@@ -40,7 +40,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 function AuthForm() {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
   const urlError    = searchParams.get("error");
 
   useEffect(() => {

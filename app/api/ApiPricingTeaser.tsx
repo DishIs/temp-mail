@@ -15,6 +15,7 @@ const PLANS = [
     period: "/mo",
     reqMonth: "100k req/mo",
     features: {
+      maxInboxes: "25",
       otp: false,
       ws: false,
       att: false,
@@ -29,6 +30,7 @@ const PLANS = [
     reqMonth: "500k req/mo",
     popular: true,
     features: {
+      maxInboxes: "40",
       otp: false,
       ws: true,
       att: true,
@@ -42,6 +44,7 @@ const PLANS = [
     period: "/mo",
     reqMonth: "2M req/mo",
     features: {
+      maxInboxes: "100",
       otp: true,
       ws: true,
       att: true,
@@ -53,6 +56,7 @@ const PLANS = [
 
 const FEATURE_ROWS: { label: string; key: keyof (typeof PLANS)[0]["features"] }[] = [
   { label: "Requests / mo", key: "support" }, // overridden below
+  { label: "Max inboxes", key: "maxInboxes" },
   { label: "OTP extraction", key: "otp" },
   { label: "WebSocket push", key: "ws" },
   { label: "Attachments",    key: "att" },
@@ -157,16 +161,20 @@ export function ApiPricingTeaser() {
               {/* feature rows */}
               <ul className="space-y-2.5 flex-1">
                 {[
+                  { label: "Max inboxes",    val: plan.features.maxInboxes },
                   { label: "OTP extraction", val: plan.features.otp },
                   { label: "WebSocket push", val: plan.features.ws },
                   { label: "Attachments",    val: plan.features.att },
                   { label: "Custom domains", val: plan.features.cd },
                 ].map(({ label, val }) => (
                   <li key={label} className="flex items-center gap-2.5">
-                    {val
-                      ? <Check className="h-3.5 w-3.5 text-foreground shrink-0" />
-                      : <span className="h-3.5 w-3.5 rounded-full border border-border/70 shrink-0" />
-                    }
+                    {typeof val === 'string' ? (
+                      <span className="h-3.5 w-3.5 flex items-center justify-center text-[10px] font-bold text-foreground shrink-0">{val === 'Unlimited' ? '∞' : val}</span>
+                    ) : val ? (
+                      <Check className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    ) : (
+                      <span className="h-3.5 w-3.5 rounded-full border border-border/70 shrink-0" />
+                    )}
                     <span
                       className={`text-xs font-mono ${
                         val ? "text-foreground" : "text-muted-foreground/50"

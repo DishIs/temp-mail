@@ -153,8 +153,8 @@ export function MessageModal({
       {/*
         ── Two fixes here:
            1. No `hideCloseButton` prop — instead we suppress shadcn's built-in
-              close button with `[&>button:first-of-type]:hidden` (it renders an
-              absolutely-positioned <button> as the first child of DialogContent).
+              close button with `[&>button.absolute]:hidden` (it renders an
+              absolutely-positioned <button> as the last child of DialogContent).
            2. We render our own close button inside the title bar.
       */}
       <DialogContent
@@ -163,7 +163,7 @@ export function MessageModal({
           "flex flex-col p-0 gap-0 overflow-hidden",
           "bg-background border border-border rounded-lg",
           // ↓ hide shadcn's default floating close button
-          "[&>button:first-of-type]:hidden",
+          "[&>button.absolute]:hidden",
         ].join(" ")}
       >
 

@@ -6,9 +6,10 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/components/ui/toast";
+import { signOut } from "next-auth/react";
 import {
   AlertCircle, Check, Copy, Loader2, Trash2, ShieldCheck,
-  ChevronLeft, ChevronRight, Search, Mail, Inbox, RefreshCw, Plus,
+  ChevronLeft, ChevronRight, Search, Mail, Inbox, RefreshCw, Plus, LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { ApiCustomDomainManager } from "@/components/dashboard/ApiCustomDomainManager";
 import { CUSTOM_DOMAIN_PLANS } from "@/lib/api-plans-client";
+import { useLocale } from "next-intl";
+import { PaddleInit } from "@/components/paddle-init";
 
 const PAYMENT_LOGS_LIMIT = 20;
 
@@ -725,6 +728,36 @@ function ApiDashboardContent() {
   const [generateLoading,   setGenerateLoading]   = useState(false);
   const [revokeId,          setRevokeId]           = useState<string | null>(null);
   const [error,             setError]             = useState<string | null>(null);
+  const [busyCredits,       setBusyCredits]       = useState<string | null>(null);
+  const [busyPlan,          setBusyPlan]          = useState<string | null>(null);
+  const locale = useLocale();
+
+  // ─── Open checkout for plan upgrade ─────────────────────────────────────────────
+  const openPlanUpgrade = async (planId: string, isYearly: boolean = false) => {
+    if (!session?.user?.id) { toast.error("Please sign in first."); router.push("/auth?callbackUrl=/api/dashboard"); return; }
+    setBusyPlan(planId);
+    const tid = toast.loading("Opening checkout…");
+    try {
+      const res = await fetch("/api/paddle/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "api", plan: planId, billing: isYearly ? "yearly" : "monthly" }),
+      });
+      const d = await res.json();
+      if (d.error) { toast.error(d.error, { id: tid }); return; }
+      const Paddle = typeof window !== "undefined" ? (window as any).Paddle : null;
+      if (!Paddle) { toast.error("Checkout not ready. Please refresh.", { id: tid }); return; }
+      toast.dismiss(tid);
+      Paddle.Checkout.open({
+        settings: { displayMode: "overlay", theme: "light", locale, successUrl: `${window.location.origin}/payment/success?type=api&source=dashboard` },
+        items: [{ priceId: d.priceId, quantity: 1 }],
+        customer: session.user?.email ? { email: session.user.email as string } : undefined,
+        customData: { userId: session.user.id, productType: "api", apiPlan: planId },
+        onEvent: (event: any) => { if (event.name === "checkout.completed") router.push("/payment/success?type=api&source=dashboard"); },
+      });
+    } catch { toast.error("Something went wrong.", { id: tid }); }
+    finally { setBusyPlan(null); }
+  };
 
   // ─── Derived data ──────────────────────────────────────────────────────────
   const data        = apiStatus?.data ?? (apiStatus as ApiStatusData | null);
@@ -894,7 +927,7 @@ function ApiDashboardContent() {
         {/* Top bar */}
         <div className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-40">
           <div className="max-w-5xl mx-auto px-6">
-            <div className="flex items-center justify-between h-14">
+                  <div className="flex items-center justify-between h-14">
               <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                 <Link href="/api" className="hover:text-foreground transition-colors">API</Link>
                 <span className="text-border">/</span>
@@ -903,7 +936,21 @@ function ApiDashboardContent() {
               <div className="flex items-center gap-2">
                 <Button asChild variant="ghost" size="sm"><Link href="/api/playground">Playground</Link></Button>
                 <Button asChild variant="ghost" size="sm"><Link href="/api">Overview</Link></Button>
-                <Button asChild size="sm"><Link href="/api/pricing">Upgrade</Link></Button>
+                {showUpsell && upsell?.next_plan && (
+                  <Button size="sm" onClick={() => openPlanUpgrade(upsell.next_plan!.planId || "developer")} disabled={!!busyPlan}>Upgrade</Button>
+                )}
+                {!showUpsell && (
+                  <Button asChild size="sm"><Link href="/api/pricing">Pricing</Link></Button>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="ml-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => signOut({ callbackUrl: "/api" })}
+                  title="Logout"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
@@ -1036,7 +1083,9 @@ function ApiDashboardContent() {
                           ))}
                         </ul>
                       ) : null}
-                      <Button asChild size="sm"><Link href="/api/pricing">View API pricing</Link></Button>
+                      <Button size="sm" onClick={() => openPlanUpgrade(upsell.next_plan.planId || "developer")} disabled={!!busyPlan}>
+                        Upgrade to {upsell.next_plan.label}
+                      </Button>
                     </div>
                   )}
                 </TabsContent>
@@ -1143,19 +1192,25 @@ function ApiDashboardContent() {
                       </p>
                       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {upsell.credit_packages.map(pkg => (
-                          <Link key={pkg.price} href={`/api/pricing?credits=${encodeURIComponent(pkg.price ?? "")}`}
-                            className="rounded-lg border border-border bg-muted/10 hover:bg-muted/20 transition-colors p-4 text-sm">
+                          <button
+                            key={pkg.price}
+                            disabled={!!busyCredits}
+                            onClick={() => openCreditsCheckout(pkg)}
+                            className="rounded-lg border border-border bg-muted/10 hover:bg-muted/20 transition-colors p-4 text-sm disabled:opacity-50"
+                          >
                             <p className="font-semibold text-foreground">{pkg.price}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">{pkg.requests} requests</p>
-                          </Link>
+                          </button>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/api/pricing">Add credits or upgrade plan</Link>
-                  </Button>
+                  {showUpsell && (
+                    <Button size="sm" onClick={() => openPlanUpgrade("developer")}>
+                      Upgrade plan
+                    </Button>
+                  )}
                 </TabsContent>
 
                 {/* ══════════════════════════════════════════════════════
@@ -1220,6 +1275,23 @@ function ApiDashboardContent() {
                           </p>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Manage Subscription / Support text */}
+                  {subInfo?.status !== "cancelled" && (
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border mb-12">
+                      <Button onClick={async () => {
+                        const res = await fetch("/api/paddle/portal-session", { method: "POST" });
+                        const data = await res.json();
+                        if (data.url) window.open(data.url, "_blank");
+                        else toast.error("Could not open billing portal");
+                      }} size="sm">
+                        Manage Subscription
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/api/pricing">Change Plan</Link>
+                      </Button>
                     </div>
                   )}
 
@@ -1361,6 +1433,7 @@ export default function ApiDashboardPage() {
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     }>
+      <PaddleInit />
       <ApiDashboardContent />
     </Suspense>
   );

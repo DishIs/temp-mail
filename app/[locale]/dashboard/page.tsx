@@ -8,12 +8,14 @@ import { Globe, Zap, ShieldCheck, ExternalLink } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import Link from "next/link";
+import { DashboardWrapper } from "@/components/dashboard-wrapper";
 
 // ── Affiliate link ─────────────────────────────────────────────────────────
 const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
-  const t = await getTranslations("Dashboard");
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
+  const { locale } = await props.params;
+  const t = await getTranslations({ locale, namespace: "Dashboard" });
   return {
     title: t("title"),
     description: t("description"),
@@ -58,11 +60,10 @@ interface DashboardData {
   mutedSenders: string[];
 }
 
-export default async function DashboardPage({
-  params: { locale },
-}: {
-  params: { locale: string };
+export default async function DashboardPage(props: {
+  params: Promise<{ locale: string }>;
 }) {
+  const { locale } = await props.params;
   const session = await auth();
   const t = await getTranslations("Dashboard");
   const isPro = session?.user?.plan === "pro";
@@ -80,6 +81,7 @@ export default async function DashboardPage({
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <DashboardWrapper>
       <div className="min-h-screen max-w-[100vw] bg-background text-foreground overflow-x-hidden" style={DOT_BG}>
 
         {/* ASCII background layer */}
@@ -243,6 +245,7 @@ export default async function DashboardPage({
 
         </main>
       </div>
+      </DashboardWrapper>
     </ThemeProvider>
   );
 }

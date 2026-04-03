@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { UpsellModal } from "@/components/upsell-modal";
+import { CreditsSuccessModal } from "@/components/credits-success-modal";
 import { AppHeader } from "@/components/nLHeader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Session } from "next-auth";
@@ -331,6 +332,8 @@ export default function ProfileClient() {
   const [deleteDialogOpen,  setDeleteDialogOpen]  = useState(false);
   const [deleteLoading,     setDeleteLoading]     = useState(false);
   const [deleteEmailInput,  setDeleteEmailInput]  = useState("");
+  const [showCreditsSuccess, setShowCreditsSuccess] = useState(false);
+  const [checkedUpgrade, setCheckedUpgrade] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth");
@@ -350,6 +353,18 @@ export default function ProfileClient() {
       fetchStorageData();
     }
   }, [status]);
+
+  // Check for upgrade and show credits modal
+  useEffect(() => {
+    if (checkedUpgrade) return;
+    setCheckedUpgrade(true);
+    
+    const justUpgraded = sessionStorage.getItem("just_upgraded");
+    if (justUpgraded === "true") {
+      sessionStorage.removeItem("just_upgraded");
+      setShowCreditsSuccess(true);
+    }
+  }, [checkedUpgrade]);
 
   const fetchUserData = async () => {
     try {
@@ -855,6 +870,7 @@ export default function ProfileClient() {
         </div>
 
         <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName="Pro Plan" />
+        <CreditsSuccessModal isOpen={showCreditsSuccess} onClose={() => setShowCreditsSuccess(false)} />
 
         {/* Delete account dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={open => {

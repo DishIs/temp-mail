@@ -2,8 +2,9 @@ import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import PricingClient from "./PricingClient";
 
-export async function generateMetadata({ params: { locale } }: { params: { locale: any } }) {
-  const t = await getTranslations("Pricing");
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
+  const { locale } = await props.params;
+  const t = await getTranslations({ locale, namespace: "Pricing" });
   return {
     title: t("title"),
     description: t("description"),

@@ -24,11 +24,11 @@ const FEATURES = [
 ];
 
 const PLANS = [
-  { name: "Free",       price: "$0/mo",   reqSec: "1",   reqMonth: "5,000",      otp: false, ws: false, att: false, cd: false, support: "Community" },
-  { name: "Developer",  price: "$7/mo",   reqSec: "10",  reqMonth: "100,000",    otp: false,  ws: false, att: false, cd: false, support: "Email" },
-  { name: "Startup",    price: "$19/mo",  reqSec: "25",  reqMonth: "500,000",    otp: false,  ws: true,  att: true,  cd: false, support: "Email" },
-  { name: "Growth",     price: "$49/mo",  reqSec: "50",  reqMonth: "2,000,000",  otp: true,  ws: true,  att: true,  cd: true,  support: "Priority" },
-  { name: "Enterprise", price: "$149/mo", reqSec: "100", reqMonth: "10,000,000", otp: true,  ws: true,  att: true,  cd: true,  support: "Dedicated" },
+  { name: "Free",       price: "$0/mo",   reqSec: "1",   reqMonth: "5,000",      maxInboxes: "10", otp: false, ws: false, att: false, cd: false, support: "Community" },
+  { name: "Developer",  price: "$7/mo",   reqSec: "10",  reqMonth: "100,000",    maxInboxes: "25", otp: false,  ws: false, att: false, cd: false, support: "Email" },
+  { name: "Startup",    price: "$19/mo",  reqSec: "25",  reqMonth: "500,000",    maxInboxes: "40", otp: false,  ws: true,  att: true,  cd: false, support: "Email" },
+  { name: "Growth",     price: "$49/mo",  reqSec: "50",  reqMonth: "2,000,000",  maxInboxes: "100", otp: true,  ws: true,  att: true,  cd: true,  support: "Priority" },
+  { name: "Enterprise", price: "$149/mo", reqSec: "100", reqMonth: "10,000,000", maxInboxes: "Unlimited", otp: true,  ws: true,  att: true,  cd: true,  support: "Dedicated" },
 ];
 
 const CREDITS_PACKS = [

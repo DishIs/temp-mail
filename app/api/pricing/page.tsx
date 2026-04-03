@@ -28,11 +28,11 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free", label: "Free", desc: "Try the API", price: "$0", reqSec: "1", reqMonth: "5,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared", planId: null as string | null, imap: false, wait: false as boolean | string, mcp: false as boolean | string, webhooks: false, sla: false },
-  { name: "developer", label: "Developer", desc: "Scripts & testing", price: "$7", reqSec: "10", reqMonth: "100,000", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "24h", freshDomains: false as const, pool: "shared", planId: "developer", imap: false, wait: "Yes (10 req/call)", mcp: false as boolean | string, webhooks: false, sla: false },
-  { name: "startup", label: "Startup", desc: "Automation & production", price: "$19", reqSec: "25", reqMonth: "500,000", otp: false, attachments: true, maxAttachment: "5 MB", ws: true, maxWs: "5", customDomains: false, persistence: "24h", freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: "Yes (10 req/call)", mcp: false as boolean | string, webhooks: false, sla: false },
-  { name: "growth", label: "Growth", desc: "High-scale workflows", price: "$49", reqSec: "50", reqMonth: "2,000,000", otp: true, attachments: true, maxAttachment: "25 MB", ws: true, maxWs: "20", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "growth", imap: true, wait: "Yes (10 req/call)", mcp: "60 ops/min", webhooks: true, sla: false },
-  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems", price: "$149", reqSec: "100", reqMonth: "10,000,000", otp: true, attachments: true, maxAttachment: "50 MB", ws: true, maxWs: "100", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "enterprise", imap: true, wait: "Yes (10 req/call)", mcp: "200 ops/min", webhooks: true, sla: true },
+  { name: "free", label: "Free", desc: "Try the API", price: "$0", reqSec: "1", reqMonth: "5,000", maxInboxes: "10", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "Anonymous (10h)", freshDomains: false as const, pool: "shared", planId: null as string | null, imap: false, wait: false as boolean | string, mcp: false as boolean | string, webhooks: false, sla: false },
+  { name: "developer", label: "Developer", desc: "Scripts & testing", price: "$7", reqSec: "10", reqMonth: "100,000", maxInboxes: "25", otp: false, attachments: false, maxAttachment: "—", ws: false, maxWs: "—", customDomains: false, persistence: "24h", freshDomains: false as const, pool: "shared", planId: "developer", imap: false, wait: "Yes (10 req/call)", mcp: false as boolean | string, webhooks: false, sla: false },
+  { name: "startup", label: "Startup", desc: "Automation & production", price: "$19", reqSec: "25", reqMonth: "500,000", maxInboxes: "40", otp: false, attachments: true, maxAttachment: "5 MB", ws: true, maxWs: "5", customDomains: false, persistence: "24h", freshDomains: "partial" as const, pool: "dedicated", planId: "startup", imap: false, wait: "Yes (10 req/call)", mcp: false as boolean | string, webhooks: false, sla: false },
+  { name: "growth", label: "Growth", desc: "High-scale workflows", price: "$49", reqSec: "50", reqMonth: "2,000,000", maxInboxes: "100", otp: true, attachments: true, maxAttachment: "25 MB", ws: true, maxWs: "20", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "growth", imap: true, wait: "Yes (10 req/call)", mcp: "60 ops/min", webhooks: true, sla: false },
+  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems", price: "$149", reqSec: "100", reqMonth: "10,000,000", maxInboxes: "Unlimited", otp: true, attachments: true, maxAttachment: "50 MB", ws: true, maxWs: "100", customDomains: true, persistence: "Pro (forever)", freshDomains: true as const, pool: "dedicated", planId: "enterprise", imap: true, wait: "Yes (10 req/call)", mcp: "200 ops/min", webhooks: true, sla: true },
 ] as const;
 
 const CREDITS = [
@@ -876,6 +876,11 @@ export default function ApiPricingPage() {
     {
       group: "Rate Limits",
       rows: [
+        {
+          label: "Max Inboxes",
+          hint: "Active inboxes at any given time",
+          render: (p) => <span className="text-sm font-semibold text-foreground tabular-nums">{p.maxInboxes}</span>,
+        },
         {
           label: "Requests / sec",
           render: (p) => <span className="text-sm font-semibold text-foreground tabular-nums">{p.reqSec}</span>,

@@ -1,40 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 function PaymentSuccessContent() {
   const { data: session, status, update } = useSession();
   const searchParams = useSearchParams();
   const type = searchParams.get("type");
+  const source = searchParams.get("source") || "direct";
   const hasStarted = useRef(false);
-  const [loadingText, setLoadingText] = useState("Verifying payment status...");
-  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
-    // Wait until the session is fully hydrated on the client
     if (status !== "authenticated" || hasStarted.current) return;
     hasStarted.current = true;
 
     const verifyProStatus = async () => {
       let attempts = 0;
-      const maxAttempts = 6; // Will try for ~12 seconds
+      const maxAttempts = 6;
       let isPro = session?.user?.plan === "pro";
 
-      // Loop until the database reflects the Webhook's update
-      // If it's an API payment, we don't necessarily wait for 'pro' plan in session
       while (!isPro && attempts < maxAttempts && type !== "api") {
-        setLoadingText(
-          attempts === 0 
-            ? "Verifying payment status..." 
-            : "Waiting for payment provider confirmation..."
-        );
-
-        // 1. Passing an object forces NextAuth to trigger the 'update' event
-        // 2. Awaiting ensures we have the newly rewritten session
         const newSession = await update({ forceSync: Date.now() });
         
         if (newSession?.user?.plan === "pro") {
@@ -42,46 +29,70 @@ function PaymentSuccessContent() {
           break;
         }
 
-        // Wait 2 seconds before asking the database again
         await new Promise((resolve) => setTimeout(resolve, 2000));
         attempts++;
       }
 
-      setIsSuccess(true);
-      setLoadingText("Success! Taking you to your dashboard...");
+      // Track the source to backend
+      try {
+        await fetch("/api/user/track-upsell", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source }),
+        });
+      } catch (e) {
+        console.error("Failed to track upsell source:", e);
+      }
 
-      // Final redirect only AFTER the loop successfully confirmed the status
+      // Store flag to show modal on destination page ONLY for non-API webapp upgrades
+      if (type !== "api") {
+        sessionStorage.setItem("just_upgraded", "true");
+      }
+      
+      // Redirect to where they came from based on source
+      const redirectUrl = type === "api" ? "/api/dashboard" : getRedirectUrl(source);
       setTimeout(() => {
-        window.location.href = type === "api" ? "/api/dashboard" : "/dashboard";
-      }, 800);
+        window.location.href = redirectUrl;
+      }, 1000);
     };
 
     verifyProStatus();
-  }, [status, update, session]);
+  }, [status, update, session, source, type]);
+
+  const getRedirectUrl = (src: string): string => {
+    switch (src) {
+      case "email_box":
+        return "/"; 
+      case "dashboard":
+        return "/dashboard"; 
+      case "custom_domain":
+        return "/dashboard"; 
+      case "api_pricing":
+        return "/api/dashboard";
+      default:
+        return "/";
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md text-center shadow-lg">
-        <CardHeader>
-          <CardTitle>Payment received</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center space-y-5 py-8">
-          {isSuccess ? (
-            <CheckCircle2 className="h-16 w-16 text-green-500 animate-in zoom-in duration-300" />
-          ) : (
-            <Loader2 className="h-16 w-16 text-amber-500 animate-spin" />
-          )}
-          
-          <div className="space-y-2">
-            <p className="text-muted-foreground transition-all duration-300">
-              {loadingText}
-            </p>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50">
-              Please do not close this page
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-md text-center">
+        <div className="h-20 w-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <Loader2 className="h-10 w-10 text-emerald-500 animate-spin" />
+        </div>
+        
+        <h1 className="text-2xl font-bold text-foreground mb-2">
+          Payment Successful!
+        </h1>
+        
+        <p className="text-sm text-muted-foreground">
+          Setting up your account...
+        </p>
+        
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mt-4">
+          Please wait while we redirect you
+        </p>
+      </div>
     </div>
   );
 }
@@ -90,19 +101,13 @@ export default function PaymentSuccessPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md text-center shadow-lg">
-          <CardHeader>
-            <CardTitle>Payment received</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center space-y-5 py-8">
-            <Loader2 className="h-16 w-16 text-amber-500 animate-spin" />
-            <div className="space-y-2">
-              <p className="text-muted-foreground transition-all duration-300">
-                Initialising...
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-md text-center">
+          <div className="h-20 w-20 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="h-10 w-10 text-amber-500 animate-spin" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Processing Payment...</h1>
+          <p className="text-sm text-muted-foreground">Please wait while we verify your payment.</p>
+        </div>
       </div>
     }>
       <PaymentSuccessContent />

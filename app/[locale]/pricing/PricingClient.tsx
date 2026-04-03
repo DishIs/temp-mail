@@ -17,6 +17,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { toast } from "@/components/ui/toast";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
+import { getUpsellSourceFromUrl } from "@/lib/upsell-tracker";
 
 import {
   SiVisa, SiMastercard, SiAmericanexpress,
@@ -275,6 +276,10 @@ export default function PricingClient() {
     }
     if (isPro) { toast.success("You're already Pro!"); router.push("/dashboard"); return; }
 
+    // Store upsell source for payment tracking
+    const source = getUpsellSourceFromUrl() || "web_pricing";
+    sessionStorage.setItem("upsell_source", source);
+
     setBusy(true);
     const tid = toast.loading("Opening checkout…");
     try {
@@ -290,15 +295,15 @@ export default function PricingClient() {
       window.Paddle.Checkout.open({
         settings: {
           displayMode: "overlay", theme: "light", locale,
-          successUrl: `${window.location.origin}/payment/success?provider=paddle`,
+          successUrl: `${window.location.origin}/payment/success?provider=paddle&source=${source}`,
         },
         items: [{ priceId: d.priceId, quantity: 1 }],
         customer: session.user?.email ? { email: session.user.email } : undefined,
-        customData: { userId: session.user.id },
+        customData: { userId: session.user.id, upsellSource: source },
         onEvent: (event: any) => {
           if (event.name === "checkout.completed") {
             const txnId: string | undefined = event.data?.transaction_id;
-            window.location.href = `/payment/success?provider=paddle${txnId ? `&_ptxn=${txnId}` : ""}`;
+            window.location.href = `/payment/success?provider=paddle${txnId ? `&_ptxn=${txnId}` : ""}&source=${source}`;
           }
         },
       });
@@ -453,6 +458,15 @@ export default function PricingClient() {
                       <Gift className="h-3 w-3 text-muted-foreground shrink-0" />
                       <span className="text-[11px] text-muted-foreground">
                         <span className="font-semibold text-foreground">3 days free</span> · no charge until day 4
+                      </span>
+                    </div>
+                  )}
+
+                  {plan.name === "pro" && !isPro && (
+                    <div className="flex items-center gap-1.5 border border-emerald-500/30 rounded-md px-2.5 py-2 bg-emerald-500/5 mb-3">
+                      <Zap className="h-3 w-3 text-emerald-500 shrink-0" />
+                      <span className="text-[11px] text-muted-foreground">
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">20,000 API credits</span> free · worth $1
                       </span>
                     </div>
                   )}
@@ -616,6 +630,15 @@ export default function PricingClient() {
                             <Gift className="h-3 w-3 text-muted-foreground shrink-0" />
                             <span className="text-[11px] text-muted-foreground">
                               <span className="font-semibold text-foreground">3 days free</span> · no charge until day 4
+                            </span>
+                          </div>
+                        )}
+
+                        {plan.name === "pro" && !isPro && (
+                          <div className="flex items-center gap-1.5 border border-emerald-500/30 rounded-md px-2.5 py-2 bg-emerald-500/5 mt-3">
+                            <Zap className="h-3 w-3 text-emerald-500 shrink-0" />
+                            <span className="text-[11px] text-muted-foreground">
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">20,000 API credits</span> free · worth $1
                             </span>
                           </div>
                         )}

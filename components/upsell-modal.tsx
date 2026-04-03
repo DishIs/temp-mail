@@ -125,7 +125,8 @@ export function UpsellModal({
       ctaLabel={session ? "Start 3-day free trial" : "Sign up & start free trial"}
       onCta={() => {
         onClose();
-        router.push(session ? "/pricing" : `/auth?callbackUrl=${encodeURIComponent("/pricing")}`);
+        const source = "email_box";
+        router.push(session ? `/pricing?source=${source}` : `/auth?callbackUrl=${encodeURIComponent(`/pricing?source=${source}`)}`);
       }}
     />
   );

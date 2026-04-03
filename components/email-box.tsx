@@ -28,6 +28,7 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ManageInboxesModal } from "./manage-inboxes-modal";
 import { AuthNeed, UpsellModal } from "./upsell-modal";
+import { CreditsSuccessModal } from "./credits-success-modal";
 import { SettingsModal, UserSettings, DEFAULT_SETTINGS } from "./settings-modal";
 import { BrandAvatar } from "./brand-avatar";
 import { useSession } from "next-auth/react";
@@ -558,9 +559,11 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
   const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
   const [pinnedInboxes, setPinnedInboxes] = useState<string[]>([]);
   const [unseenSettingsFeatures, setUnseenSettingsFeatures] = useState<Set<string>>(new Set());
+  const [showCreditsSuccess, setShowCreditsSuccess] = useState(false);
 
-  // Track whether we've already bootstrapped from serverProfile so we only do it once
+  // Track whether we've already bootstrapped from serverProfile so we do it only once
   const serverProfileAppliedRef = useRef(false);
+  const checkedUpgradeRef = useRef(false);
 
   // ── REFS ───────────────────────────────────────────────────────────────────
   const skipNextSettingsSave = useRef(false);
@@ -846,6 +849,13 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
           setEmail(freshEmail);
           setSelectedDomain(d);
           setEmailHistory([freshEmail]);
+          if (isAuthenticated) {
+            fetch("/api/user/inboxes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ inboxName: freshEmail }),
+            }).catch(() => { });
+          }
         }
 
         // Merge notes: server wins on conflicts
@@ -947,6 +957,13 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
           setEmail(freshEmail);
           setSelectedDomain(targetDomain);
           setEmailHistory([freshEmail]);
+          if (isAuthenticated) {
+            fetch("/api/user/inboxes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ inboxName: freshEmail }),
+            }).catch(() => { });
+          }
         }
       } catch {
         // silent — keep current state
@@ -1009,6 +1026,18 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
         .catch(() => { });
     }
   }, [isStorageLoaded, isPro, isAuthenticated]); // eslint-disable-line
+
+  // Check for upgrade and show credits modal
+  useEffect(() => {
+    if (!isStorageLoaded || checkedUpgradeRef.current) return;
+    checkedUpgradeRef.current = true;
+    
+    const justUpgraded = sessionStorage.getItem("just_upgraded");
+    if (justUpgraded === "true") {
+      sessionStorage.removeItem("just_upgraded");
+      setShowCreditsSuccess(true);
+    }
+  }, [isStorageLoaded]);
 
   useEffect(() => {
     if (!isStorageLoaded) return;
@@ -1167,6 +1196,14 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
     setReadMessageIds(new Set());
     setDismissedMessageIds(new Set());
     setDomainExpiry(null);
+
+    if (isAuthenticated) {
+      fetch("/api/user/inboxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inboxName: ne }),
+      }).catch(() => { });
+    }
   };
 
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
@@ -1181,6 +1218,13 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
       const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("primaryDomain"), freeDomainSet);
       const ne = generateRandomEmail(d, isPro);
       setEmail(ne); setSelectedDomain(d); setMessages([]); setReadMessageIds(new Set()); setDismissedMessageIds(new Set()); setDomainExpiry(null);
+      if (isAuthenticated) {
+        fetch("/api/user/inboxes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inboxName: ne }),
+        }).catch(() => { });
+      }
     } else if (itemToDelete?.type === "message" && itemToDelete.id) {
       try {
         const headers: Record<string, string> = { "x-fce-client": "web-client" };
@@ -1248,6 +1292,13 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
       return;
     }
     setEmail(he); setSelectedDomain(domain); setOldEmailUsed(!oldEmailUsed); setDomainExpiry(null);
+    if (isAuthenticated) {
+      fetch("/api/user/inboxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inboxName: he }),
+      }).catch(() => { });
+    }
   };
 
   const saveInboxNote = useCallback((inbox: string, note: string) => {
@@ -1965,6 +2016,7 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
       <MessageModal message={selectedMessage} isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} isPro={isPro} onUpsell={() => openUpsell("Attachments")} apiEndpoint={API_ENDPOINT} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={userSettings} onUpdate={setUserSettings} isPro={isPro} onUpsell={openUpsell} isAuthenticated={isAuthenticated} onAuthNeed={(f: string) => { setAuthNeedFeature(f); setIsAuthNeedOpen(true); }} />
       <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />
+      <CreditsSuccessModal isOpen={showCreditsSuccess} onClose={() => setShowCreditsSuccess(false)} />
       <AuthNeed isOpen={isAuthNeedOpen} onClose={() => setIsAuthNeedOpen(false)} featureName={authNeedFeature} />
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirmation} itemToDelete={itemToDelete?.type === "email" ? "email address" : "message"} />
     </div>

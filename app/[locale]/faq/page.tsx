@@ -18,7 +18,7 @@ const FAQ_IDS = [
   "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
 ] as const;
 
-type Props = { params: { locale: Locale } };
+type Props = { params: Promise<{ locale: Locale }> };
 
 // ── Shared design tokens ──────────────────────────────────────────────────────
 const DOT_BG = {
@@ -43,8 +43,8 @@ const ASCII_FRAGS = [
   { x: "4%",  y: "93%", t: "Subject: Your verification code is 847291" },
 ];
 
-export async function generateMetadata({ params }: Props) {
-  const { locale } = params;
+export async function generateMetadata(props: Props) {
+  const { locale } = await props.params;
   const t = await getTranslations({ locale, namespace: "FAQ" });
   return {
     title: t("title"),
@@ -52,8 +52,8 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function FAQPage({ params }: Props) {
-  const { locale } = params;
+export default async function FAQPage(props: Props) {
+  const { locale } = await props.params;
   setRequestLocale(locale);
   const t = await getTranslations("FAQ");
   const session = await auth();

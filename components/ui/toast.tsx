@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-export type ToastType = "success" | "error" | "info" | "loading";
+export type ToastType = "success" | "error" | "info" | "loading" | "custom";
 
 interface Toast {
   id: string;
@@ -22,11 +22,12 @@ interface Toast {
   title: string;
   message?: string;
   timestamp: number;
+  render?: (t: { id: string; visible: boolean }) => React.ReactNode;
 }
 
 interface ToastContextType {
   toasts: Toast[];
-  addToast: (type: ToastType, title: string, message?: string) => string;
+  addToast: (type: ToastType, title: string, message?: string, render?: Toast["render"], duration?: number) => string;
   updateToast: (id: string, updates: Partial<Toast>) => void;
   removeToast: (id: string) => void;
   clearToasts: () => void;
@@ -62,13 +63,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addToast = useCallback(
-    (type: ToastType, title: string, message?: string) => {
+    (type: ToastType, title: string, message?: string, render?: Toast["render"], duration?: number) => {
       const id = Math.random().toString(36).slice(2, 11);
       setToasts((prev) => [
         ...prev,
-        { id, type, title, message, timestamp: Date.now() },
+        { id, type, title, message, render, timestamp: Date.now() },
       ]);
-      if (type !== "loading") scheduleRemove(id, 5000);
+      if (type !== "loading" && duration !== Infinity) {
+        scheduleRemove(id, duration || 5000);
+      }
       return id;
     },
     [scheduleRemove]
@@ -154,6 +157,7 @@ const ICONS: Record<ToastType, React.ReactNode> = {
   error:   <AlertCircle  className="h-3.5 w-3.5 shrink-0" />,
   info:    <Info         className="h-3.5 w-3.5 shrink-0" />,
   loading: <Loader2      className="h-3.5 w-3.5 shrink-0 animate-spin" />,
+  custom:  null,
 };
 
 function ToastItem({
@@ -226,93 +230,101 @@ function ToastItem({
       <div
         className={cn(
           "flex items-start gap-3 px-3.5 py-3",
-          t.type === "error" && t.message && "cursor-pointer"
+          t.type === "error" && t.message && "cursor-pointer",
+          t.type === "custom" && "py-0 px-0"
         )}
         onClick={() => t.type === "error" && t.message && setExpanded((v) => !v)}
       >
-        {/* icon */}
-        <div
-          className={cn(
-            "mt-px",
-            t.type === "loading" && "text-muted-foreground",
-            t.type === "success" && "text-foreground",
-            t.type === "error"   && "text-foreground",
-            t.type === "info"    && "text-muted-foreground",
-          )}
-        >
-          {ICONS[t.type]}
-        </div>
+        {/* custom toast renders its own content */}
+        {t.type === "custom" && t.render ? (
+          t.render({ id: t.id, visible: true })
+        ) : (
+          <>
+            {/* icon */}
+            <div
+              className={cn(
+                "mt-px",
+                t.type === "loading" && "text-muted-foreground",
+                t.type === "success" && "text-foreground",
+                t.type === "error"   && "text-foreground",
+                t.type === "info"    && "text-muted-foreground",
+              )}
+            >
+              {ICONS[t.type]}
+            </div>
 
-        {/* text */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground leading-snug">
-            {t.title}
-          </p>
+            {/* text */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground leading-snug">
+                {t.title}
+              </p>
 
-          {/* collapsed preview */}
-          {t.message && !expanded && (
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 leading-relaxed">
-              {t.message}
-            </p>
-          )}
+              {/* collapsed preview */}
+              {t.message && !expanded && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 leading-relaxed">
+                  {t.message}
+                </p>
+              )}
 
-          {/* expanded detail + help */}
-          <AnimatePresence initial={false}>
-            {expanded && t.message && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="mt-2 pt-2 border-t border-border/60">
-                  <p className="text-xs text-muted-foreground leading-relaxed font-mono">
-                    {t.message}
-                  </p>
+              {/* expanded detail + help */}
+              <AnimatePresence initial={false}>
+                {expanded && t.message && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 pt-2 border-t border-border/60">
+                      <p className="text-xs text-muted-foreground leading-relaxed font-mono">
+                        {t.message}
+                      </p>
 
-                  {/* help trigger */}
-                  {!helpText && (
-                    <button
-                      onClick={handleGetHelp}
-                      className="mt-2.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {loadingHelp
-                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : <Sparkles className="h-3 w-3" />}
-                      {loadingHelp ? "Analyzing…" : "Need help?"}
-                    </button>
-                  )}
+                      {/* help trigger */}
+                      {!helpText && (
+                        <button
+                          onClick={handleGetHelp}
+                          className="mt-2.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {loadingHelp
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <Sparkles className="h-3 w-3" />}
+                          {loadingHelp ? "Analyzing…" : "Need help?"}
+                        </button>
+                      )}
 
-                  {/* help answer */}
-                  <AnimatePresence>
-                    {helpText && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="mt-2.5 rounded-md border border-border bg-muted/10 px-3 py-2"
-                      >
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          {helpText}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                      {/* help answer */}
+                      <AnimatePresence>
+                        {helpText && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="mt-2.5 rounded-md border border-border bg-muted/10 px-3 py-2"
+                          >
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                              {helpText}
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-        {/* dismiss */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-          className="shrink-0 -mr-0.5 -mt-0.5 rounded p-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors"
-          aria-label="Dismiss"
-        >
-          <X className="h-3 w-3" />
-        </button>
+            {/* dismiss */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+              className="shrink-0 -mr-0.5 -mt-0.5 rounded p-1 text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* loading bar */}
@@ -369,6 +381,23 @@ export const toast = {
 
   dismiss(id: string) {
     toastStore?.removeToast(id);
+  },
+
+  custom(
+    render: (t: { id: string; visible: boolean }) => React.ReactNode,
+    opts?: { id?: string; duration?: number }
+  ) {
+    if (!toastStore) return;
+    const { addToast, updateToast, removeToast } = toastStore;
+    const id = opts?.id || Math.random().toString(36).slice(2, 11);
+    
+    if (opts?.id) {
+      updateToast(opts.id, { type: "custom", render });
+    } else {
+      addToast("custom", "", undefined, render, opts?.duration);
+    }
+    
+    return id;
   },
 
   async promise<T>(
