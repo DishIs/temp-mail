@@ -14,7 +14,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { ThemeProvider } from "@/components/theme-provider";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 

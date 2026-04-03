@@ -16,7 +16,7 @@ import {
   Loader2, Copy, Trash2, CheckCircle, HelpCircle,
   RefreshCw, Lock, Crown, Check, AlertTriangle, ExternalLink,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { useSession } from "next-auth/react";
 import { UpsellModal } from "@/components/upsell-modal";
 import { useTranslations } from "next-intl";

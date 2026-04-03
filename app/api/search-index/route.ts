@@ -13,11 +13,14 @@ const API_PAGES = [
   { title: "Platform Domains", url: "/api/docs/platform-domains", description: "Available platform domains.", type: "api" },
   { title: "OTP Extraction", url: "/api/docs/otp", description: "Extract OTP codes from emails automatically.", type: "api" },
   { title: "WebSocket", url: "/api/docs/websocket", description: "Real-time email updates via WebSocket.", type: "api" },
+  { title: "Webhooks", url: "/api/docs/webhooks", description: "Subscribe to real-time HTTP POST notifications.", type: "api" },
+  { title: "MCP Server", url: "/api/docs/mcp", description: "AI-native email workflows via Model Context Protocol.", type: "api" },
   { title: "SDK Overview", url: "/api/docs/sdk", description: "Official SDKs for Node.js and Python.", type: "api" },
   { title: "Node.js/npm SDK", url: "/api/docs/sdk/npm", description: "Official Node.js SDK documentation.", type: "api" },
   { title: "Python SDK", url: "/api/docs/sdk/python", description: "Official Python SDK documentation.", type: "api" },
   { title: "Rate Limits", url: "/api/docs/rate-limits", description: "API rate limits and quotas.", type: "api" },
   { title: "Errors", url: "/api/docs/errors", description: "API error codes and troubleshooting.", type: "api" },
+  { title: "Credits System", url: "/api/docs/credits", description: "How credits work and usage tracking.", type: "api" },
   { title: "FAQ", url: "/api/docs/faq", description: "Frequently asked questions.", type: "api" },
   { title: "Changelog", url: "/api/docs/changelog", description: "Latest updates and features.", type: "api" },
   { title: "CLI Tool", url: "/api/cli", description: "Command-line interface for FreeCustom.Email.", type: "api" },
@@ -29,6 +32,11 @@ const API_PAGES = [
   { title: "Pricing", url: "/api/pricing", description: "API and CLI pricing plans.", type: "api" },
   { title: "Playground", url: "/api/playground", description: "Interactive API playground.", type: "api" },
   { title: "Dashboard", url: "/api/dashboard", description: "Manage your API keys and usage.", type: "api" },
+  { title: "MCP Client", url: "/api/mcp", description: "MCP client for AI agents and LLMs.", type: "api" },
+  { title: "AI Agents Use Case", url: "/api/use-cases/ai-agents", description: "Use disposable email with AI agents.", type: "api" },
+  { title: "Multi-Account Testing", url: "/api/use-cases/multi-account-testing", description: "Test with multiple accounts.", type: "api" },
+  { title: "Security Testing", url: "/api/use-cases/security-testing", description: "Email security testing workflows.", type: "api" },
+  { title: "CI/CD Pipelines", url: "/api/use-cases/ci-cd-pipelines", description: "Integrate email testing in CI/CD.", type: "api" },
 ];
 
 export async function GET() {

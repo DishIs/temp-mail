@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 

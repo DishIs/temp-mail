@@ -5,9 +5,10 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { toast } from "@/components/ui/toast";
 import {
   AlertCircle, Check, Copy, Loader2, Trash2, ShieldCheck,
-  ChevronLeft, ChevronRight, Search, Mail, Inbox,
+  ChevronLeft, ChevronRight, Search, Mail, Inbox, RefreshCw, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -343,6 +344,14 @@ function WebhooksTab() {
   const [webhooks, setWebhooks] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newWebhookUrl, setNewWebhookUrl] = useState("");
+  const [newWebhookInbox, setNewWebhookInbox] = useState("");
+  const [creatingWebhook, setCreatingWebhook] = useState(false);
+  const [createdWebhookSecret, setCreatedWebhookSecret] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [apiInboxes, setApiInboxes] = useState<string[]>([]);
 
   const fetchWebhooks = useCallback(async () => {
     try {
@@ -368,73 +377,331 @@ function WebhooksTab() {
     }
   }, []);
 
+  const fetchApiInboxes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/api-status");
+      const data = await res.json();
+      if (res.ok && data?.apiInboxes) {
+        setApiInboxes(data.apiInboxes);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchWebhooks(), fetchLogs()]).finally(() => setLoading(false));
-  }, [fetchWebhooks, fetchLogs]);
+    Promise.all([fetchWebhooks(), fetchLogs(), fetchApiInboxes()]).finally(() => setLoading(false));
+  }, [fetchWebhooks, fetchLogs, fetchApiInboxes]);
+
+  const handleCreateWebhook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWebhookUrl || !newWebhookInbox) return;
+    
+    const tid = toast.loading("Creating webhook...");
+    setCreatingWebhook(true);
+    try {
+      const res = await fetch("/api/user/webhooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: newWebhookUrl, inbox: newWebhookInbox }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.dismiss(tid);
+        toast.success("Webhook created successfully!");
+        setCreatedWebhookSecret(data.secret);
+        setShowAddDialog(false);
+        setNewWebhookUrl("");
+        setNewWebhookInbox("");
+        fetchWebhooks();
+      } else {
+        toast.dismiss(tid);
+        toast.error(data.message || "Failed to create webhook");
+      }
+    } catch (e) {
+      toast.dismiss(tid);
+      toast.error("Failed to create webhook");
+    } finally {
+      setCreatingWebhook(false);
+    }
+  };
+
+  const handleDeleteWebhook = async (webhookId: string) => {
+    const tid = toast.loading("Deleting webhook...");
+    setDeletingId(webhookId);
+    try {
+      const res = await fetch("/api/user/webhooks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhookId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.dismiss(tid);
+        toast.success("Webhook deleted.");
+        fetchWebhooks();
+      } else {
+        toast.dismiss(tid);
+        toast.error(data.message || "Failed to delete webhook");
+      }
+    } catch (e) {
+      toast.dismiss(tid);
+      toast.error("Failed to delete webhook");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleRegenerateSecret = async (webhookId: string) => {
+    const tid = toast.loading("Regenerating secret...");
+    setRegeneratingId(webhookId);
+    try {
+      const res = await fetch("/api/user/webhooks/regenerate-secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhookId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.dismiss(tid);
+        toast.success("Secret regenerated!");
+        setCreatedWebhookSecret(data.secret);
+      } else {
+        toast.dismiss(tid);
+        toast.error(data.message || "Failed to regenerate secret");
+      }
+    } catch (e) {
+      toast.dismiss(tid);
+      toast.error("Failed to regenerate secret");
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   return (
-      <div className="space-y-10">
+    <div className="space-y-10">
+      {/* Active Webhooks */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
           <div>
-              <SectionLabel>Active Webhooks</SectionLabel>
-              <p className="text-sm text-muted-foreground mt-0.5 mb-4">
-                  Endpoints that will be notified when new emails arrive.
-              </p>
-              <div className="border-t border-border" />
-              {webhooks.length === 0 ? (
-                  <p className="py-8 text-sm text-muted-foreground text-center">No active webhooks.</p>
-              ) : (
-                  <div className="rounded-lg border border-border overflow-hidden">
-                      {webhooks.map((hook, i) => (
-                          <div key={hook._id} className={`flex items-center justify-between px-4 py-2.5 text-sm ${i !== 0 ? "border-t border-border" : ""}`}>
-                              <div>
-                                  <p className="font-mono text-foreground text-xs">{hook.url}</p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">Inbox: {hook.inbox}</p>
-                              </div>
-                              <Button variant="ghost" size="sm" disabled>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                          </div>
-                      ))}
-                  </div>
-              )}
+            <SectionLabel>Active Webhooks</SectionLabel>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Endpoints notified when emails arrive in your registered inboxes.
+            </p>
           </div>
-          <div>
-              <SectionLabel>Recent Webhook Logs</SectionLabel>
-              <p className="text-sm text-muted-foreground mt-0.5 mb-4">
-                  Delivery status for recent webhook notifications.
-              </p>
-              <div className="border-t border-border" />
-              {logs.length === 0 ? (
-                  <p className="py-8 text-sm text-muted-foreground text-center">No webhook logs found.</p>
-              ) : (
-                  <div className="rounded-lg border border-border overflow-hidden">
-                      {logs.map((log, i) => (
-                          <div key={log._id} className={`px-4 py-2.5 text-sm ${i !== 0 ? "border-t border-border" : ""}`}>
-                              <div className="flex items-center justify-between">
-                                  <p className="font-mono text-foreground text-xs">{log.targetUrl}</p>
-                                  <span className={`text-xs px-2 py-0.5 rounded-full border ${log.status === 'success' ? 'text-green-500 border-green-500/20' : 'text-red-500 border-red-500/20'}`}>
-                                      {log.status} - {log.responseCode}
-                                  </span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                  {new Date(log.timestamp).toLocaleString()}
-                              </p>
-                          </div>
-                      ))}
-                  </div>
-              )}
+          {webhooks.length > 0 && (
+            <Button size="sm" onClick={() => setShowAddDialog(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add Webhook
+            </Button>
+          )}
+        </div>
+        <div className="border-t border-border" />
+
+        {webhooks.length === 0 ? (
+          <div className="py-10 flex flex-col items-center gap-3 text-center">
+            <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center">
+              <RefreshCw className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">No active webhooks</p>
+            <Button size="sm" onClick={() => setShowAddDialog(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add your first webhook
+            </Button>
           </div>
+        ) : (
+          <div className="rounded-lg border border-border overflow-hidden mt-4">
+            {webhooks.map((hook, i) => (
+              <div key={hook._id} className={`flex items-center justify-between px-4 py-3 text-sm ${i !== 0 ? "border-t border-border" : ""}`}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono text-foreground text-xs truncate max-w-[300px]">{hook.url}</p>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${hook.active ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20' : 'text-muted-foreground border-border'}`}>
+                      {hook.active ? "active" : "inactive"}
+                    </span>
+                    {hook.failureCount > 0 && (
+                      <span className="text-[10px] text-red-500 font-medium">
+                        {hook.failureCount} fail{hook.failureCount > 1 ? "ures" : ""}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Inbox: <span className="font-mono">{hook.inbox}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 ml-4">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleRegenerateSecret(hook._id)}
+                    disabled={regeneratingId === hook._id}
+                    title="Regenerate secret"
+                    className="h-7 w-7"
+                  >
+                    {regeneratingId === hook._id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDeleteWebhook(hook._id)}
+                    disabled={deletingId === hook._id}
+                    title="Delete webhook"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  >
+                    {deletingId === hook._id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-  )
+
+      {/* Webhook Logs */}
+      <div>
+        <SectionLabel>Recent Webhook Logs</SectionLabel>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Delivery status for webhook notifications.
+        </p>
+        <div className="border-t border-border" />
+
+        {logs.length === 0 ? (
+          <p className="py-8 text-sm text-muted-foreground text-center">No webhook logs found.</p>
+        ) : (
+          <div className="rounded-lg border border-border overflow-hidden mt-4">
+            {logs.map((log, i) => (
+              <div key={log._id} className={`px-4 py-3 text-sm ${i !== 0 ? "border-t border-border" : ""}`}>
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-foreground text-xs truncate max-w-[300px]">{log.targetUrl}</p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${log.status === 'success' ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20' : 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20'}`}>
+                    {log.status} · {log.responseCode}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </p>
+                  <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted/50 rounded">
+                    {log.eventType || "email.received"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Add Webhook Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Add Webhook</DialogTitle>
+            <DialogDescription>
+              Create a webhook to receive HTTP POST notifications when emails arrive.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateWebhook} className="space-y-4">
+            <div>
+              <label className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Webhook URL</label>
+              <Input
+                placeholder="https://example.com/webhook"
+                value={newWebhookUrl}
+                onChange={(e) => setNewWebhookUrl(e.target.value)}
+                required
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Inbox</label>
+              {apiInboxes.length > 0 ? (
+                <select
+                  value={newWebhookInbox}
+                  onChange={(e) => setNewWebhookInbox(e.target.value)}
+                  required
+                  className="mt-1.5 w-full h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Select an inbox</option>
+                  {apiInboxes.map((inbox) => (
+                    <option key={inbox} value={inbox}>{inbox}</option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  placeholder="inbox@domain.com"
+                  value={newWebhookInbox}
+                  onChange={(e) => setNewWebhookInbox(e.target.value)}
+                  required
+                  className="mt-1.5"
+                />
+              )}
+              {apiInboxes.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  No API inboxes found.{" "}
+                  <Link href="/api/docs/inboxes" className="underline underline-offset-2 hover:text-foreground">
+                    Create one via API
+                  </Link>
+                </p>
+              )}
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creatingWebhook || !newWebhookUrl || !newWebhookInbox}>
+                {creatingWebhook && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Create Webhook
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Secret Reveal Dialog */}
+      <Dialog open={!!createdWebhookSecret} onOpenChange={(open) => !open && setCreatedWebhookSecret(null)}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Webhook Secret</DialogTitle>
+            <DialogDescription>
+              Save this secret now. It won't be shown again after closing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-muted/50 p-4 rounded-lg border border-border">
+            <p className="font-mono text-xs break-all leading-relaxed">{createdWebhookSecret}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Include the <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">X-Webhook-Secret</code> header in webhook requests to verify authenticity.
+          </p>
+          <DialogFooter>
+            <Button onClick={() => {
+              navigator.clipboard.writeText(createdWebhookSecret || "");
+              toast.success("Copied to clipboard!");
+              setCreatedWebhookSecret(null);
+            }}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy &amp; Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

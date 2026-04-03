@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { callInternalAPI } from '@/lib/api';
 import { auth } from '@/auth';
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -10,10 +10,20 @@ export async function GET(request: Request) {
   }
 
   try {
+    const body = await request.clone().json();
+    const { webhookId } = body;
+
+    if (!webhookId) {
+      return NextResponse.json({ success: false, message: 'webhookId is required' }, { status: 400 });
+    }
+
     const data = await callInternalAPI(
         request,
-        `/user/webhooks/logs?wyiUserId=${encodeURIComponent(session.user.id)}`,
-        { method: 'GET' },
+        '/user/webhooks/regenerate-secret',
+        { 
+          method: 'POST',
+          body: JSON.stringify({ wyiUserId: session.user.id, webhookId }),
+        },
         { id: session.user.id }
     );
     return NextResponse.json(data);

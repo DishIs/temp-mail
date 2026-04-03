@@ -5,7 +5,7 @@ import {
   Send, Bot, User, X, Shield, Zap, Loader2,
   Paperclip, FileText, Trash, Copy, Square
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, Lock } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { useSession } from "next-auth/react";
 import { UpsellModal } from "@/components/upsell-modal";
 import { useTranslations } from "next-intl";

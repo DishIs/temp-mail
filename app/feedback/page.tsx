@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Star } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { AppHeader } from "@/components/nLHeader";
 import { AppFooter } from "@/components/app-footer";
 import { cn } from "@/lib/utils";

@@ -15,7 +15,7 @@ import {
   DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import {
   SiVisa, SiMastercard, SiAmericanexpress,
   SiPaypal, SiApplepay, SiGooglepay,

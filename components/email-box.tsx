@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { setCookie } from "cookies-next";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import {
   Mail, RefreshCw, Trash2, Edit, QrCode, Copy, Check, CheckCheck,
   Star, ListOrdered, Clock, Archive, ArchiveRestore,

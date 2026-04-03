@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send, Mail, MapPin } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { AppHeader } from "@/components/nLHeader";
 import { AppFooter } from "@/components/app-footer";
 import { useSession } from "next-auth/react";

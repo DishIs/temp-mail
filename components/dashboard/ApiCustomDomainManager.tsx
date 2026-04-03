@@ -29,7 +29,7 @@ import {
 import {
   Loader2, Copy, Trash2, Check, RefreshCw, Lock, AlertTriangle,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "@/components/ui/toast";
 import { useSession } from "next-auth/react";
 import {
   Dialog,
