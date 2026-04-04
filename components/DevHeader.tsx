@@ -26,6 +26,7 @@ const NAV_LINKS = [
   { href: "/api/playground",     label: "Playground" },
   { href: "/api/pricing",        label: "Pricing"    },
   { href: "/api/docs/changelog", label: "Changelog"  },
+  { href: "/api/dashboard", label: "Dashboard"  },
 ];
 
 interface ApiStatusData {

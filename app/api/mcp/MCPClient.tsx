@@ -824,7 +824,7 @@ const PLAN_ROWS = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function MCPClient() {
-  const T = 7;
+  const T = 8;
 
   return (
     <div className="bg-background text-foreground overflow-x-hidden">
@@ -867,8 +867,9 @@ export function MCPClient() {
         </div>
       </section>
 
-      {/* ── WORKS WITH ────────────────────────────────────────────────────── */}
-      <WorksWithSection />
+      <div className="relative z-10">
+        {/* ── WORKS WITH ────────────────────────────────────────────────────── */}
+        <WorksWithSection />
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
@@ -1116,19 +1117,85 @@ export function MCPClient() {
                 </div>
               </div>
             </FadeIn>
+          </div>
+        </section>
 
-            <FadeIn delay={0.2}>
-              <div className="mt-8 flex gap-3">
-                <Button asChild size="sm">
-                  <Link href="/api/docs/mcp">Full MCP docs</Link>
-                </Button>
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/api/use-cases/ai-agents">AI agent use cases <ArrowRight className="ml-1 h-3 w-3" /></Link>
-                </Button>
+        {/* ── CLOUD SSE ── */}
+        <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
+          <AsciiLayer />
+          <Cols />
+          <div className="relative z-10 max-w-3xl w-full mx-auto">
+            <FadeIn>
+              <SectionMarker index={8} total={T} label="Cloud SSE" />
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4 leading-tight text-balance break-words">
+                Cloud-based AI agents? No problem.
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6 max-w-xl leading-relaxed">
+                For cloud-based AI platforms that cannot run local commands (Claude Web, OpenAI Playground, Replit Agent), we provide a hosted SSE endpoint with OAuth 2.0 support.
+              </p>
+            </FadeIn>
+            
+            <FadeIn delay={0.1}>
+              <div className="rounded-lg border border-border bg-muted/5 p-4 mb-6">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Base URL</p>
+                <code className="text-sm text-foreground break-all">https://mcp.freecustom.email</code>
               </div>
             </FadeIn>
-        </div>
-      </section>
+
+            <FadeIn delay={0.15}>
+              <div className="rounded-lg border border-border overflow-hidden mb-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/10">
+                      {["Endpoint", "Method", "Description"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { ep: "/sse", method: "GET", desc: "Establish SSE connection" },
+                      { ep: "/messages", method: "POST", desc: "Send JSON-RPC messages" },
+                      { ep: "/authorize", method: "GET", desc: "OAuth authorization" },
+                      { ep: "/token", method: "POST", desc: "OAuth token exchange" },
+                    ].map((r) => (
+                      <tr key={r.ep} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.ep}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.method}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={0.2}>
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-5 py-4">
+                <h4 className="text-blue-500 font-semibold mb-2 text-sm">Two Auth Methods</h4>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li><strong>Direct API Key</strong>: Pass via <code className="text-xs bg-muted px-1 rounded">Authorization</code> header or <code className="text-xs bg-muted px-1 rounded">access_token</code> query param</li>
+                  <li><strong>OAuth 2.0</strong>: For clients like Claude Web — use your API key as <code className="text-xs bg-muted px-1 rounded">client_id</code></li>
+                </ul>
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={0.25}>
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-5 py-4 mt-4">
+                <h4 className="text-blue-500 font-semibold mb-2 text-sm">Quick Start for Claude Web</h4>
+                <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
+                  <li>Open Claude Web (claude.ai) → Settings → Integrations → Add Custom Connector</li>
+                  <li>Name: <code className="text-xs bg-muted px-1 rounded">FreeCustom.Email MCP</code></li>
+                  <li>URL: <code className="text-xs bg-muted px-1 rounded">https://mcp.freecustom.email/sse</code></li>
+                  <li>Auth: Your FreeCustom.Email API key as OAuth Client ID</li>
+                </ol>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
