@@ -5,26 +5,27 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, Sun, Moon, Laptop, MoreVertical, X } from "lucide-react";
+import { Menu as MenuIcon, Sun, Moon, Laptop, MoreVertical, X, LogOut, LayoutDashboard, CreditCard, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { SearchModal } from "@/components/search-modal";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const NAV_LINKS = [
   { href: "/api",                label: "Overview"   },
   { href: "/ai",                 label: "FCE AI"     },
   { href: "/api/docs",           label: "Docs"       },
   { href: "/api/cli",            label: "CLI"        },
+  { href: "/api/use-cases",      label: "Use Cases"  },
   { href: "/api/mcp",            label: "MCP"        },
   { href: "/api/automation",     label: "Automation" },
   { href: "/api/playground",     label: "Playground" },
   { href: "/api/pricing",        label: "Pricing"    },
   { href: "/api/docs/changelog", label: "Changelog"  },
-  { href: "/api/dashboard",      label: "Dashboard"  },
 ];
 
 interface ApiStatusData {
@@ -110,12 +111,137 @@ export function DevHeader() {
   const planLabel  = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
   const credits    = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
   const isFreeUser = (!planLabel || String(planLabel).toLowerCase() === "free") && credits <= 0;
+  
+  const getPlanBadgeName = () => {
+    if (!planLabel) return "FREE";
+    const label = String(planLabel).toLowerCase();
+    if (label === "developer") return "DEV";
+    if (label === "startup") return "STARTUP";
+    if (label === "growth") return "GROWTH";
+    if (label === "enterprise") return "ENT";
+    return "FREE";
+  };
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/api" && pathname.startsWith(href));
 
   // Show first 4 links in nav, rest in overflow (md) or all on lg
   const PRIMARY_COUNT = 4;
+
+  const AuthSection = () => {
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent | TouchEvent) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setDropdownOpen(false);
+        }
+      }
+      if (dropdownOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+      }
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("touchstart", handleClickOutside);
+      };
+    }, [dropdownOpen]);
+
+    if (status === "loading")
+      return <div className="h-8 w-8 rounded-full bg-muted animate-pulse shrink-0" />;
+
+    if (isLoggedIn && session?.user) {
+      return (
+        <div className="relative shrink-0" ref={dropdownRef}>
+          <button 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="relative outline-none shrink-0 block" 
+            aria-label="User profile menu"
+            aria-expanded={dropdownOpen}
+          >
+            <Avatar
+              className={`h-8 w-8 border transition-all ${
+                !isFreeUser
+                  ? "border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]"
+                  : "border-border"
+              }`}
+            >
+              <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
+              <AvatarFallback className="text-xs font-bold bg-muted">
+                {session.user.name?.charAt(0).toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <span
+              className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-semibold px-1 rounded-sm leading-none py-px border ${
+                !isFreeUser ? "bg-amber-400 text-black border-amber-500" : "bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              {getPlanBadgeName()}
+            </span>
+          </button>
+
+          <div 
+            className={`absolute right-0 top-full mt-3 w-56 origin-top-right rounded-lg border border-border bg-background p-1.5 shadow-xl transition-all duration-200 z-50 ${
+              dropdownOpen ? "scale-100 opacity-100 visible" : "scale-95 opacity-0 invisible pointer-events-none"
+            }`}
+          >
+            <div className="px-2 py-2">
+              <p className="text-sm font-semibold text-foreground truncate">{session.user.name}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{session.user.email}</p>
+            </div>
+            
+            <div className="h-px bg-border w-full my-1" />
+            
+            <Link 
+              href="/api/dashboard" 
+              onClick={() => setDropdownOpen(false)}
+              className="flex items-center px-2 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            >
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              API Dashboard
+            </Link>
+            
+            <Link 
+              href="/dashboard/profile" 
+              onClick={() => setDropdownOpen(false)}
+              className="flex items-center px-2 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            >
+              <User className="mr-2 h-4 w-4" />
+              Profile & Billing
+            </Link>
+            
+            <div className="h-px bg-border w-full my-1" />
+            
+            {isFreeUser && (
+              <div className="mb-1">
+                <Button asChild size="sm" className="w-full h-8 text-xs bg-foreground text-background hover:bg-foreground/90">
+                  <Link href="/api/pricing" onClick={() => setDropdownOpen(false)}>
+                    <CreditCard className="mr-1.5 h-3 w-3" />
+                    Upgrade API Plan
+                  </Link>
+                </Button>
+              </div>
+            )}
+            
+            <button
+              onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: "/api" }); }}
+              className="w-full flex items-center px-2 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-md transition-colors outline-none"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Button asChild size="sm" variant="ghost" className="shrink-0 px-3">
+        <Link href="/auth?callbackUrl=/api">Sign in</Link>
+      </Button>
+    );
+  };
 
   return (
     <>
@@ -180,53 +306,17 @@ export function DevHeader() {
               <ThemeIcon theme={theme} mounted={mounted} />
             </button>
 
-            <div className="flex items-center justify-end gap-2 min-w-[175px]">
-              {isSessionLoading ? (
-                <>
-                  <div className="h-9 w-[64px] bg-muted/40 animate-pulse rounded-md" />
-                  <div className="h-9 w-[96px] bg-muted/40 animate-pulse rounded-md" />
-                </>
-              ) : isApiStatusLoading ? (
-                <>
-                  <div className="h-[22px] w-[46px] bg-muted/40 animate-pulse rounded-full" />
-                  <div className="h-9 w-[84px] bg-muted/40 animate-pulse rounded-md" />
-                </>
-              ) : isLoggedIn ? (
-                <>
-                  {(planLabel || credits > 0) && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-                      {planLabel && (
-                        <span className="capitalize border border-border rounded-full px-2 py-0.5 font-medium text-foreground">
-                          {planLabel}
-                        </span>
-                      )}
-                      {credits > 0 && (
-                        <span className="tabular-nums font-mono">{Number(credits).toLocaleString()} credits</span>
-                      )}
-                    </div>
-                  )}
-                  <Button asChild size="sm" className="shrink-0">
-                    <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"}>
-                      {isFreeUser ? "Upgrade" : "Dashboard"}
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button asChild size="sm" variant="ghost" className="shrink-0 px-3">
-                    <Link href="/auth?callbackUrl=/api">Sign in</Link>
-                  </Button>
-                  <Button asChild size="sm" className="shrink-0 px-3">
-                    <Link href="/auth?callbackUrl=/api/dashboard">Get API key</Link>
-                  </Button>
-                </>
-              )}
+            <div className="flex items-center justify-end min-w-[76px] shrink-0 gap-2">
+              <AuthSection />
             </div>
           </div>
 
           {/* Mobile hamburger */}
           <div className="md:hidden flex items-center gap-1">
             <SearchModal triggerClass="h-8 w-8 !px-0 flex justify-center" />
+            <div className="flex items-center justify-center min-w-[76px] shrink-0">
+              <AuthSection />
+            </div>
             <button
               className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
               onClick={() => setMenuOpen((o) => !o)}
@@ -261,42 +351,8 @@ export function DevHeader() {
                 <ThemeIcon theme={theme} mounted={mounted} />
               </button>
 
-              <div className="ml-auto flex items-center justify-end gap-2 min-w-[175px]">
-                {isSessionLoading ? (
-                  <>
-                    <div className="h-9 w-[64px] bg-muted/40 animate-pulse rounded-md" />
-                    <div className="h-9 w-[96px] bg-muted/40 animate-pulse rounded-md" />
-                  </>
-                ) : isApiStatusLoading ? (
-                  <>
-                    <div className="h-[22px] w-[46px] bg-muted/40 animate-pulse rounded-full" />
-                    <div className="h-9 w-[84px] bg-muted/40 animate-pulse rounded-md" />
-                  </>
-                ) : isLoggedIn ? (
-                  <>
-                    {(planLabel || credits > 0) && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {planLabel && <span className="capitalize">{planLabel}</span>}
-                        {planLabel && credits > 0 && " · "}
-                        {credits > 0 && <span className="tabular-nums font-mono">{Number(credits).toLocaleString()} credits</span>}
-                      </span>
-                    )}
-                    <Button asChild size="sm" className="shrink-0">
-                      <Link href={isFreeUser ? "/api/pricing" : "/api/dashboard"} onClick={() => setMenuOpen(false)}>
-                        {isFreeUser ? "Upgrade" : "Dashboard"}
-                      </Link>
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button asChild size="sm" variant="ghost" className="shrink-0 px-3">
-                      <Link href="/auth?callbackUrl=/api" onClick={() => setMenuOpen(false)}>Sign in</Link>
-                    </Button>
-                    <Button asChild size="sm" className="shrink-0 px-3">
-                      <Link href="/auth?callbackUrl=/api/dashboard" onClick={() => setMenuOpen(false)}>Get API key</Link>
-                    </Button>
-                  </>
-                )}
+              <div className="ml-auto flex items-center justify-end min-w-[76px] shrink-0 gap-2">
+                <AuthSection />
               </div>
             </div>
           </div>

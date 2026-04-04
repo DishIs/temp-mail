@@ -88,7 +88,11 @@ Available Webapp Knowledge Pages (use get_app_page_data with these paths):
 - /api/docs/sdk/npm
 - /api/docs/sdk/python
 - /api/docs/websocket
+- /api/docs/webhooks
+- /api/docs/mcp
 - /api/cli
+- /api/mcp
+- /api/use-cases
 - /api/dashboard
 - /api/playground
 - /api/automation/make

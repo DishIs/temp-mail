@@ -81,8 +81,18 @@ const PROMPT_CATEGORIES = [
     prompts: [
       "Generate a robust Python script to watch emails in real-time via WebSocket.",
       "Create a Node.js TypeScript example for polling and extracting regex-matched OTPs.",
-      "Write a Go tool to create disposable inboxes concurrently for load testing.",
-      "Show me a Ruby script to fetch emails using the REST API."
+      "How can I set up an MCP server to connect AI agents with FCE API?",
+      "Write a Go tool to create disposable inboxes concurrently for load testing."
+    ]
+  },
+  {
+    id: "integrations",
+    name: "Integrations & Automation",
+    prompts: [
+      "How do I integrate FCE into GitHub Actions for end-to-end email testing?",
+      "Explain how to use webhooks to get real-time email notifications.",
+      "How to connect FCE to Make.com to trigger workflows on new incoming emails?",
+      "Can you provide examples for multi-account testing with FCE?"
     ]
   },
   {
@@ -93,16 +103,6 @@ const PROMPT_CATEGORIES = [
       "Write a bash script using the CLI to automate creating 100 test accounts.",
       "Show me how to fetch the latest OTP using the CLI and save it to an env file.",
       "How to quickly provision a private inbox on a custom domain via CLI?"
-    ]
-  },
-  {
-    id: "integrations",
-    name: "CI/CD & Webhooks",
-    prompts: [
-      "How do I integrate FCE into GitHub Actions for end-to-end email testing?",
-      "Explain the n8n automation flow for parsing automated reports.",
-      "How to connect FCE to Make.com to trigger workflows on new incoming emails?",
-      "What is the exact OpenAPI specification for the OTP endpoint?"
     ]
   }
 ];
@@ -704,7 +704,7 @@ export function FceAiInterface() {
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 pt-12 bg-gradient-to-t from-background via-background/95 to-transparent z-20 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 pt-12 bg-gradient-to-t from-background via-background/95 to-background/90 md:to-transparent z-20 pointer-events-none md:absolute">
         <div className="max-w-4xl mx-auto flex flex-col gap-2 pointer-events-auto">
           
           <div className="flex items-center justify-between px-1">

@@ -463,12 +463,12 @@ export default function PricingClient() {
                   )}
 
                   {plan.name === "pro" && !isPro && (
-                    <div className="flex items-center gap-1.5 border border-emerald-500/30 rounded-md px-2.5 py-2 bg-emerald-500/5 mb-3">
-                      <Zap className="h-3 w-3 text-emerald-500 shrink-0" />
+                    <Link href="/api/pricing" className="flex items-center gap-1.5 border border-emerald-500/30 hover:border-emerald-500/50 rounded-md px-2.5 py-2 bg-emerald-500/5 hover:bg-emerald-500/10 mb-3 transition-colors group">
+                      <Zap className="h-3 w-3 text-emerald-500 group-hover:scale-110 transition-transform" />
                       <span className="text-[11px] text-muted-foreground">
                         <span className="font-semibold text-emerald-600 dark:text-emerald-400">20,000 API credits</span> free · worth $1
                       </span>
-                    </div>
+                    </Link>
                   )}
 
                   <PlanCta plan={plan} />
@@ -534,6 +534,12 @@ export default function PricingClient() {
                           <span className="text-xl font-bold text-foreground">{price}</span>
                           {plan.monthlyPrice !== "$0" && <span className="text-xs text-muted-foreground">/mo</span>}
                         </div>
+                        {plan.name === "pro" && !isPro && (
+                          <Link href="/api/pricing" className="mb-2 inline-flex items-center gap-1 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 px-2 py-1 rounded transition-colors group">
+                            <Zap className="h-2.5 w-2.5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                            <span className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400">20k API credits free</span>
+                          </Link>
+                        )}
                         {isYearly && plan.yearlyTotal ? (
                           <p className="font-mono text-[9px] text-emerald-600/90 mb-3">{plan.yearlyTotal}/yr · 2 mo free</p>
                         ) : (

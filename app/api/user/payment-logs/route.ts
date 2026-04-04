@@ -14,18 +14,36 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const page = searchParams.get('page') || '1';
-  const limit = searchParams.get('limit') || '10';
 
-  const path = `/user/${session.user.id}/payment-logs?page=${page}&limit=${limit}`;
+  // Forward all params the handler and dashboard actually use
+  const type   = searchParams.get('type')   || '';
+  const limit  = searchParams.get('limit')  || '20';
+  const offset = searchParams.get('offset') || '0';
+
+  const qs = new URLSearchParams({ limit, offset });
+  if (type) qs.set('type', type);
+
+  // ✅ Correct path: /user/payment-logs/:wyiUserId  (was /user/:id/payment-logs)
+  const path = `/user/payment-logs/${session.user.id}?${qs.toString()}`;
 
   try {
-    const data = await callInternalAPI(request, path, { method: 'GET' }, { id: session.user.id });
+    const data = await callInternalAPI(
+      request,
+      path,
+      { method: 'GET' },
+      { id: session.user.id },
+    );
     return NextResponse.json(data);
   } catch (error: any) {
     if (error.message === 'TOO_MANY_REQUESTS') {
-        return NextResponse.json({ success: false, message: 'Rate limit exceeded' }, { status: 429 });
+      return NextResponse.json(
+        { success: false, message: 'Rate limit exceeded' },
+        { status: 429 },
+      );
     }
-    return NextResponse.json({ success: false, message: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: error.message || 'Internal Server Error' },
+      { status: 500 },
+    );
   }
 }

@@ -13,3 +13,6 @@ export const OTP_PLANS: string[] = ["growth", "enterprise"];
 
 /** API plans that include WebSocket access. */
 export const WS_PLANS: string[] = ["startup", "growth", "enterprise"];
+
+/** API plans that include Webhooks. */
+export const WEBHOOK_PLANS: string[] = ["growth", "enterprise"];

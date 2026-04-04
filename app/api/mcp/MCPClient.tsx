@@ -631,7 +631,7 @@ export function MCPClient() {
                   <Link href="/api/docs/mcp">Full MCP docs</Link>
                 </Button>
                 <Button asChild size="sm" variant="outline">
-                  <Link href="/use-cases/ai-agents">AI agent use cases <ArrowRight className="ml-1 h-3 w-3" /></Link>
+                  <Link href="/api/use-cases/ai-agents">AI agent use cases <ArrowRight className="ml-1 h-3 w-3" /></Link>
                 </Button>
               </div>
             </FadeIn>

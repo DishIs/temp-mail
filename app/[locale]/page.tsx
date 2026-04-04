@@ -61,8 +61,8 @@ export interface ServerProfile {
   inboxNotes?: Record<string, string>;
 }
 
-export default async function Page({ params }: Props) {
-  const { locale } = await params;
+export default async function Page(props: Props) {
+  const { locale } = await props.params;
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: "PageContent" });

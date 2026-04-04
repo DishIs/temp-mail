@@ -157,7 +157,8 @@ export function McpFlowAnimation() {
                   {/* dashed base */}
                   <line
                     x1={x1} y1={cy} x2={x2} y2={cy}
-                    stroke="hsl(var(--border))"
+                    stroke="currentColor"
+                    className="text-foreground/20 dark:text-border"
                     strokeWidth={1}
                     strokeDasharray="4 5"
                     strokeLinecap="round"
@@ -166,7 +167,8 @@ export function McpFlowAnimation() {
                   {visited && (
                     <motion.line
                       x1={x1} y1={cy} x2={x1} y2={cy}
-                      stroke="hsl(var(--foreground) / 0.3)"
+                      stroke="currentColor"
+                      className="text-foreground/50 dark:text-foreground/30"
                       strokeWidth={1}
                       strokeDasharray="4 5"
                       strokeLinecap="round"
@@ -203,12 +205,12 @@ export function McpFlowAnimation() {
             >
               {/* ripple */}
               <motion.span
-                className="absolute inset-0 rounded-full border border-foreground/20"
+                className="absolute inset-0 rounded-full border border-foreground/30 dark:border-foreground/20"
                 animate={{ scale: [1, 2.2], opacity: [0.5, 0] }}
                 transition={{ duration: 0.55, repeat: Infinity }}
               />
-              <div className="w-full h-full rounded-full border border-foreground/30 bg-background flex items-center justify-center">
-                <Mail className="h-2.5 w-2.5 text-foreground/60" strokeWidth={1.5} />
+              <div className="w-full h-full rounded-full border border-foreground/40 dark:border-foreground/30 bg-white dark:bg-background flex items-center justify-center">
+                <Mail className="h-2.5 w-2.5 text-foreground/80 dark:text-foreground/60" strokeWidth={1.5} />
               </div>
             </motion.div>
           )}
@@ -232,11 +234,11 @@ export function McpFlowAnimation() {
                     "relative rounded-full flex items-center justify-center cursor-pointer",
                     "transition-all duration-300",
                     // active: subtle ring + slightly elevated bg
-                    active  ? "border border-foreground/25 bg-muted/40 text-foreground"         : "",
+                    active  ? "border border-foreground/30 dark:border-foreground/25 bg-white dark:bg-muted/40 text-black dark:text-foreground shadow-sm" : "",
                     // visited: faint
-                    visited && !active ? "border border-foreground/15 bg-transparent text-foreground/30" : "",
+                    visited && !active ? "border border-foreground/20 dark:border-foreground/15 bg-white/70 dark:bg-transparent text-foreground/60 dark:text-foreground/30" : "",
                     // future: ghost
-                    !active && !visited ? "border border-border bg-transparent text-muted-foreground/30 hover:text-muted-foreground/50 hover:border-foreground/15" : "",
+                    !active && !visited ? "border border-foreground/15 dark:border-border bg-white/40 dark:bg-transparent text-foreground/40 dark:text-muted-foreground/30 hover:text-foreground/70 dark:hover:text-muted-foreground/50 hover:border-foreground/30 dark:hover:border-foreground/15" : "",
                   ].join(" ")}
                 >
                   {/* arrival burst ring */}
@@ -244,7 +246,7 @@ export function McpFlowAnimation() {
                     {blink && (
                       <motion.span
                         key="burst"
-                        className="absolute inset-0 rounded-full border border-foreground/25"
+                        className="absolute inset-0 rounded-full border border-foreground/30 dark:border-foreground/25"
                         initial={{ scale: 1, opacity: 0.7 }}
                         animate={{ scale: 2.6, opacity: 0 }}
                         exit={{}}
@@ -256,7 +258,7 @@ export function McpFlowAnimation() {
                   {/* soft breathing pulse on active */}
                   {active && !blink && (
                     <motion.span
-                      className="absolute inset-0 rounded-full border border-foreground/10"
+                      className="absolute inset-0 rounded-full border border-foreground/15 dark:border-foreground/10"
                       initial={{ scale: 1, opacity: 0.6 }}
                       animate={{ scale: 1.6, opacity: 0 }}
                       transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
@@ -273,9 +275,9 @@ export function McpFlowAnimation() {
                 <span
                   className={[
                     "text-[9px] uppercase tracking-wider text-center leading-tight w-16 transition-colors duration-300",
-                    active  ? "text-foreground/70"          : "",
-                    visited && !active ? "text-foreground/25" : "",
-                    !active && !visited ? "text-muted-foreground/25" : "",
+                    active  ? "text-foreground/90 dark:text-foreground/70"          : "",
+                    visited && !active ? "text-foreground/60 dark:text-foreground/25" : "",
+                    !active && !visited ? "text-foreground/40 dark:text-muted-foreground/25" : "",
                   ].join(" ")}
                 >
                   {stage.label}
@@ -303,7 +305,8 @@ export function McpFlowAnimation() {
             >
               <line
                 x1="0.5" y1="0" x2="0.5" y2="14"
-                stroke="hsl(var(--border))"
+                stroke="currentColor"
+                className="text-foreground/20 dark:text-border"
                 strokeWidth={1}
                 strokeDasharray="3 2"
               />

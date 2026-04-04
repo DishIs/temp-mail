@@ -4,7 +4,7 @@ import ProfileClient from "./ProfileClient";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
   const { locale } = await props.params;
-  const t = await getTranslations({ locale, namespace: "Profile" });
+  const t = await getTranslations({ locale: locale as any, namespace: "Profile" });
   return {
     title: t("title"),
     description: t("subtitle"),

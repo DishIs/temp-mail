@@ -39,8 +39,8 @@ const ASCII_FRAGS = [
   { x: '4%',  y: '93%', t: 'Subject: Your verification code is 847291' },
 ];
 
-export async function generateMetadata({ params }: Props) {
-  const { slug } = await params;
+export async function generateMetadata(props: Props) {
+  const { slug } = await props.params;
 
   const pageConfig = getPageConfig(slug);
   if (!pageConfig) return {};
@@ -72,8 +72,8 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function LandingPage({ params }: Props) {
-  const { slug } = await params;
+export default async function LandingPage(props: Props) {
+  const { slug } = await props.params;
   
   // Set locale for any Server Components relying on next-intl
   setRequestLocale('en');
@@ -83,7 +83,7 @@ export default async function LandingPage({ params }: Props) {
 
   const session = await auth();
 
-  const translations = (enMessages.LandingPages as any)[pageConfig.translationKey] || {};
+  const translations = ((enMessages.LandingPages as any)[pageConfig.translationKey] || {}) as any;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -110,7 +110,7 @@ export default async function LandingPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <NextIntlClientProvider locale="en" messages={enMessages}>
+      <NextIntlClientProvider locale="en" messages={enMessages as any}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="min-h-screen max-w-[100vw] bg-background text-foreground overflow-x-hidden">
             

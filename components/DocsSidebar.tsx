@@ -35,6 +35,7 @@ const SIDEBAR_GROUPS: { label: string; links: { href: string; label: string }[] 
       { href: "/api/docs/inboxes", label: "Inbox management" },
       { href: "/api/docs/messages", label: "Reading messages" },
       { href: "/api/docs/otp", label: "OTP extraction" },
+      { href: "/api/docs/wait", label: "Wait API" },
     ],
       },
       {

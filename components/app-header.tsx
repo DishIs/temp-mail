@@ -76,13 +76,13 @@ function ThemeIcon({ theme, mounted }: { theme: string | undefined; mounted: boo
 }
 
 const NAV_LINKS =[
-  { href: "/dashboard", label: "Dashboard" },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },
   { href: "/api", label: "API", mono: true },
-    { href: "/api/mcp", label: "MCP", mono: true },
-    { href: "/ai", label: "FCE AI", mono: true },
-  ];
+  { href: "/api/use-cases", label: "Use Cases", mono: true },
+  { href: "/api/mcp", label: "MCP", mono: true },
+  { href: "/ai", label: "FCE AI", mono: true },
+];
 
 export function AppHeader() {
   const { data: session, status } = useSession();

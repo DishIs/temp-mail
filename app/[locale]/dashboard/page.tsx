@@ -15,7 +15,7 @@ const DOMAIN_AFFILIATE_URL = "https://namecheap.pxf.io/c/7002059/408750/5618";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
   const { locale } = await props.params;
-  const t = await getTranslations({ locale, namespace: "Dashboard" });
+  const t = await getTranslations({ locale: locale as any, namespace: "Dashboard" });
   return {
     title: t("title"),
     description: t("description"),

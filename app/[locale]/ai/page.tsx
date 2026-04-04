@@ -4,13 +4,16 @@ import AiClient from "./AiClient";
 
 export async function generateMetadata(props: { params: Promise<{ locale: string }> }) {
   const { locale } = await props.params;
-  const t = await getTranslations({ locale, namespace: "ai" });
+  const t = await getTranslations({ locale: locale as any, namespace: "ai" });
   return {
     title: t("title"),
     description: t("description"),
   };
 }
 
-export default function FceAiPage() {
+export default async function AiPage(props: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await props.params;
   return <AiClient />;
 }
