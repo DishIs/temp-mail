@@ -203,19 +203,74 @@ export default function McpDocsPage() {
 }`}
       />
 
-      {/* SSE Hosting */}
-      <h2 id="sse" className="text-lg font-semibold mt-10 mb-2">
-        SSE Hosting (Cloud-Based AI Agents)
+      {/* MCP Hosting */}
+      <h2 id="mcp" className="text-lg font-semibold mt-10 mb-2">
+        MCP Hosting (Cloud-Based AI Agents)
       </h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-        For cloud-based AI platforms that cannot run local commands (like Claude Web, OpenAI Playground, Replit Agent, etc.), we provide a hosted SSE endpoint.
+        For cloud-based AI platforms that cannot run local commands (like Claude Web, Claude Desktop, Cursor, etc.), we provide hosted MCP endpoints. We support <strong>two transport protocols</strong>:
       </p>
+      
+      <div className="rounded-lg border border-border bg-muted/5 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-semibold text-foreground">1. Streamable HTTP</span>
+          <span className="font-mono text-[10px] border border-green-500/30 text-green-600 rounded px-1.5 py-px">Recommended</span>
+        </div>
+        <p className="text-sm text-muted-foreground">New MCP standard, better for modern clients</p>
+      </div>
+      
+      <div className="rounded-lg border border-border bg-muted/5 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-semibold text-foreground">2. SSE</span>
+          <span className="font-mono text-[10px] border border-amber-500/30 text-amber-600 rounded px-1.5 py-px">Legacy</span>
+        </div>
+        <p className="text-sm text-muted-foreground">Legacy support for clients that require Server-Sent Events</p>
+      </div>
 
       <h3 className="text-base font-semibold mt-6 mb-2">Base URL</h3>
       <CodeBlock
         language="text"
         code={`https://mcp.freecustom.email`}
       />
+
+      <h3 className="text-base font-semibold mt-6 mb-2">Endpoints</h3>
+      <div className="rounded-lg border border-border overflow-hidden mb-4">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/10">
+              {["Endpoint", "Method", "Transport", "Description"].map((h) => (
+                <th key={h} className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { ep: "/mcp", method: "POST", transport: "Streamable HTTP", desc: "Primary MCP endpoint (recommended)" },
+              { ep: "/mcp", method: "GET", transport: "Streamable HTTP", desc: "Initial MCP connection" },
+              { ep: "/sse", method: "GET", transport: "SSE", desc: "Legacy SSE endpoint" },
+              { ep: "/messages", method: "POST", transport: "SSE", desc: "Send messages (SSE only)" },
+              { ep: "/authorize", method: "GET", transport: "OAuth", desc: "OAuth authorization" },
+              { ep: "/token", method: "POST", transport: "OAuth", desc: "OAuth token exchange" },
+            ].map((r) => (
+              <tr key={r.ep + r.method} className="border-b border-border last:border-0">
+                <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.ep}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.method}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.transport}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 className="text-base font-semibold mt-6 mb-2">Which endpoint should I use?</h3>
+      <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1 mb-4">
+        <li><strong>Claude Web / Modern clients</strong>: Use <code className="rounded bg-muted px-1 py-0.5 text-xs">/mcp</code> (Streamable HTTP)</li>
+        <li><strong>Claude Desktop / Legacy clients</strong>: Use <code className="rounded bg-muted px-1 py-0.5 text-xs">/sse</code> (SSE)</li>
+        <li>Both support the same authentication methods</li>
+      </ul>
 
       <h3 className="text-base font-semibold mt-6 mb-2">Authentication</h3>
       <p className="text-sm text-muted-foreground mb-3">
@@ -233,7 +288,7 @@ export default function McpDocsPage() {
       <p className="text-sm text-muted-foreground mt-2 mb-3">Or:</p>
       <CodeBlock
         language="bash"
-        code={`GET /sse?access_token=YOUR_API_KEY`}
+        code={`GET /mcp?access_token=YOUR_API_KEY`}
       />
 
       <h4 className="text-sm font-semibold mt-6 mb-2">Option 2: OAuth 2.0 (Required by Some Clients)</h4>
@@ -241,29 +296,24 @@ export default function McpDocsPage() {
         Some AI clients (like Claude Web) require OAuth. We implement a simplified OAuth flow where your API key acts as the <code className="rounded bg-muted px-1 py-0.5 text-xs">client_id</code>:
       </p>
       <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-2 mb-4">
-        <li><strong>Authorize</strong>: Redirect user to:
-          <CodeBlock
-            language="bash"
-            code={`GET /authorize?client_id=YOUR_API_KEY&redirect_uri=REDIRECT_URI&state=STATE&code_challenge=CHALLENGE&code_challenge_method=S256`}
-          /></li>
-        <li><strong>Token Exchange</strong>: Client exchanges the auth code for a token:
-          <CodeBlock
-            language="bash"
-            code={`POST /token
+        <li><strong>Authorize</strong>: Redirect user to:</li>
+      </ol>
+      <CodeBlock
+        language="bash"
+        code={`GET /authorize?client_id=YOUR_API_KEY&redirect_uri=REDIRECT_URI&state=STATE&code_challenge=CHALLENGE&code_challenge_method=S256`}
+      />
+      <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-2 mb-4" start={2}>
+        <li><strong>Token Exchange</strong>: Client exchanges the auth code for a token:</li>
+      </ol>
+      <CodeBlock
+        language="bash"
+        code={`POST /token
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=authorization_code&code=AUTH_CODE&client_id=YOUR_API_KEY`}
-          /></li>
-        <li><strong>Response</strong>:
-          <ResponseBlock
-            status={200}
-            label="Token Response"
-            body={`{
-  "access_token": "YOUR_API_KEY",
-  "token_type": "Bearer",
-  "expires_in": 31536000
-}`}
-          /></li>
+      />
+      <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-2 mb-4" start={3}>
+        <li><strong>Response</strong>:</li>
       </ol>
       <CodeBlock
         language="bash"
@@ -299,6 +349,31 @@ grant_type=authorization_code&code=AUTH_CODE&client_id=YOUR_API_KEY`}
           </tbody>
         </table>
       </div>
+
+      <h3 className="text-base font-semibold mt-6 mb-2">Connecting with Streamable HTTP (/mcp)</h3>
+      <p className="text-sm text-muted-foreground mb-3">
+        The recommended endpoint for modern MCP clients. Uses the new Streamable HTTP transport protocol.
+      </p>
+      <CodeBlock
+        language="bash"
+        code={`# Streamable HTTP (recommended)
+curl -X POST https://mcp.freecustom.email/mcp \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "claude-web",
+        "version": "1.0.0"
+      }
+    },
+    "id": 1
+  }'`}
+      />
 
       <h3 className="text-base font-semibold mt-6 mb-2">SSE Connection Example</h3>
       <CodeBlock

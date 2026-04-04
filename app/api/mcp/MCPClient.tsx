@@ -1120,18 +1120,18 @@ export function MCPClient() {
           </div>
         </section>
 
-        {/* ── CLOUD SSE ── */}
+        {/* ── CLOUD MCP ── */}
         <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>
           <AsciiLayer />
           <Cols />
           <div className="relative z-10 max-w-3xl w-full mx-auto">
             <FadeIn>
-              <SectionMarker index={8} total={T} label="Cloud SSE" />
+              <SectionMarker index={8} total={T} label="Cloud MCP" />
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4 leading-tight text-balance break-words">
                 Cloud-based AI agents? No problem.
               </h2>
               <p className="text-sm text-muted-foreground mb-6 max-w-xl leading-relaxed">
-                For cloud-based AI platforms that cannot run local commands (Claude Web, OpenAI Playground, Replit Agent), we provide a hosted SSE endpoint with OAuth 2.0 support.
+                For cloud-based AI platforms that cannot run local commands (Claude Web, Claude Desktop, Cursor), we provide hosted MCP endpoints. We support two transport protocols: Streamable HTTP (recommended) and SSE (legacy).
               </p>
             </FadeIn>
             
@@ -1143,11 +1143,30 @@ export function MCPClient() {
             </FadeIn>
 
             <FadeIn delay={0.15}>
+              <div className="grid gap-3 sm:grid-cols-2 mb-6">
+                <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-semibold text-foreground">Streamable HTTP</span>
+                    <span className="font-mono text-[9px] border border-green-500/30 text-green-600 rounded px-1.5 py-px">Recommended</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">New MCP standard, better for modern clients</p>
+                </div>
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-semibold text-foreground">SSE</span>
+                    <span className="font-mono text-[9px] border border-amber-500/30 text-amber-600 rounded px-1.5 py-px">Legacy</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Legacy support for older clients</p>
+                </div>
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={0.15}>
               <div className="rounded-lg border border-border overflow-hidden mb-6">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/10">
-                      {["Endpoint", "Method", "Description"].map((h) => (
+                      {["Endpoint", "Method", "Transport"].map((h) => (
                         <th key={h} className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                           {h}
                         </th>
@@ -1156,15 +1175,17 @@ export function MCPClient() {
                   </thead>
                   <tbody>
                     {[
-                      { ep: "/sse", method: "GET", desc: "Establish SSE connection" },
-                      { ep: "/messages", method: "POST", desc: "Send JSON-RPC messages" },
-                      { ep: "/authorize", method: "GET", desc: "OAuth authorization" },
-                      { ep: "/token", method: "POST", desc: "OAuth token exchange" },
+                      { ep: "/mcp", method: "POST", transport: "Streamable HTTP" },
+                      { ep: "/mcp", method: "GET", transport: "Streamable HTTP" },
+                      { ep: "/sse", method: "GET", transport: "SSE" },
+                      { ep: "/messages", method: "POST", transport: "SSE" },
+                      { ep: "/authorize", method: "GET", transport: "OAuth" },
+                      { ep: "/token", method: "POST", transport: "OAuth" },
                     ].map((r) => (
-                      <tr key={r.ep} className="border-b border-border last:border-0">
+                      <tr key={r.ep + r.method} className="border-b border-border last:border-0">
                         <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.ep}</td>
                         <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.method}</td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.desc}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.transport}</td>
                       </tr>
                     ))}
                   </tbody>
