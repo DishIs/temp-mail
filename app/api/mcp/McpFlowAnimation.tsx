@@ -157,8 +157,7 @@ export function McpFlowAnimation() {
                   {/* dashed base */}
                   <line
                     x1={x1} y1={cy} x2={x2} y2={cy}
-                    stroke="currentColor"
-                    className="text-foreground/20 dark:text-border"
+                    stroke="#374151"
                     strokeWidth={1}
                     strokeDasharray="4 5"
                     strokeLinecap="round"
@@ -167,8 +166,7 @@ export function McpFlowAnimation() {
                   {visited && (
                     <motion.line
                       x1={x1} y1={cy} x2={x1} y2={cy}
-                      stroke="currentColor"
-                      className="text-foreground/50 dark:text-foreground/30"
+                      stroke="#111827"
                       strokeWidth={1}
                       strokeDasharray="4 5"
                       strokeLinecap="round"
@@ -205,12 +203,12 @@ export function McpFlowAnimation() {
             >
               {/* ripple */}
               <motion.span
-                className="absolute inset-0 rounded-full border border-foreground/30 dark:border-foreground/20"
+                className="absolute inset-0 rounded-full border border-gray-600/30"
                 animate={{ scale: [1, 2.2], opacity: [0.5, 0] }}
                 transition={{ duration: 0.55, repeat: Infinity }}
               />
-              <div className="w-full h-full rounded-full border border-foreground/40 dark:border-foreground/30 bg-white dark:bg-background flex items-center justify-center">
-                <Mail className="h-2.5 w-2.5 text-foreground/80 dark:text-foreground/60" strokeWidth={1.5} />
+              <div className="w-full h-full rounded-full border border-gray-700/40 bg-white flex items-center justify-center">
+                <Mail className="h-2.5 w-2.5 text-gray-800" strokeWidth={1.5} />
               </div>
             </motion.div>
           )}
@@ -234,19 +232,19 @@ export function McpFlowAnimation() {
                     "relative rounded-full flex items-center justify-center cursor-pointer",
                     "transition-all duration-300",
                     // active: subtle ring + slightly elevated bg
-                    active  ? "border border-foreground/30 dark:border-foreground/25 bg-white dark:bg-muted/40 text-black dark:text-foreground shadow-sm" : "",
+                    active  ? "border border-gray-600/30 bg-white text-gray-900 shadow-sm" : "",
                     // visited: faint
-                    visited && !active ? "border border-foreground/20 dark:border-foreground/15 bg-white/70 dark:bg-transparent text-foreground/60 dark:text-foreground/30" : "",
+                    visited && !active ? "border border-gray-400/30 bg-white/70 text-gray-600" : "",
                     // future: ghost
-                    !active && !visited ? "border border-foreground/15 dark:border-border bg-white/40 dark:bg-transparent text-foreground/40 dark:text-muted-foreground/30 hover:text-foreground/70 dark:hover:text-muted-foreground/50 hover:border-foreground/30 dark:hover:border-foreground/15" : "",
+                    !active && !visited ? "border border-gray-400/40 bg-white/40 text-gray-500 hover:text-gray-700 hover:border-gray-500/40" : "",
                   ].join(" ")}
                 >
-                  {/* arrival burst ring */}
+{/* arrival burst ring */}
                   <AnimatePresence>
                     {blink && (
                       <motion.span
                         key="burst"
-                        className="absolute inset-0 rounded-full border border-foreground/30 dark:border-foreground/25"
+                        className="absolute inset-0 rounded-full border border-gray-600/30"
                         initial={{ scale: 1, opacity: 0.7 }}
                         animate={{ scale: 2.6, opacity: 0 }}
                         exit={{}}
@@ -258,7 +256,7 @@ export function McpFlowAnimation() {
                   {/* soft breathing pulse on active */}
                   {active && !blink && (
                     <motion.span
-                      className="absolute inset-0 rounded-full border border-foreground/15 dark:border-foreground/10"
+                      className="absolute inset-0 rounded-full border border-gray-400/20"
                       initial={{ scale: 1, opacity: 0.6 }}
                       animate={{ scale: 1.6, opacity: 0 }}
                       transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
@@ -275,9 +273,9 @@ export function McpFlowAnimation() {
                 <span
                   className={[
                     "text-[9px] uppercase tracking-wider text-center leading-tight w-16 transition-colors duration-300",
-                    active  ? "text-foreground/90 dark:text-foreground/70"          : "",
-                    visited && !active ? "text-foreground/60 dark:text-foreground/25" : "",
-                    !active && !visited ? "text-foreground/40 dark:text-muted-foreground/25" : "",
+                    active  ? "text-gray-900"          : "",
+                    visited && !active ? "text-gray-500" : "",
+                    !active && !visited ? "text-gray-400" : "",
                   ].join(" ")}
                 >
                   {stage.label}
@@ -305,8 +303,7 @@ export function McpFlowAnimation() {
             >
               <line
                 x1="0.5" y1="0" x2="0.5" y2="14"
-                stroke="currentColor"
-                className="text-foreground/20 dark:text-border"
+                stroke="#374151"
                 strokeWidth={1}
                 strokeDasharray="3 2"
               />
@@ -318,16 +315,16 @@ export function McpFlowAnimation() {
       {/* ── Detail panel ── */}
       <div className="rounded-lg border border-border bg-background overflow-hidden">
         {/* titlebar */}
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-muted/5">
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-300 bg-gray-100">
           <div className="flex gap-1.5" aria-hidden>
-            <span className="h-2 w-2 rounded-full border border-border" />
-            <span className="h-2 w-2 rounded-full border border-border" />
-            <span className="h-2 w-2 rounded-full border border-border" />
+            <span className="h-2 w-2 rounded-full border border-gray-400" />
+            <span className="h-2 w-2 rounded-full border border-gray-400" />
+            <span className="h-2 w-2 rounded-full border border-gray-400" />
           </div>
           <AnimatePresence mode="wait">
             <motion.span
               key={activeStage.id + "-lbl"}
-              className="text-[10px] uppercase tracking-widest text-muted-foreground"
+              className="text-[10px] uppercase tracking-widest text-gray-600"
               initial={{ opacity: 0, x: 5 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -5 }}
@@ -340,7 +337,7 @@ export function McpFlowAnimation() {
             {"badge" in activeStage && (activeStage as any).badge && (
               <motion.span
                 key={activeStage.id + "-bdg"}
-                className="ml-auto text-[10px] border border-border rounded px-1.5 py-px text-muted-foreground"
+                className="ml-auto text-[10px] border border-gray-400 rounded px-1.5 py-px text-gray-600"
                 initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
@@ -366,7 +363,7 @@ export function McpFlowAnimation() {
               {activeStage.lines.map((line, i) => (
                 <motion.p
                   key={i}
-                  className="text-xs text-muted-foreground leading-relaxed"
+                  className="text-xs text-gray-600 leading-relaxed"
                   initial={{ opacity: 0, x: 6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.22, delay: i * 0.055 }}
@@ -389,8 +386,8 @@ export function McpFlowAnimation() {
               className={[
                 "rounded-full transition-all duration-300",
                 i === activeIdx
-                  ? "w-4 h-1 bg-foreground/40"
-                  : "w-1 h-1 bg-border hover:bg-foreground/20",
+                  ? "w-4 h-1 bg-gray-600/40"
+                  : "w-1 h-1 bg-gray-400 hover:bg-gray-500",
               ].join(" ")}
             />
           ))}
@@ -399,7 +396,7 @@ export function McpFlowAnimation() {
           {!autoPlay && (
             <button
               onClick={() => { setActiveIdx(0); setAutoPlay(true); setPacket(null); }}
-              className="text-[10px] uppercase tracking-widest text-muted-foreground/40 hover:text-foreground transition-colors"
+              className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
             >
               ↺ replay
             </button>
