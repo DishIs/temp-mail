@@ -68,9 +68,20 @@ export default function McpDocsPage() {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted-foreground mb-4 italic">
-        Note: If a restricted plan attempts to use the MCP endpoints, a specific upgrade hint is returned.
-      </p>
+      <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-5 py-4 my-4">
+        <h4 className="text-blue-500 font-semibold mb-2 text-sm">Important: OAuth Works with All Plans</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          The OAuth authentication flow works with <strong>any valid API key</strong> (including Free plans). This allows you to connect to the MCP server and see available tools. However, actually <strong>executing MCP tools requires a Growth or Enterprise plan</strong>.
+        </p>
+        <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+          <li>✅ OAuth connection succeeds</li>
+          <li>✅ Token exchange works</li>
+          <li>❌ Using any MCP tool returns: <code className="text-xs bg-muted px-1 rounded">{"{"}error": "MCP not available on your plan", "upgrade": "Growth required{"}"}</code></li>
+        </ul>
+        <p className="text-xs text-muted-foreground mt-2 italic">
+          This is intentional — you can connect your API key and see the tools available, but you'll need to upgrade to use them.
+        </p>
+      </div>
 
       {/* Advanced Pricing */}
       <h2 id="pricing" className="text-lg font-semibold mt-10 mb-2">
