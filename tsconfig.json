@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "allowArbitraryExtensions": true,
-    "target": "es5",
+    "target": "es2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "strict": true,
     "allowJs": true,

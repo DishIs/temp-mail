@@ -75,77 +75,37 @@ async function npHeaders(requireAuth = false): Promise<Record<string, string>> {
   return headers;
 }
 
-// ── Get or create a recurring plan ───────────────────────────────────────────
-// On first run, a plan is created and its ID is logged so you can cache it
-// in an env var. Subsequent calls skip creation entirely.
-//
-// env key format: NOWPAYMENTS_PLAN_ID_<TYPE>_<LABEL>_<BILLING>
-// e.g. NOWPAYMENTS_PLAN_ID_API_GROWTH_MONTHLY
-//
-async function getOrCreatePlanId(
-  envKey:       string,
-  title:        string,
-  amount:       number,
-  intervalDays: number,
-  userId:       string,
-): Promise<string> {
-  const cached = process.env[envKey];
-  if (cached) return cached;
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const body = {
-    title,
-    amount:           amount.toString(),
-    currency:         "usd",
-    interval_day:     intervalDays,
-    ipn_callback_url: `${appUrl}/api/nowpayments/webhook`,
-    success_url:      `${appUrl}/payment/success?provider=nowpayments`,
-    cancel_url:       `${appUrl}/pricing`,
-    partially_paid_url: `${appUrl}/payment/pending?provider=nowpayments`,
-  };
-
-  const res  = await fetch(`${NP_BASE}/subscriptions/plans`, {
-    method: "POST", headers: await npHeaders(true), body: JSON.stringify(body),
-  });
-  const json = await res.json();
-
-  if (!res.ok) {
-    console.error("[NOWPayments] create plan failed:", JSON.stringify(json));
-    throw new Error(json?.message ?? "Failed to create NOWPayments plan");
-  }
-
-  const planId = String(json.id ?? json.result?.id);
-  console.log(`[NOWPayments] Created plan — set env ${envKey}=${planId}`);
-  return planId;
-}
-
-// ── Create email subscription (sends invoice link to user's email) ────────────
-async function createEmailSubscription(
-  planId:   string,
-  email:    string,
+async function createCryptoInvoice(
+  amount:   number,
   userId:   string,
+  email:    string,
   metadata: Record<string, unknown>,
-): Promise<{ invoiceUrl: string; subscriptionId: string }> {
+  appUrl:   string,
+  cancelUrl: string
+): Promise<{ invoiceUrl: string; invoiceId: string }> {
   const body = {
-    subscription_plan_id: planId,
-    email,
+    price_amount:      amount,
+    price_currency:    "usd",
     order_id:          `${userId}_${Date.now()}`,
-    order_description: JSON.stringify(metadata),   // parsed back in webhook
+    order_description: JSON.stringify(metadata),
+    ipn_callback_url:  `${appUrl}/api/nowpayments/webhook`,
+    success_url:       `${appUrl}/payment/success?provider=nowpayments`,
+    cancel_url:        cancelUrl,
   };
 
-  const res  = await fetch(`${NP_BASE}/subscriptions`, {
-    method: "POST", headers: await npHeaders(true), body: JSON.stringify(body),
+  const res  = await fetch(`${NP_BASE}/invoice`, {
+    method: "POST", headers: await npHeaders(false), body: JSON.stringify(body),
   });
   const json = await res.json();
 
   if (!res.ok) {
-    console.error("[NOWPayments] create subscription failed:", JSON.stringify(json));
-    throw new Error(json?.message ?? "Failed to create subscription");
+    console.error("[NOWPayments] create invoice failed:", JSON.stringify(json));
+    throw new Error(json?.message ?? "Failed to create invoice");
   }
 
   return {
-    invoiceUrl:     json.invoice_url ?? json.payment_url ?? "",
-    subscriptionId: String(json.id ?? json.result?.id ?? ""),
+    invoiceUrl: json.invoice_url ?? json.payment_url ?? "",
+    invoiceId:  String(json.id ?? ""),
   };
 }
 
@@ -170,19 +130,15 @@ export async function POST(request: Request) {
   try {
     // ── App Pro ─────────────────────────────────────────────────────────────
     if (type === "app") {
-      const billing     = body.cycle === "yearly" ? "yearly" : "monthly" as AppBilling;
-      const amount      = APP_PRICES[billing];
-      const envKey      = `NOWPAYMENTS_PLAN_ID_APP_${billing.toUpperCase()}`;
-      const intervalDay = billing === "yearly" ? 365 : 30;
+      const billing = body.cycle === "yearly" ? "yearly" : "monthly" as AppBilling;
+      const amount  = APP_PRICES[billing];
 
-      const planId = await getOrCreatePlanId(
-        envKey, `FCE_APP_${billing.toUpperCase()}`, amount, intervalDay, userId,
-      );
-      const { invoiceUrl, subscriptionId } = await createEmailSubscription(
-        planId, email, userId,
+      const { invoiceUrl, invoiceId } = await createCryptoInvoice(
+        amount, userId, email,
         { userId, productType: "app", billing },
+        appUrl, `${appUrl}/pricing`
       );
-      return NextResponse.json({ invoiceUrl, subscriptionId, productType: "app" });
+      return NextResponse.json({ invoiceUrl, subscriptionId: invoiceId, productType: "app" });
     }
 
     // ── API plan ─────────────────────────────────────────────────────────────
@@ -195,19 +151,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Invalid API plan" }, { status: 400 });
       }
 
-      const priceMap    = billing === "yearly" ? API_PRICES_YEARLY : API_PRICES_MONTHLY;
-      const amount      = priceMap[plan];
-      const envKey      = `NOWPAYMENTS_PLAN_ID_API_${plan.toUpperCase()}_${billing.toUpperCase()}`;
-      const intervalDay = billing === "yearly" ? 365 : 30;
+      const priceMap = billing === "yearly" ? API_PRICES_YEARLY : API_PRICES_MONTHLY;
+      const amount   = priceMap[plan];
 
-      const planId = await getOrCreatePlanId(
-        envKey, `FCE_API_${plan.toUpperCase()}_${billing.toUpperCase()}`, amount, intervalDay, userId,
-      );
-      const { invoiceUrl, subscriptionId } = await createEmailSubscription(
-        planId, email, userId,
+      const { invoiceUrl, invoiceId } = await createCryptoInvoice(
+        amount, userId, email,
         { userId, productType: "api", apiPlan: plan, billing },
+        appUrl, `${appUrl}/api/pricing`
       );
-      return NextResponse.json({ invoiceUrl, subscriptionId, productType: "api", apiPlan: plan });
+      return NextResponse.json({ invoiceUrl, subscriptionId: invoiceId, productType: "api", apiPlan: plan });
     }
 
     // ── Credits (one-time invoice, not a subscription) ────────────────────────
@@ -219,25 +171,15 @@ export async function POST(request: Request) {
       }
 
       const { amount, credits } = CREDITS_PRICES[pkg];
-      const res  = await fetch(`${NP_BASE}/invoice`, {
-        method: "POST",
-        headers: await npHeaders(),
-        body: JSON.stringify({
-          price_amount:       amount,
-          price_currency:     "usd",
-          order_id:           `credits_${pkg}_${userId}_${Date.now()}`,
-          order_description:  JSON.stringify({ userId, productType: "credits", creditsToAdd: credits, package: pkg }),
-          ipn_callback_url:   `${appUrl}/api/nowpayments/webhook`,
-          success_url:        `${appUrl}/payment/success?provider=nowpayments&type=credits`,
-          cancel_url:         `${appUrl}/api/pricing`,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.message ?? "Failed to create invoice");
+      const { invoiceUrl, invoiceId } = await createCryptoInvoice(
+        amount, userId, email,
+        { userId, productType: "credits", creditsToAdd: credits, package: pkg },
+        appUrl, `${appUrl}/api/pricing`
+      );
 
       return NextResponse.json({
-        invoiceUrl:   json.invoice_url,
-        invoiceId:    String(json.id ?? ""),
+        invoiceUrl,
+        invoiceId,
         productType:  "credits",
         creditsToAdd: credits,
         package:      pkg,
