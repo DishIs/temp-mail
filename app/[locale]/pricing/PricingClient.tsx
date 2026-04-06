@@ -337,9 +337,16 @@ export default function PricingClient() {
       );
     }
     return (
-      <Button size="sm" className="w-full" disabled={busy} onClick={() => upgrade("pro")}>
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isMonthly ? "Start 3-day free trial" : "Get Pro"}
-      </Button>
+      <div className="flex flex-col gap-2 w-full">
+        <Button size="sm" className="w-full" disabled={busy} onClick={() => upgrade("pro")}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isMonthly ? "Start 3-day free trial" : "Get Pro"}
+        </Button>
+        <CryptoCheckoutButton
+          type="app"
+          cycle={cycle}
+          className="w-full"
+        />
+      </div>
     );
   }
 

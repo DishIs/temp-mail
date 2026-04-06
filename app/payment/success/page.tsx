@@ -88,8 +88,17 @@ function PaymentSuccessContent() {
         </h1>
         
         <p className="text-sm text-muted-foreground">
-          Setting up your account...
+          {isCrypto
+            ? "Confirming your crypto payment on the blockchain…"
+            : "Setting up your account..."}
         </p>
+
+        {isCrypto && (
+          <p className="text-xs text-muted-foreground/60 mt-2 max-w-xs mx-auto text-center">
+            Crypto confirmations usually take 1–5 minutes.
+            You can safely close this tab — we'll email you when your plan is active.
+          </p>
+        )}
         
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 mt-4">
           Please wait while we redirect you

@@ -46,10 +46,34 @@ const NP_BASE = process.env.NOWPAYMENTS_SANDBOX === "true"
   ? "https://api.sandbox.nowpayments.io/v1"
   : "https://api.nowpayments.io/v1";
 
-const npHeaders = () => ({
-  "x-api-key":    process.env.NOWPAYMENTS_API_KEY ?? "",
-  "Content-Type": "application/json",
-});
+async function getNowPaymentsToken(): Promise<string> {
+  const res = await fetch(`${NP_BASE}/auth`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: process.env.NOWPAYMENTS_EMAIL,
+      password: process.env.NOWPAYMENTS_PASSWORD,
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.token) {
+    console.error("[NOWPayments] auth failed:", JSON.stringify(json));
+    throw new Error("Failed to authenticate with NOWPayments");
+  }
+  return json.token;
+}
+
+async function npHeaders(requireAuth = false): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    "x-api-key": process.env.NOWPAYMENTS_API_KEY ?? "",
+    "Content-Type": "application/json",
+  };
+  if (requireAuth) {
+    const token = await getNowPaymentsToken();
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 // ── Get or create a recurring plan ───────────────────────────────────────────
 // On first run, a plan is created and its ID is logged so you can cache it
@@ -81,7 +105,7 @@ async function getOrCreatePlanId(
   };
 
   const res  = await fetch(`${NP_BASE}/subscriptions/plans`, {
-    method: "POST", headers: npHeaders(), body: JSON.stringify(body),
+    method: "POST", headers: await npHeaders(true), body: JSON.stringify(body),
   });
   const json = await res.json();
 
@@ -110,7 +134,7 @@ async function createEmailSubscription(
   };
 
   const res  = await fetch(`${NP_BASE}/subscriptions`, {
-    method: "POST", headers: npHeaders(), body: JSON.stringify(body),
+    method: "POST", headers: await npHeaders(true), body: JSON.stringify(body),
   });
   const json = await res.json();
 
@@ -197,7 +221,7 @@ export async function POST(request: Request) {
       const { amount, credits } = CREDITS_PRICES[pkg];
       const res  = await fetch(`${NP_BASE}/invoice`, {
         method: "POST",
-        headers: npHeaders(),
+        headers: await npHeaders(),
         body: JSON.stringify({
           price_amount:       amount,
           price_currency:     "usd",
