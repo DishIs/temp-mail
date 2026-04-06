@@ -731,8 +731,8 @@ curl -N "https://mcp.freecustom.email/sse?access_token=YOUR_API_KEY" \\
       />
 
       <DocPageNav
-        prev={{ href: "/api/docs/websocket", label: "WebSocket" }}
-        next={{ href: "/api/docs/sdk", label: "SDKs" }}
+        prev={{ href: "/api/docs/wait", label: "Wait API" }}
+        next={{ href: "/api/docs/platform-domains", label: "Platform domains" }}
       />
     </article>
   );
