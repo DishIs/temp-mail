@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
-import { X, ExternalLink, Sparkles } from "lucide-react";
+import { X, ExternalLink, Sparkles, Bitcoin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AnnouncementBannerProps {
@@ -89,7 +89,9 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
     
     if (dismissTimerRef.current) {
       clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
     }
+    remainingTimeRef.current = 0;
   }, [isExiting, trackAction]);
 
   const handleClick = useCallback(() => {
@@ -101,8 +103,36 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
     dismissAnnouncement();
   }, [announcement, trackAction, dismissAnnouncement]);
 
+  const startDismissTimer = useCallback(() => {
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+    }
+    if (announcement && announcement.dismissTime > 0) {
+      remainingTimeRef.current = announcement.dismissTime;
+      dismissTimerRef.current = setTimeout(() => {
+        dismissAnnouncement();
+      }, remainingTimeRef.current);
+    }
+  }, [announcement, dismissAnnouncement]);
+
+  const pauseDismissTimer = useCallback(() => {
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+  }, []);
+
+  const resumeDismissTimer = useCallback(() => {
+    if (remainingTimeRef.current > 0 && announcement && !isExiting) {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = setTimeout(() => {
+        dismissAnnouncement();
+      }, remainingTimeRef.current);
+    }
+  }, [announcement, isExiting, dismissAnnouncement]);
+
   useEffect(() => {
-    if (!announcement || isLoading || isDismissed || isExiting) return;
+    if (!announcement || isLoading || isDismissed || isExiting || isVisible) return;
 
     const showTimer = setTimeout(() => {
       if (!isDismissed) {
@@ -113,28 +143,20 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
           setHasTrackedView(true);
         }
 
-        if (announcement.dismissTime > 0) {
-          remainingTimeRef.current = announcement.dismissTime;
-          dismissTimerRef.current = setTimeout(() => {
-            dismissAnnouncement();
-          }, remainingTimeRef.current);
-        }
+        startDismissTimer();
       }
     }, announcement.delayBeforeShowing);
 
     return () => clearTimeout(showTimer);
-  }, [announcement, isLoading, isDismissed, isExiting, trackAction, dismissAnnouncement, hasTrackedView]);
+  }, [announcement, isLoading, isDismissed, isExiting, isVisible, trackAction, dismissAnnouncement, hasTrackedView, startDismissTimer]);
 
   useEffect(() => {
-    if (isHovered && dismissTimerRef.current) {
-      clearTimeout(dismissTimerRef.current);
-      remainingTimeRef.current = remainingTimeRef.current;
-    } else if (!isHovered && !isExiting && remainingTimeRef.current > 0 && announcement) {
-      dismissTimerRef.current = setTimeout(() => {
-        dismissAnnouncement();
-      }, remainingTimeRef.current);
+    if (isHovered) {
+      pauseDismissTimer();
+    } else if (isVisible) {
+      resumeDismissTimer();
     }
-  }, [isHovered, isExiting, announcement, dismissAnnouncement]);
+  }, [isHovered, isVisible, pauseDismissTimer, resumeDismissTimer]);
 
   useEffect(() => {
     return () => {
@@ -191,7 +213,7 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
               className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
               style={{ backgroundColor: `${accentColor}15` }}
             >
-              <Sparkles className="w-3.5 h-3.5" style={{ color: accentColor }} />
+              <Bitcoin className="w-3.5 h-3.5" style={{ color: accentColor }} />
             </div>
             
             <div className="flex-1 min-w-0">
