@@ -10,6 +10,8 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const type = searchParams.get("type");
   const source = searchParams.get("source") || "direct";
+  const provider = searchParams.get("provider");
+  const isCrypto = provider === "nowpayments";
   const hasStarted = useRef(false);
 
   useEffect(() => {

@@ -12,25 +12,58 @@ export async function POST() {
   const wyiUserId = (session.user as any).wyiUserId ?? session.user.id;
 
   try {
-    // Use the same endpoint /api/user/me already uses successfully
     const userRes = await fetchFromServiceAPI(`/user/profile/${wyiUserId}`);
 
     if (!userRes?.success || !userRes?.user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const sub = userRes.user.subscription;
+    const user = userRes.user;
 
-    if (!sub || sub.provider !== 'paddle') {
-      return NextResponse.json({ error: 'No Paddle subscription found' }, { status: 404 });
+    // ── Determine which subscription provider is active ──────────────────────
+    const paddleSub = user.subscription ?? null;
+    const cryptoSub = user.cryptoSubscription ?? null;
+
+    const paddleActive =
+      paddleSub?.provider === 'paddle' &&
+      ['ACTIVE', 'TRIALING', 'SUSPENDED'].includes((paddleSub.status ?? '').toUpperCase());
+
+    // Also accept a cancelled-but-still-in-period Paddle sub (user might want history)
+    const hasPaddleHistory =
+      paddleSub?.provider === 'paddle' &&
+      ['CANCELLED', 'EXPIRED'].includes((paddleSub.status ?? '').toUpperCase());
+
+    const hasNowPayments =
+      cryptoSub?.provider === 'nowpayments' &&
+      ['ACTIVE', 'SUSPENDED', 'PENDING_RENEWAL'].includes((cryptoSub.status ?? '').toUpperCase());
+
+    // ── NOWPayments: no customer portal — return info for the frontend ────────
+    if (!paddleActive && !hasPaddleHistory && hasNowPayments) {
+      return NextResponse.json({
+        provider:       'nowpayments',
+        hasPortal:      false,
+        subscriptionId: cryptoSub.subscriptionId,
+        status:         cryptoSub.status,
+        periodEnd:      cryptoSub.periodEnd ?? null,
+        message:        'Your subscription is managed via NOWPayments. To cancel or modify it, please contact support.',
+        supportUrl:     'mailto:support@freecustom.email',
+      });
     }
+
+    // ── No active subscription at all ─────────────────────────────────────────
+    if (!paddleActive && !hasPaddleHistory) {
+      return NextResponse.json({ error: 'No active subscription found' }, { status: 404 });
+    }
+
+    // ── Paddle portal ─────────────────────────────────────────────────────────
+    const sub = paddleSub;
 
     if (!sub.customerId) {
       // customerId wasn't saved for subscriptions created before the webhook fix.
-      // Fall back to the generic portal homepage — user can still manage from there.
-      // Run the backfill script below to fix existing records.
       console.warn(`[Paddle Portal] No customerId for user ${wyiUserId} — falling back to portal homepage`);
       return NextResponse.json({
+        provider:  'paddle',
+        hasPortal: true,
         url: 'https://customer.paddle.com/subscriptions',
         warning: 'no_customer_id',
       });
@@ -48,9 +81,7 @@ export async function POST() {
           Authorization: `Bearer ${process.env.PADDLE_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          subscription_ids: [sub.subscriptionId],
-        }),
+        body: JSON.stringify({ subscription_ids: [sub.subscriptionId] }),
       }
     );
 
@@ -66,10 +97,9 @@ export async function POST() {
     const paddleData = await paddleRes.json();
     const overviewUrl: string = paddleData.data.urls.general.overview;
     const subLinks = paddleData.data.urls.subscriptions ?? [];
-    // Prefer the subscription management deep-link, fall back to overview
     const manageUrl: string = subLinks[0]?.update_payment_method ?? overviewUrl;
 
-    return NextResponse.json({ url: manageUrl });
+    return NextResponse.json({ provider: 'paddle', hasPortal: true, url: manageUrl });
   } catch (error) {
     console.error('[Paddle Portal] Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

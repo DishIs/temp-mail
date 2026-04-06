@@ -24,6 +24,7 @@ import {
   SiPaypal, SiApplepay, SiGooglepay,
 } from "react-icons/si";
 import { PaddleInit } from "@/components/paddle-init";
+import { CryptoCheckoutButton } from "@/components/crypto-checkout-button";
 
 type BillingCycle = "monthly" | "yearly";
 

@@ -8,6 +8,7 @@ import {
   Mail, Calendar, CreditCard, Loader2, Zap, ExternalLink,
   AlertCircle, RefreshCw, Clock, Ban, History, RotateCcw,
   ShieldCheck, TriangleAlert, CheckCircle2, ChevronLeft, ChevronRight,
+  Bitcoin,
 } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
@@ -36,15 +37,28 @@ const PAYMENT_LOGS_LIMIT = 20;
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ScheduledChange { action: string; effective_at: string; resume_at?: string; }
 interface SubscriptionData {
-  provider: "paypal" | "paddle" | "manual"; subscriptionId: string; planId?: string;
-  status: "TRIALING" | "ACTIVE" | "SUSPENDED" | "CANCELLED" | "EXPIRED" | "APPROVAL_PENDING";
+  provider: "paypal" | "paddle" | "nowpayments" | "manual";
+  subscriptionId: string; planId?: string;
+  status: "TRIALING" | "ACTIVE" | "PENDING_RENEWAL" | "SUSPENDED" | "CANCELLED" | "EXPIRED" | "APPROVAL_PENDING";
   startTime: string; payerEmail?: string; payerName?: string; lastUpdated?: string;
   cancelAtPeriodEnd?: boolean; periodEnd?: string; canceledAt?: string; nextBilledAt?: string;
   scheduledChange?: ScheduledChange; pausedAt?: string;
 }
 interface UserProfile {
   wyiUserId: string; name: string; email: string; image?: string;
-  plan: "free" | "pro"; subscription?: SubscriptionData; createdAt?: string;
+  plan: "free" | "pro";
+  subscription?: SubscriptionData;
+  cryptoSubscription?: {
+    provider: "nowpayments";
+    subscriptionId: string;
+    status: "ACTIVE" | "SUSPENDED" | "PENDING_RENEWAL";
+    cancelAtPeriodEnd: boolean;
+    startTime: string;
+    periodEnd?: string;
+    canceledAt?: string;
+    lastUpdated?: string;
+  };
+  createdAt?: string;
 }
 interface StorageStats {
   success: boolean; storageUsed: number; storageLimit: number; percentUsed: string;
@@ -72,11 +86,11 @@ function safeDistanceToNow(dateStr?: string | null): string {
 
 // ─── Background ───────────────────────────────────────────────────────────────
 const ASCII_FRAGS = [
-  { x: "1%",  y: "6%",  t: "EHLO api2.freecustom.email" },
-  { x: "70%", y: "4%",  t: "250 2.1.0 Ok" },
-  { x: "2%",  y: "48%", t: "X-OTP: 847291" },
+  { x: "1%", y: "6%", t: "EHLO api2.freecustom.email" },
+  { x: "70%", y: "4%", t: "250 2.1.0 Ok" },
+  { x: "2%", y: "48%", t: "X-OTP: 847291" },
   { x: "71%", y: "50%", t: "RCPT TO:<inbox@ditmail.info>" },
-  { x: "1%",  y: "85%", t: "AUTH PLAIN" },
+  { x: "1%", y: "85%", t: "AUTH PLAIN" },
   { x: "70%", y: "88%", t: "MAIL FROM:<service@example.com>" },
 ];
 const DOT_BG = {
@@ -114,12 +128,13 @@ function SubStatusBadge({ status, cancelAtPeriodEnd }: { status: SubscriptionDat
     );
   }
   const map: Record<string, { label: string; cls: string }> = {
-    ACTIVE:           { label: "Active",           cls: "border-border text-foreground" },
-    TRIALING:         { label: "Trial",            cls: "border-border text-foreground" },
-    SUSPENDED:        { label: "Suspended",        cls: "border-destructive/40 text-destructive bg-destructive/5" },
-    CANCELLED:        { label: "Cancelled",        cls: "border-border text-muted-foreground" },
-    EXPIRED:          { label: "Expired",          cls: "border-border text-muted-foreground" },
+    ACTIVE: { label: "Active", cls: "border-border text-foreground" },
+    TRIALING: { label: "Trial", cls: "border-border text-foreground" },
+    SUSPENDED: { label: "Suspended", cls: "border-destructive/40 text-destructive bg-destructive/5" },
+    CANCELLED: { label: "Cancelled", cls: "border-border text-muted-foreground" },
+    EXPIRED: { label: "Expired", cls: "border-border text-muted-foreground" },
     APPROVAL_PENDING: { label: "Pending Approval", cls: "border-border text-muted-foreground" },
+    PENDING_RENEWAL: { label: "Awaiting Payment", cls: "border-amber-300/60 text-amber-600 bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:bg-amber-950/30" },
   };
   const { label, cls } = map[status] ?? { label: status, cls: "border-border text-muted-foreground" };
   return (
@@ -137,9 +152,9 @@ function CancellingNotice({
   manageLoading: boolean;
   provider: string;
 }) {
-  const endDate  = safeFormat(periodEnd, "MMMM d, yyyy");
+  const endDate = safeFormat(periodEnd, "MMMM d, yyyy");
   const timeLeft = safeDistanceToNow(periodEnd);
-  const isTrial  = status === "TRIALING";
+  const isTrial = status === "TRIALING";
 
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20 p-5 space-y-4">
@@ -284,6 +299,49 @@ function PaddleSubscriptionDetails({ sub }: { sub: SubscriptionData }) {
   );
 }
 
+function CryptoSubscriptionDetails({ sub }: { sub: NonNullable<UserProfile["cryptoSubscription"]> }) {
+  return (
+    <div>
+      <InfoRow
+        icon={<Bitcoin className="h-4 w-4" />}
+        label="Subscription ID"
+        value={<code className="font-mono text-xs bg-muted/60 px-2 py-0.5 rounded select-all">{sub.subscriptionId}</code>}
+      />
+      <InfoRow
+        icon={<Calendar className="h-4 w-4" />}
+        label="Started"
+        value={safeFormat(sub.startTime, "MMMM d, yyyy")}
+      />
+      {sub.cancelAtPeriodEnd && sub.periodEnd && (
+        <InfoRow
+          icon={<Ban className="h-4 w-4" />}
+          label="Pro access until"
+          value={<strong className="text-foreground">{safeFormat(sub.periodEnd, "MMMM d, yyyy")}</strong>}
+        />
+      )}
+      {sub.lastUpdated && (
+        <InfoRow
+          icon={<Clock className="h-4 w-4" />}
+          label="Last updated"
+          value={safeFormat(sub.lastUpdated, "MMM d, yyyy · h:mm a")}
+        />
+      )}
+      <div className="mt-3 flex items-start gap-3 p-3 rounded-lg border border-orange-500/20 bg-orange-500/5">
+        <Bitcoin className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+        <div className="text-xs text-muted-foreground leading-relaxed">
+          <p className="text-foreground font-medium mb-0.5">Crypto subscription</p>
+          Renewals are sent to your email as new invoices each period via NOWPayments.
+          To cancel or get billing help, email{" "}
+          <a href="mailto:support@freecustom.email" className="underline underline-offset-2 text-foreground hover:opacity-80">
+            support@freecustom.email
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Payment log row ──────────────────────────────────────────────────────────
 function PaymentLogRow({ log }: { log: PaymentLog }) {
   return (
@@ -318,22 +376,23 @@ export default function ProfileClient() {
   const router = useRouter();
   const t = useTranslations("Profile");
 
-  const [loading,        setLoading]        = useState(true);
-  const [userData,       setUserData]       = useState<UserProfile | null>(null);
-  const [storageData,    setStorageData]    = useState<StorageStats | null>(null);
-  const [portalLoading,  setPortalLoading]  = useState(false);
-  const [isUpsellOpen,   setIsUpsellOpen]   = useState(false);
-  const [paymentLogs,    setPaymentLogs]    = useState<PaymentLog[]>([]);
-  const [logsLoading,    setLogsLoading]    = useState(false);
-  const [logsType,       setLogsType]       = useState<"" | "app" | "api" | "credits">("");
-  const [logsOffset,     setLogsOffset]     = useState(0);
-  const [hasMoreLogs,    setHasMoreLogs]    = useState(false);
-  const [apiPlan,        setApiPlan]        = useState<string | null>(null);
-  const [deleteDialogOpen,  setDeleteDialogOpen]  = useState(false);
-  const [deleteLoading,     setDeleteLoading]     = useState(false);
-  const [deleteEmailInput,  setDeleteEmailInput]  = useState("");
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
+  const [storageData, setStorageData] = useState<StorageStats | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [isUpsellOpen, setIsUpsellOpen] = useState(false);
+  const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsType, setLogsType] = useState<"" | "app" | "api" | "credits">("");
+  const [logsOffset, setLogsOffset] = useState(0);
+  const [hasMoreLogs, setHasMoreLogs] = useState(false);
+  const [apiPlan, setApiPlan] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [showCreditsSuccess, setShowCreditsSuccess] = useState(false);
   const [checkedUpgrade, setCheckedUpgrade] = useState(false);
+
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth");
@@ -344,7 +403,7 @@ export default function ProfileClient() {
     fetch("/api/user/api-status")
       .then(r => r.ok ? r.json() : null)
       .then(d => d?.plan != null && setApiPlan(d.plan))
-      .catch(() => {});
+      .catch(() => { });
   }, [userData?.wyiUserId]);
 
   useEffect(() => {
@@ -358,7 +417,7 @@ export default function ProfileClient() {
   useEffect(() => {
     if (checkedUpgrade) return;
     setCheckedUpgrade(true);
-    
+
     const justUpgraded = sessionStorage.getItem("just_upgraded");
     if (justUpgraded === "true") {
       sessionStorage.removeItem("just_upgraded");
@@ -368,7 +427,7 @@ export default function ProfileClient() {
 
   const fetchUserData = async () => {
     try {
-      const res  = await fetch("/api/user/me");
+      const res = await fetch("/api/user/me");
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to fetch profile");
       if (data.success && data.user) setUserData(data.user);
@@ -381,7 +440,7 @@ export default function ProfileClient() {
 
   const fetchStorageData = async () => {
     try {
-      const res  = await fetch("/api/user/storage");
+      const res = await fetch("/api/user/storage");
       const data = await res.json();
       if (data.success) setStorageData(data);
     } catch (error) {
@@ -396,16 +455,16 @@ export default function ProfileClient() {
     setLogsLoading(true);
     try {
       const params = new URLSearchParams({
-        limit:  String(PAYMENT_LOGS_LIMIT + 1), // fetch one extra to detect next page
+        limit: String(PAYMENT_LOGS_LIMIT + 1), // fetch one extra to detect next page
         offset: String(logsOffset),
       });
       if (logsType) params.set("type", logsType);
 
-      const res  = await fetch(`/api/user/payment-logs?${params.toString()}`);
+      const res = await fetch(`/api/user/payment-logs?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to load payment logs");
 
-      const raw  = Array.isArray(data) ? data : (data.logs ?? data.paymentLogs ?? []);
+      const raw = Array.isArray(data) ? data : (data.logs ?? data.paymentLogs ?? []);
       const logs = Array.isArray(raw) ? raw : [];
       setHasMoreLogs(logs.length > PAYMENT_LOGS_LIMIT);
       setPaymentLogs(logs.slice(0, PAYMENT_LOGS_LIMIT));
@@ -424,6 +483,8 @@ export default function ProfileClient() {
 
   const handleManageSubscription = async () => {
     const sub = userData?.subscription;
+    const cryptoSub = (userData as any)?.cryptoSubscription;
+
     const hasPaddleSub =
       sub?.provider === "paddle" ||
       (!isPro && sub?.subscriptionId && sub?.status === "CANCELLED");
@@ -431,23 +492,41 @@ export default function ProfileClient() {
     if (hasPaddleSub) {
       setPortalLoading(true);
       try {
-        const res  = await fetch("/api/paddle/portal-session", { method: "POST" });
+        const res = await fetch("/api/paddle/portal-session", { method: "POST" });
         const data = await res.json();
-        if (!res.ok || !data.url) { toast.error("Could not open billing portal."); return; }
-        window.open(data.url, "_blank");
+
+        if (!res.ok) { toast.error("Could not open billing portal."); return; }
+
+        // Paddle portal
+        if (data.provider === "paddle" && data.url) {
+          window.open(data.url, "_blank");
+          return;
+        }
+
+        toast.error("Could not open billing portal.");
       } catch { toast.error("Could not open billing portal."); }
-      finally   { setPortalLoading(false); }
+      finally { setPortalLoading(false); }
+
     } else if (sub?.provider === "paypal") {
       window.open(`https://www.paypal.com/myaccount/autopay/connect/${sub.subscriptionId}`, "_blank");
+
+    } else if (cryptoSub?.provider === "nowpayments" || sub?.provider === "nowpayments") {
+      // NOWPayments has no customer portal — show a toast with support link
+      toast.error(
+        "Crypto subscriptions are managed via email renewal. To cancel or get help, email support@freecustom.email",
+        { duration: 8000 }
+      );
+
     } else {
       router.push("/pricing");
     }
   };
 
+
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
     try {
-      const res  = await fetch("/api/user/delete-account", {
+      const res = await fetch("/api/user/delete-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -459,13 +538,13 @@ export default function ProfileClient() {
       toast.success("Account deletion scheduled. Check your email to cancel.");
       router.replace("/account-deletion-scheduled");
     } catch { toast.error(t("toasts.fetch_error")); }
-    finally   { setDeleteLoading(false); }
+    finally { setDeleteLoading(false); }
   };
 
   const getProviderDetails = (session: Session) => {
     const image = session.user?.image || "";
     if (image.includes("googleusercontent.com")) return { label: "Google", icon: <FaGoogle className="w-4 h-4 text-muted-foreground" /> };
-    if (image.includes("githubusercontent.com"))  return { label: "GitHub", icon: <FaGithub className="w-4 h-4 text-muted-foreground" /> };
+    if (image.includes("githubusercontent.com")) return { label: "GitHub", icon: <FaGithub className="w-4 h-4 text-muted-foreground" /> };
     return { label: "Email", icon: <Mail className="h-4 w-4 text-muted-foreground" /> };
   };
 
@@ -478,28 +557,42 @@ export default function ProfileClient() {
   }
 
   // ─── Derived state ──────────────────────────────────────────────────────────
-  const isPro                  = userData?.plan === "pro";
-  const sub                    = userData?.subscription;
-  const subStatus              = sub?.status ?? "NONE";
+  const isPro = userData?.plan === "pro";
+  const sub = userData?.subscription;
+  const subStatus = sub?.status ?? "NONE";
   // Plan was cancelled but user still has access until period end
   const isCancellingButStillPro = isPro && sub?.cancelAtPeriodEnd === true;
   // Plan fully expired, Paddle provider
-  const isDowngradedFromPaddle  = !isPro && sub?.provider === "paddle" && sub?.status === "CANCELLED";
+  
   // Active and NOT in cancellation window
-  const isActiveOrTrialing      = (subStatus === "ACTIVE" || subStatus === "TRIALING") && !isCancellingButStillPro;
-  const paymentProviderName     = sub?.provider === "paypal" ? "PayPal" : sub?.provider === "paddle" ? "Paddle" : "N/A";
-  const providerDetails         = session ? getProviderDetails(session) : { label: "Unknown", icon: null };
-  const percentUsed             = storageData ? parseFloat(storageData.percentUsed) : 0;
-  const usageText               = storageData
-    ? `${storageData.storageUsedFormatted || storageData.message} / ${storageData.storageLimitFormatted || storageData.message}`
-    : "Loading...";
-
+  const isActiveOrTrialing = (subStatus === "ACTIVE" || subStatus === "TRIALING") && !isCancellingButStillPro;
+  const providerDetails = session ? getProviderDetails(session) : { label: "Unknown", icon: null };
+  const percentUsed = storageData ? parseFloat(storageData.percentUsed) : 0;
+  const usageText = storageData
+  ? `${storageData.storageUsedFormatted || storageData.message} / ${storageData.storageLimitFormatted || storageData.message}`
+  : "Loading...";
+  
+  const cryptoSub = (userData as any)?.cryptoSubscription ?? null;
+  const hasCryptoSub = !!cryptoSub?.subscriptionId && ["ACTIVE", "PENDING_RENEWAL"].includes(cryptoSub?.status ?? "");
+  const isNowPayments = sub?.provider === "nowpayments" || cryptoSub?.provider === "nowpayments";
+  const paymentProviderName =
+  sub?.provider === "paypal" ? "PayPal" :
+  sub?.provider === "paddle" ? "Paddle" :
+  sub?.provider === "nowpayments" || cryptoSub?.provider === "nowpayments" ? "NOWPayments (Crypto)" :
+  "N/A";
+  const isDowngradedFromPaddle =
+  !isPro &&
+  sub?.provider === "paddle" &&
+  sub?.status === "CANCELLED" &&
+  !hasCryptoSub;   // if user re-subscribed via crypto, don't show old Paddle banner
+  
+  
   // Delete warning
   const hasActiveAppSub = isPro && sub && (sub.status === "ACTIVE" || sub.status === "TRIALING");
   const hasActiveApiSub = apiPlan && apiPlan !== "free";
   const hasAnyActiveSub = hasActiveAppSub || hasActiveApiSub;
-  const emailConfirmed  = deleteEmailInput.trim().toLowerCase() === (userData?.email ?? "").trim().toLowerCase();
-
+  const emailConfirmed = deleteEmailInput.trim().toLowerCase() === (userData?.email ?? "").trim().toLowerCase();
+  
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-background" style={DOT_BG}>
@@ -533,8 +626,8 @@ export default function ProfileClient() {
             <TabsList className="h-auto w-full justify-start bg-transparent border-0 border-b border-border rounded-none gap-0 p-0 mb-10">
               {([
                 { value: "overview", label: t("tabs.overview") },
-                { value: "billing",  label: t("tabs.billing"), dot: isCancellingButStillPro },
-                { value: "api",      label: "API" },
+                { value: "billing", label: t("tabs.billing"), dot: isCancellingButStillPro },
+                { value: "api", label: "API" },
                 { value: "settings", label: t("tabs.settings") },
               ] as { value: string; label: string; dot?: boolean }[]).map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value}
@@ -644,11 +737,11 @@ export default function ProfileClient() {
                   {isCancellingButStillPro && sub && (
                     <div className="mb-6">
                       <CancellingNotice
-                        status={sub.status}
-                        periodEnd={sub.periodEnd}
+                        status={sub?.status ?? cryptoSub?.status ?? "ACTIVE"}
+                        periodEnd={sub?.periodEnd ?? cryptoSub?.periodEnd}
                         onManage={handleManageSubscription}
                         manageLoading={portalLoading}
-                        provider={sub.provider}
+                        provider={isNowPayments ? "nowpayments" : (sub?.provider ?? "paddle")}
                       />
                     </div>
                   )}
@@ -667,6 +760,14 @@ export default function ProfileClient() {
                       <PaddleSubscriptionDetails sub={sub} />
                     </>
                   )}
+
+                  {isPro && hasCryptoSub && cryptoSub && (
+                    <>
+                      <Separator className="mb-5" />
+                      <CryptoSubscriptionDetails sub={cryptoSub} />
+                    </>
+                  )}
+
 
                   {/* PayPal detail rows */}
                   {isPro && sub?.provider === "paypal" && (
@@ -689,13 +790,22 @@ export default function ProfileClient() {
                   {/* Action buttons — only for genuinely active (non-cancelling) subscriptions */}
                   {isActiveOrTrialing && isPro && (
                     <div className="mt-6 pt-5 border-t border-border flex flex-wrap gap-3">
-                      <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={portalLoading}>
-                        {portalLoading
-                          ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Opening…</>
-                          : <><ExternalLink className="mr-1.5 h-3.5 w-3.5" />{t("billing.manage_btn")}</>}
-                      </Button>
+                      {isNowPayments ? (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href="mailto:support@freecustom.email">
+                            <Mail className="mr-1.5 h-3.5 w-3.5" />Contact support to manage
+                          </a>
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={portalLoading}>
+                          {portalLoading
+                            ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Opening…</>
+                            : <><ExternalLink className="mr-1.5 h-3.5 w-3.5" />{t("billing.manage_btn")}</>}
+                        </Button>
+                      )}
                     </div>
                   )}
+
 
                   {/* Free plan CTA */}
                   {!isPro && !isDowngradedFromPaddle && (

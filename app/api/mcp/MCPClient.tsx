@@ -602,6 +602,73 @@ const TOOLS = [
       { name: "timeout", type: "number (10–60)", required: false },
     ],
   },
+  {
+    name: "watch_email",
+    plan: "Growth+",
+    cost: "10×",
+    desc: "Long-polling wait for new emails on an existing inbox. Use when you've already created an inbox and want to wait for the next incoming email.",
+    args: [
+      { name: "inbox", type: "string", required: true },
+      { name: "timeout", type: "number (10–60)", required: false },
+      { name: "since", type: "string", required: false },
+    ],
+  },
+  {
+    name: "get_messages",
+    plan: "Growth+",
+    cost: "1×",
+    desc: "Fetches multiple messages from an inbox with pagination support.",
+    args: [
+      { name: "inbox", type: "string", required: true },
+      { name: "limit", type: "number (1–100)", required: false },
+      { name: "unread_only", type: "boolean", required: false },
+    ],
+  },
+  {
+    name: "delete_email",
+    plan: "Growth+",
+    cost: "1×",
+    desc: "Deletes a specific email from an inbox.",
+    args: [
+      { name: "inbox", type: "string", required: true },
+      { name: "message_id", type: "string", required: true },
+    ],
+  },
+  {
+    name: "list_inboxes",
+    plan: "Growth+",
+    cost: "1×",
+    desc: "Lists all inboxes owned by the API key's account.",
+    args: [],
+  },
+  {
+    name: "list_custom_domains",
+    plan: "Growth+",
+    cost: "1×",
+    desc: "Lists all custom domains associated with the account.",
+    args: [],
+  },
+  {
+    name: "add_custom_domain",
+    plan: "Growth+",
+    cost: "1×",
+    desc: "Adds a new custom domain to the account.",
+    args: [{ name: "domain", type: "string", required: true }],
+  },
+  {
+    name: "verify_custom_domain",
+    plan: "Growth+",
+    cost: "1×",
+    desc: "Initiates DNS verification for a custom domain.",
+    args: [{ name: "domain", type: "string", required: true }],
+  },
+  {
+    name: "delete_custom_domain",
+    plan: "Growth+",
+    cost: "1×",
+    desc: "Deletes a custom domain from the account.",
+    args: [{ name: "domain", type: "string", required: true }],
+  },
 ];
 
 function ToolCard({ tool }: { tool: (typeof TOOLS)[0] }) {
@@ -903,7 +970,7 @@ export function MCPClient() {
           <FadeIn>
             <SectionMarker index={4} total={T} label="Why MCP" />
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4 leading-tight text-balance break-words">
-              Three tools.<br />Every workflow covered.
+              Eleven tools.<br />Every workflow covered.
             </h2>
             <p className="text-sm text-muted-foreground mb-12 max-w-xl leading-relaxed">
               MCP tools expose email operations as first-class primitives. No REST endpoints, no webhook glue code — just intent-driven function calls that your agent can use directly.
@@ -961,7 +1028,7 @@ export function MCPClient() {
           <FadeIn>
             <SectionMarker index={5} total={T} label="Tools" />
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4 leading-tight text-balance break-words">
-              Three tools.<br />Infinite workflows.
+              Eleven tools.<br />Infinite workflows.
             </h2>
             <p className="text-sm text-muted-foreground mb-10 max-w-xl leading-relaxed">
               MCP tools expose email operations as first-class primitives. Each tool is designed for specific email automation tasks — from quick checks to complete signup flows.
@@ -982,11 +1049,13 @@ export function MCPClient() {
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-2">
                 Credit multipliers
               </p>
-              <div className="flex flex-wrap gap-6">
+              <div className="flex flex-wrap gap-4">
                 {[
                   { op: "get_latest_email", mult: "2×" },
                   { op: "extract_otp", mult: "3×" },
                   { op: "create_and_wait_for_otp", mult: "5×" },
+                  { op: "watch_email", mult: "10×" },
+                  { op: "* (other tools)", mult: "1×" },
                 ].map((r) => (
                   <div key={r.op} className="flex items-baseline gap-2">
                     <code className="font-mono text-xs text-foreground">{r.op}</code>

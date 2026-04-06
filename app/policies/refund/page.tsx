@@ -41,8 +41,8 @@ export default function RefundPolicyPage() {
               </div>
               <div className="bg-background p-6">
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">Not Eligible</p>
-                <p className="text-sm font-medium text-foreground mb-1">Renewals & Credits</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">Automatic recurring payments and one-time credit top-ups</p>
+                <p className="text-sm font-medium text-foreground mb-1">Renewals, Credits & Crypto</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">Automatic recurring payments, one-time credit top-ups, and all cryptocurrency payments</p>
               </div>
             </section>
 

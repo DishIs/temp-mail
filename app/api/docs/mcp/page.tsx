@@ -106,6 +106,8 @@ export default function McpDocsPage() {
               { op: "get_latest_email", action: "Fetch the latest message from an inbox", cost: "2×" },
               { op: "extract_otp", action: "Parse and extract OTP from an inbox", cost: "3×" },
               { op: "create_and_wait_for_otp", action: "Create inbox & wait for OTP in one call", cost: "5×" },
+              { op: "watch_email", action: "Long-polling wait for new emails", cost: "10×" },
+              { op: "All other tools", action: "Standard API operations", cost: "1×" },
             ].map((r) => (
               <tr key={r.op} className="border-b border-border last:border-0">
                 <td className="px-4 py-2.5 font-mono text-xs text-foreground">{r.op}</td>
@@ -121,68 +123,43 @@ export default function McpDocsPage() {
       <h2 id="tools" className="text-lg font-semibold mt-10 mb-2">
         Tools Provided
       </h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        We provide three categories of MCP tools: <strong>Email Operations</strong>, <strong>Inbox Management</strong>, and <strong>Custom Domain Management</strong>.
+      </p>
 
-      <h3 id="get-latest-email" className="text-base font-semibold mt-6 mb-1">
+      {/* Email Operations */}
+      <h3 className="text-base font-semibold mt-6 mb-3">Email Operations</h3>
+
+      <h4 id="get-latest-email" className="text-sm font-semibold mt-4 mb-1">
         <code>get_latest_email</code>
-      </h3>
-      <p className="text-sm text-muted-foreground mb-1">
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
         Retrieves the most recent email for a given inbox address.
       </p>
-      <p className="text-sm text-muted-foreground mb-3">
+      <p className="text-sm text-muted-foreground mb-2">
         <strong>Args:</strong> <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code>{" "}
         <span className="text-muted-foreground/60 text-xs">string · required</span> — The full email address (e.g. <code className="rounded bg-muted px-1 py-0.5 text-xs">hello@ditube.info</code>)
       </p>
-      <ResponseBlock
-        status={200}
-        label="Success"
-        body={`{
-  "success": true,
-  "data": {
-    "id": "msg_01jqz3k4m5n6",
-    "from": "noreply@github.com",
-    "subject": "Your GitHub verification code",
-    "date": "2026-03-04T09:55:00.000Z",
-    "text": "Your code is 482931",
-    "otp": "482931",
-    "verificationLink": "https://github.com/verify?token=abc123"
-  }
-}`}
-      />
 
-      <h3 id="extract-otp" className="text-base font-semibold mt-8 mb-1">
+      <h4 id="extract-otp" className="text-sm font-semibold mt-6 mb-1">
         <code>extract_otp</code>
-      </h3>
-      <p className="text-sm text-muted-foreground mb-1">
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
         Directly retrieves the latest 4-6 digit code or verification link.
       </p>
-      <p className="text-sm text-muted-foreground mb-3">
+      <p className="text-sm text-muted-foreground mb-2">
         <strong>Args:</strong> <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code>{" "}
-        <span className="text-muted-foreground/60 text-xs">string · required</span> — The full email address of the inbox to extract OTP from
+        <span className="text-muted-foreground/60 text-xs">string · required</span> — The full email address of the inbox
       </p>
-      <ResponseBlock
-        status={200}
-        label="OTP found"
-        body={`{
-  "success": true,
-  "otp": "482931",
-  "email_id": "msg_01jqz3k4m5n6",
-  "from": "noreply@github.com",
-  "subject": "Your GitHub verification code",
-  "timestamp": 1709546100000,
-  "verification_link": "https://github.com/verify?token=abc123"
-}`}
-      />
 
-      <h3 id="create-and-wait" className="text-base font-semibold mt-8 mb-1">
+      <h4 id="create-and-wait" className="text-sm font-semibold mt-6 mb-1">
         <code>create_and_wait_for_otp</code>{" "}
-        <span className="font-mono text-[10px] border border-foreground/30 text-foreground/70 rounded px-1.5 py-px ml-1">
-          🔥 GOLD
-        </span>
-      </h3>
-      <p className="text-sm text-muted-foreground mb-1">
+        <span className="font-mono text-[10px] border border-foreground/30 text-foreground/70 rounded px-1.5 py-px ml-1">🔥 GOLD</span>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
         Generates a random inbox on our premium domains and holds the connection open until an OTP arrives. This allows an AI agent to execute a complete signup flow in a single tool call!
       </p>
-      <p className="text-sm text-muted-foreground mb-3">
+      <p className="text-sm text-muted-foreground mb-2">
         <strong>Args:</strong>{" "}
         <code className="rounded bg-muted px-1 py-0.5 text-xs">domain</code>{" "}
         <span className="text-muted-foreground/60 text-xs">string · optional · default ditube.info</span>
@@ -190,18 +167,119 @@ export default function McpDocsPage() {
         <code className="rounded bg-muted px-1 py-0.5 text-xs">timeout</code>{" "}
         <span className="text-muted-foreground/60 text-xs">number (10-60) · optional · default 45</span>
       </p>
-      <ResponseBlock
-        status={200}
-        label="OTP received"
-        body={`{
-  "success": true,
-  "inbox": "x7k9mq2p@ditube.info",
-  "otp": "847291",
-  "verification_link": null,
-  "from": "service@acme.com",
-  "subject": "Your verification code"
-}`}
-      />
+
+      <h4 className="text-sm font-semibold mt-6 mb-1">
+        <code>watch_email</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Long-polling wait for new emails on an existing inbox. Use this when you've already created an inbox and want to wait for the next incoming email.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong>{" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · required</span>
+        {" · "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">timeout</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">number (10-60) · optional · default 30</span>
+        {" · "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">since</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · optional · message ID to wait for newer messages</span>
+      </p>
+
+      <h4 className="text-sm font-semibold mt-6 mb-1">
+        <code>get_messages</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Fetches multiple messages from an inbox.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong>{" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · required</span>
+        {" · "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">limit</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">number (1-100) · optional · default 10</span>
+        {" · "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">unread_only</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">boolean · optional</span>
+      </p>
+
+      <h4 className="text-sm font-semibold mt-6 mb-1">
+        <code>delete_email</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Deletes a specific email from an inbox.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong>{" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">inbox</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · required</span>
+        {" · "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">message_id</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · required</span>
+      </p>
+
+      {/* Inbox Management */}
+      <h3 className="text-base font-semibold mt-8 mb-3">Inbox Management</h3>
+
+      <h4 className="text-sm font-semibold mt-4 mb-1">
+        <code>list_inboxes</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Lists all inboxes owned by the API key's account.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong> (none)
+      </p>
+
+      {/* Custom Domain Management */}
+      <h3 className="text-base font-semibold mt-8 mb-3">Custom Domain Management</h3>
+
+      <h4 className="text-sm font-semibold mt-4 mb-1">
+        <code>list_custom_domains</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Lists all custom domains associated with the account.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong> (none)
+      </p>
+
+      <h4 className="text-sm font-semibold mt-6 mb-1">
+        <code>add_custom_domain</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Adds a new custom domain to the account.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong>{" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">domain</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · required</span> — The custom domain to add (e.g. <code className="rounded bg-muted px-1 py-0.5 text-xs">mail.yourdomain.com</code>)
+      </p>
+
+      <h4 className="text-sm font-semibold mt-6 mb-1">
+        <code>verify_custom_domain</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Initiates DNS verification for a custom domain.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong>{" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">domain</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · required</span> — The custom domain to verify
+      </p>
+
+      <h4 className="text-sm font-semibold mt-6 mb-1">
+        <code>delete_custom_domain</code>
+      </h4>
+      <p className="text-sm text-muted-foreground mb-2">
+        Deletes a custom domain from the account.
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        <strong>Args:</strong>{" "}
+        <code className="rounded bg-muted px-1 py-0.5 text-xs">domain</code>{" "}
+        <span className="text-muted-foreground/60 text-xs">string · required</span> — The custom domain to delete
+      </p>
 
       {/* MCP Hosting */}
       <h2 id="mcp" className="text-lg font-semibold mt-10 mb-2">
@@ -592,7 +670,7 @@ curl -N "https://mcp.freecustom.email/sse?access_token=YOUR_API_KEY" \\
       <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
         <li><strong>Ops/Minute Caps</strong>: 60 for Growth, 200 for Enterprise.</li>
         <li><strong>Timeout Caps</strong>: Connections are forcefully closed after 60 seconds to prevent hanging.</li>
-        <li><strong>Multiplier Consumption</strong>: Requests immediately deduct their respective multipliers (2x, 3x, 5x) from your monthly allocation.</li>
+        <li><strong>Multiplier Consumption</strong>: Requests immediately deduct their respective multipliers (1x, 2x, 3x, 5x, 10x) from your monthly allocation.</li>
       </ul>
 
       {/* Error Responses */}
