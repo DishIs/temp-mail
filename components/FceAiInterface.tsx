@@ -279,6 +279,7 @@ export function FceAiInterface() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isConsenting, setIsConsenting] = useState(false);
+  const [pendingChatMessages, setPendingChatMessages] = useState<Message[] | null>(null);
   const [selectedCategory, setSelectedCategory] = useState(PROMPT_CATEGORIES[0].id);
   const [pendingAction, setPendingAction] = useState<{
     exec: ToolExecution;
@@ -314,6 +315,11 @@ export function FceAiInterface() {
       if (data.success) {
         localStorage.setItem("fce_ai_consent", "true");
         setShowConsent(false);
+        if (pendingChatMessages) {
+          const toRetry = pendingChatMessages;
+          setPendingChatMessages(null);
+          setTimeout(() => submitChat(toRetry), 300);
+        }
       } else {
         toast.error(data.error || "Verification failed");
         setTurnstileToken(null);
@@ -526,6 +532,7 @@ export function FceAiInterface() {
       if (e.message === "Unauthorized. Turnstile verification required.") {
         localStorage.removeItem("fce_ai_consent");
         setTurnstileToken(null);
+        setPendingChatMessages(chatMessages);
         setShowConsent(true);
         toast.error("Please complete verification to continue.");
       } else if (e.message === "Session token limit exceeded. Please try again later.") {
@@ -762,7 +769,16 @@ export function FceAiInterface() {
         </div>
       </div>
 
-      <Dialog open={showConsent} onOpenChange={(open) => { if (!open && localStorage.getItem("fce_ai_consent")) setShowConsent(false); }}>
+      <Dialog open={showConsent} onOpenChange={(open) => { 
+        if (!open) {
+          if (localStorage.getItem("fce_ai_consent")) {
+            setShowConsent(false); 
+          } else {
+            setPendingChatMessages(null);
+            setShowConsent(false);
+          }
+        }
+      }}>
         <DialogContent className="sm:max-w-[400px] rounded-lg border-border bg-background p-8 shadow-2xl [&>button]:hidden">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-sm font-mono flex items-center gap-3 uppercase tracking-widest text-foreground">
