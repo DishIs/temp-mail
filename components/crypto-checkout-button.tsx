@@ -153,6 +153,6 @@ async function openInvoice(props: CryptoCheckoutProps) {
   }
 
   toast.dismiss(tid);
-  window.open(data.invoiceUrl, "_blank", "noopener,noreferrer");
+  window.open(data.paymentUrl ?? data.invoiceUrl, "_blank", "noopener,noreferrer");
   toast.success("Crypto checkout opened in a new tab. Complete your payment there.", { duration: 6000 });
 }

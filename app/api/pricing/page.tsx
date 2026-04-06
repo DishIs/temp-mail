@@ -793,8 +793,8 @@ export default function ApiPricingPage() {
           <div className="mt-4 flex items-center gap-3 border border-border rounded-lg px-4 py-3 bg-background w-fit">
             <ShieldCheck className="h-5 w-5 text-foreground/70 shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-foreground leading-snug">14-day money-back guarantee</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Not satisfied? Full refund within 14 days.{" "}<Link href="/policies/refund" className="underline underline-offset-4 decoration-border hover:text-foreground transition-colors">Refund policy →</Link></p>
+              <p className="text-xs font-semibold text-foreground leading-snug">14-day money-back guarantee (Paddle only)</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Not satisfied? Full refund within 14 days (Crypto is non-refundable).{" "}<Link href="/policies/refund" className="underline underline-offset-4 decoration-border hover:text-foreground transition-colors">Refund policy →</Link></p>
             </div>
           </div>
 

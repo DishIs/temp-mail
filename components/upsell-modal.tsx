@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Crown, Check, Lock, EyeOff, Shield, Zap, ArrowRight, UserRound } from "lucide-react";
+import { Crown, Check, Lock, EyeOff, Shield, Zap, ArrowRight, UserRound, Bitcoin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -98,7 +98,7 @@ const PRO_BULLETS = [
   { icon: <Shield  className="h-3.5 w-3.5" />, label: "Emails kept forever + 5 GB storage" },
   { icon: <Zap     className="h-3.5 w-3.5" />, label: "Auto OTP extraction & verify links" },
   { icon: <Crown   className="h-3.5 w-3.5" />, label: "Custom domains & private inboxes"   },
-  { icon: <EyeOff  className="h-3.5 w-3.5" />, label: "Completely ad-free"                 },
+  { icon: <Bitcoin className="h-3.5 w-3.5" />, label: "Pay securely with Crypto or Card" },
 ];
 
 export function UpsellModal({
@@ -137,7 +137,7 @@ const AUTH_BULLETS = [
   { icon: <Shield   className="h-3.5 w-3.5" />, label: "Save inbox history across devices"  },
   { icon: <Crown    className="h-3.5 w-3.5" />, label: "Custom domains & prefixes"          },
   { icon: <Zap      className="h-3.5 w-3.5" />, label: "Permanent cloud storage"            },
-  { icon: <EyeOff   className="h-3.5 w-3.5" />, label: "25 MB attachments & ad-free"       },
+  { icon: <Bitcoin  className="h-3.5 w-3.5" />, label: "Pay securely with Crypto or Card" },
 ];
 
 export function AuthNeed({

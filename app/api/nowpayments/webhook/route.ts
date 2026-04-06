@@ -58,12 +58,13 @@ function verifySignature(rawBody: string, sigHeader: string | null): boolean {
 // (as JSON string) when creating the subscription/invoice in create-subscription/route.ts.
 
 interface NpMetadata {
-  userId?:       string;
-  productType?:  "app" | "api" | "credits";
-  apiPlan?:      string;
-  billing?:      string;
-  creditsToAdd?: number;
-  package?:      string;
+  userId?:                string;
+  productType?:           "app" | "api" | "credits";
+  apiPlan?:               string;
+  billing?:              string;
+  creditsToAdd?:         number;
+  package?:              string;
+  isCryptoSubscription?: boolean; // true if invoice-based subscription (needs renewal tracking)
 }
 
 function parseMetadata(ipn: Record<string, unknown>): NpMetadata {
@@ -152,16 +153,17 @@ export async function POST(request: Request) {
 
   const payload = {
     eventType,
-    productType:    meta.productType  ?? "app",
-    apiPlan:        meta.apiPlan,
-    creditsToAdd:   meta.creditsToAdd,
-    userId:         meta.userId,
-    // Prefer subscription_id (recurring), fall back to payment_id (one-time/invoice)
-    subscriptionId: String(ipn.subscription_id ?? ipn.payment_id ?? ipn.order_id ?? ""),
-    amount:         String(ipn.price_amount ?? ipn.actually_paid ?? ""),
-    currency:       String(ipn.price_currency ?? ipn.pay_currency ?? "usd").toUpperCase(),
-    startTime:      new Date().toISOString(),
-    rawEvent:       ipn,
+    productType:            meta.productType  ?? "app",
+    apiPlan:                meta.apiPlan,
+    billing:               meta.billing,
+    creditsToAdd:          meta.creditsToAdd,
+    userId:                meta.userId,
+    invoiceId:             String(ipn.invoice_id ?? ipn.payment_id ?? ipn.order_id ?? ""),
+    amount:               String(ipn.price_amount ?? ipn.actually_paid ?? ""),
+    currency:             String(ipn.price_currency ?? ipn.pay_currency ?? "usd").toUpperCase(),
+    isCryptoSubscription: meta.isCryptoSubscription ?? false,
+    startTime:            new Date().toISOString(),
+    rawEvent:             ipn,
   };
 
   try {

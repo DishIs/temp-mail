@@ -52,12 +52,13 @@ export default function RefundPolicyPage() {
                 01 — First 14 Days
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                If you purchased a <span className="font-medium text-foreground">Pro</span> subscription or an <span className="font-medium text-foreground">API plan</span> (Developer, Startup, Growth, or Enterprise) for the first time, you are eligible for a full refund within 14 days of your initial payment.
+                If you purchased a <span className="font-medium text-foreground">Pro</span> subscription or an <span className="font-medium text-foreground">API plan</span> (Developer, Startup, Growth, or Enterprise) for the first time via Paddle (Card/PayPal), you are eligible for a full refund within 14 days of your initial payment.
               </p>
               <div className="space-y-3 text-sm text-muted-foreground">
-                <div className="border-t border-border pt-3">No questions asked</div>
+                <div className="border-t border-border pt-3">No questions asked (for fiat/Paddle payments)</div>
                 <div className="border-t border-border pt-3">Includes Weekly, Monthly, & Yearly Pro plans</div>
                 <div className="border-t border-border pt-3">Includes all paid API plans (Developer, Startup, Growth, Enterprise)</div>
+                <div className="border-t border-border pt-3 font-medium text-foreground">Note: All cryptocurrency payments are strictly non-refundable.</div>
               </div>
             </section>
 
@@ -152,6 +153,10 @@ export default function RefundPolicyPage() {
                   {
                     q: "Can I get a refund for API credits?",
                     a: "No. One-time credit purchases are non-refundable. Credits never expire and are only consumed when you exceed your plan's monthly quota, so your balance is always preserved. If you believe a technical error caused incorrect consumption, reach out and we will review it."
+                  },
+                  {
+                    q: "Can I get a refund for a Cryptocurrency payment?",
+                    a: "No. All cryptocurrency payments are strictly non-refundable due to blockchain transaction fees, volatility, and the irreversible nature of crypto networks. Please ensure you are certain before completing a crypto checkout."
                   },
                   {
                     q: "What happens if I dispute the charge with my bank?",

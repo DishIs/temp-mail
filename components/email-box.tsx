@@ -18,6 +18,7 @@ import { CliModal } from "./cli-modal";
 import { cn } from "@/lib/utils";
 import { MessageModal } from "./message-modal";
 import { DeleteConfirmationModal } from "./delete-confirmation-modal";
+import { AnnouncementBanner } from "./announcement-banner";
 import { ShareDropdown } from "./ShareDropdown";
 import {
   DropdownMenu, DropdownMenuContent,
@@ -1047,12 +1048,12 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
   }, [userSettings, isStorageLoaded, isAuthenticated]);
 
   useEffect(() => {
-    const n = messages.filter(m => !readMessageIds.has(m.id) && !dismissedMessageIds.has(m.id)).length;
+    const n = messages.filter(m => !readMessageIds.has(m.id)).length;
     const base = originalTitle.current.replace(/^\(\d+\)\s*/, "");
     document.title = n > 0 ? `(${n}) ${base}` : base;
-  }, [messages, readMessageIds, dismissedMessageIds]);
+  }, [messages, readMessageIds]);
 
-  useEffect(() => { setVisibleMessageCount(MESSAGES_PER_PAGE); }, [email, activeTab]);
+  useEffect(() => { setVisibleMessageCount(MESSAGES_PER_PAGE); }, [email]);
 
   const sendNotification = (title: string, body: string) => {
     if (userSettings.sound) try { new Audio("/notification.mp3").play().catch(() => { }); } catch { }
@@ -1159,12 +1160,6 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
     }
   };
 
-  const handleMessageAction = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (activeTab === "dismissed") setDismissedMessageIds(p => { const s = new Set(p); s.delete(id); return s; });
-    else setDismissedMessageIds(p => new Set(p).add(id));
-  };
-
   const viewMessage = (msg: Message) => {
     if (!readMessageIds.has(msg.id)) setReadMessageIds(p => new Set(p).add(msg.id));
     setSelectedMessage(msg); if (!isSplit) setIsMessageModalOpen(true);
@@ -1194,7 +1189,6 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
     setSelectedDomain(targetDomain);
     setMessages([]);
     setReadMessageIds(new Set());
-    setDismissedMessageIds(new Set());
     setDomainExpiry(null);
 
     if (isAuthenticated) {
@@ -1352,12 +1346,10 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
   }, "pro");
 
   const filteredMessages = useMemo(() => {
-    if (activeTab === "dismissed") return messages.filter(m => dismissedMessageIds.has(m.id));
-    const base = messages.filter(m => !dismissedMessageIds.has(m.id));
-    const pinned = base.filter(m => pinnedMessageIds.includes(m.id));
-    const unpinned = base.filter(m => !pinnedMessageIds.includes(m.id));
+    const pinned = messages.filter(m => pinnedMessageIds.includes(m.id));
+    const unpinned = messages.filter(m => !pinnedMessageIds.includes(m.id));
     return [...pinned, ...unpinned];
-  }, [messages, activeTab, dismissedMessageIds, pinnedMessageIds]);
+  }, [messages, pinnedMessageIds]);
 
   const visibleMessages = useMemo(() => filteredMessages.slice(0, visibleMessageCount), [filteredMessages, visibleMessageCount]);
   const hiddenCount = filteredMessages.length - visibleMessages.length;
@@ -1394,9 +1386,9 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
         <span>$</span><span>fce watch {email || "random"}</span>
         <span className="inline-block w-1.5 h-3.5 bg-muted-foreground/30 group-hover:bg-primary/50 animate-pulse" />
       </button>
-      <p className="font-mono text-xs text-muted-foreground/80 mb-1">{activeTab === "all" ? t("inbox_empty_title") : "No dismissed emails"}</p>
-      <p className="font-mono text-[11px] text-muted-foreground/70 max-w-xs">{activeTab === "all" ? t("inbox_empty_subtitle") : "Dismissed emails appear here."}</p>
-      {activeTab === "all" && !isPro && (
+      <p className="font-mono text-xs text-muted-foreground/80 mb-1">{t("inbox_empty_title")}</p>
+      <p className="font-mono text-[11px] text-muted-foreground/70 max-w-xs">{t("inbox_empty_subtitle")}</p>
+      {!isPro && (
         <div className="mt-6 border border-dashed border-border rounded-lg px-5 py-3 max-w-xs space-y-1.5">
           <p className="font-mono text-[10px] text-muted-foreground/80">Need a real phone number for OTP verification?</p>
           <a rel="sponsored" href={PHONE_AFFILIATE_URL} target="_blank"
@@ -1479,9 +1471,6 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
                     )}
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>
                       <Trash2 className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>
-                      {activeTab === "dismissed" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
                     </Button>
                   </div>
                 </div>
@@ -1570,9 +1559,6 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
                     <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px]" onClick={() => viewMessage(msg)}>{t("view")}</Button>
                     <Button variant="link" size="sm" className="h-6 px-2 font-mono text-[10px] text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteAction("message", msg.id); }}>{t("delete")}</Button>
                     {userPlan === "free" && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleSaveMessage(msg, e)}><Star className={cn("h-3 w-3", savedMessageIds.has(msg.id) && "fill-amber-500 text-amber-500")} /></Button>}
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={(e) => handleMessageAction(msg.id, e)}>
-                      {activeTab === "dismissed" ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
-                    </Button>
                   </div>
                 </td>
               </TableRow>
@@ -1775,6 +1761,8 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
 
       {flashQueue.length > 0 && <NewEmailFlash key={flashQueue[0].id} from={flashQueue[0].from} subject={flashQueue[0].subject} onDone={() => setFlashQueue(q => q.slice(1))} />}
 
+      <AnnouncementBanner emailArrived={messages.length > 0} />
+
       <div className={cn("rounded-lg border border-border bg-background overflow-hidden", isZen && "border-0 bg-transparent")}>
         <div className="border-b border-border">
           <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
@@ -1907,7 +1895,9 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
                     <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 animate-pulse pointer-events-none" />
                   )}
                 </div>
-                <ShareDropdown />
+                <div className="hidden sm:flex">
+                  <ShareDropdown />
+                </div>
               </div>
             </TooltipProvider>
           </div>
@@ -1942,22 +1932,6 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
                   {hint && <span className="hidden sm:inline font-mono text-[9px] text-muted-foreground/35 normal-case tracking-normal">{hint}</span>}
                 </button>
               ))}
-            </div>
-          )}
-          {!isZen && (
-            <div className="flex gap-px border-t border-border" style={{ background: "var(--border)" }}>
-              {(["all", "dismissed"] as const).map(tab => {
-                const unread = tab === "all" ? filteredMessages.filter(m => !readMessageIds.has(m.id)).length : 0;
-                return (
-                  <button key={tab} onClick={() => setActiveTab(tab)}
-                    className={cn("flex-1 flex items-center justify-center gap-1.5 px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors",
-                      activeTab === tab ? "bg-background text-foreground" : "bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground")}>
-                    {tab === "all" ? <Mail className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
-                    {tab}
-                    {unread > 0 && <span className="font-mono text-[9px] border border-border rounded-sm px-1 py-px tabular-nums leading-none">{unread}</span>}
-                  </button>
-                );
-              })}
             </div>
           )}
         </div>
