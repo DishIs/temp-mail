@@ -57,7 +57,7 @@ export default function OtpPage() {
         If no OTP is found, the response is <code className="rounded bg-muted px-1 py-0.5 text-xs">{"{ \"otp\": null }"}</code> (or similar). This is not an error — the request succeeded; there was simply no code in the latest messages.
       </p>
 
-      <DocPageNav prev={{ href: "/api/docs/messages", label: "Reading messages" }} next={{ href: "/api/docs/platform-domains", label: "Platform domains" }}
+      <DocPageNav prev={{ href: "/api/docs/messages", label: "Reading messages" }} next={{ href: "/api/docs/wait", label: "Wait API" }}
       />
     </article>
   );
