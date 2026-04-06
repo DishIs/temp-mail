@@ -115,11 +115,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "dismiss") {
-      const session = await auth();
-      if (session?.user?.email) {
-        const userEmail = session.user.email;
-        const dismissedKey = `announcement:dismissed:${userEmail}`;
-        await redis.setex(dismissedKey, 86400 * 7, "1");
+      const announcementData = await redis.get<Announcement>(ANNOUNCEMENT_KEY);
+      const announcement = { ...DEFAULT_ANNOUNCEMENT, ...announcementData };
+      
+      if (!announcement.alwaysShow) {
+        const session = await auth();
+        if (session?.user?.email) {
+          const userEmail = session.user.email;
+          const dismissedKey = `announcement:dismissed:${userEmail}`;
+          await redis.setex(dismissedKey, 86400 * 7, "1");
+        }
       }
       return NextResponse.json({ success: true });
     }

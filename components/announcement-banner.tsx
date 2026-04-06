@@ -37,7 +37,9 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
   const [isDismissed, setIsDismissed] = useState(false);
   const [hasTrackedView, setHasTrackedView] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remainingTimeRef = useRef<number>(0);
 
   const x = useMotionValue(0);
   const opacity = useTransform(x, [-100, 0, 100], [0, 1, 0]);
@@ -112,15 +114,27 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
         }
 
         if (announcement.dismissTime > 0) {
+          remainingTimeRef.current = announcement.dismissTime;
           dismissTimerRef.current = setTimeout(() => {
             dismissAnnouncement();
-          }, announcement.dismissTime);
+          }, remainingTimeRef.current);
         }
       }
     }, announcement.delayBeforeShowing);
 
     return () => clearTimeout(showTimer);
   }, [announcement, isLoading, isDismissed, isExiting, trackAction, dismissAnnouncement, hasTrackedView]);
+
+  useEffect(() => {
+    if (isHovered && dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      remainingTimeRef.current = remainingTimeRef.current;
+    } else if (!isHovered && !isExiting && remainingTimeRef.current > 0 && announcement) {
+      dismissTimerRef.current = setTimeout(() => {
+        dismissAnnouncement();
+      }, remainingTimeRef.current);
+    }
+  }, [isHovered, isExiting, announcement, dismissAnnouncement]);
 
   useEffect(() => {
     return () => {
@@ -155,6 +169,10 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.5}
           onDragEnd={handleDragEnd}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={() => setIsHovered(true)}
+          onTouchEnd={() => setIsHovered(false)}
           className={cn(
             "fixed z-40 cursor-pointer",
             POSITION_CLASSES[announcement.position]
