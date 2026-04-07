@@ -262,11 +262,14 @@ export function AppFooter() {
 
         {/* ── buy me a coffee ─────────────────────────────────────────── */}
         <div className="max-w-[90rem] mx-auto px-8 py-5 flex items-center gap-4">
-          <div className="postman-run-button"
-            data-postman-action="collection/fork"
-            data-postman-visibility="public"
-            data-postman-var-1="53581811-ebb488ee-fc2a-4234-b518-21d857d472b7"
-            data-postman-collection-url="entityId=53581811-ebb488ee-fc2a-4234-b518-21d857d472b7&entityType=collection&workspaceId=47981c31-02fb-4453-8b8c-734d70d4bc9a" />
+          <a
+            href="https://www.postman.com/freecustom-email/freecustom-email-for-developers-temp-mail-api/collection/53581811-ebb488ee-fc2a-4234-b518-21d857d472b7"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block transition-opacity hover:opacity-80"
+          >
+            <img src="https://run.pstmn.io/button.svg" alt="Run in Postman" width="128" height="32" />
+          </a>
         </div>
 
       </footer>

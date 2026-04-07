@@ -1,5 +1,5 @@
 // app/layout.tsx
-import "@/styles/global.css";
+import "../styles/global.css";
 import Providers from "@/components/Providers";
 import NextTopLoader from 'nextjs-toploader';
 import Script from 'next/script';
@@ -60,6 +60,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
 
       <body>
+        {/*
         <NextTopLoader
           color="#2299DD"
           initialPosition={0.08}
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           speed={200}
           shadow="0 0 10px #2299DD,0 0 5px #2299DD"
         />
+        */}
 
         <Providers>{children}</Providers>
 
@@ -126,19 +128,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           to be available before calling updateCookieBannerConfig.
           The CSS is loaded inline here so it never blocks rendering.
         */}
-        {/* Load Postman script globally so the buttons work instantly anywhere */}
-        <Script id="postman-script-global" strategy="afterInteractive">
-          {`
-            (function (p,o,s,t,m,a,n) {
-              !p[s] && (p[s] = function () { (p[t] || (p[t] = [])).push(arguments); });
-              !o.getElementById(s+t) && o.getElementsByTagName("head")[0].appendChild((
-                (n = o.createElement("script")),
-                (n.id = s+t), (n.async = 1), (n.src = m), n
-              ));
-            }(window, document, "_pm", "PostmanRunObject", "https://run.pstmn.io/button.js"));
-          `}
-        </Script>
-
         <Script id="silktide-config" strategy="lazyOnload">{`
           (function() {
             var link = document.createElement('link');
