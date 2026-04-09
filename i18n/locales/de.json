@@ -125,7 +125,7 @@
     "faq10_q": "Kann ich die Zeitpost für Geschäfte benutzen?",
     "faq10_a": "Ja. Pro-Pläne unterstützen benutzerdefinierte Domains, dauerhaften Speicher und API-Zugriff  ideal für Tests, Unterstützung von Alias oder Trennung von Anmeldungen aus Ihrem Haupt-Business-Inbox.",
     "faq11_q": "Hat FreeCustom.Email eine API?",
-    "faq11_a": "Ja. FreeCustom.Email verfügt über eine Temp Mail API, die über RapidAPI verfügbar ist. Es unterstützt das Erstellen von Posteingangskästen, das Empfangen von Nachrichten, die Echtzeitlieferung von WebSocket und die automatische OTP-Extraktion. Pro-Benutzer erhalten vollen API-Zugriff für die Integration in ihre eigenen Apps.",
+    "faq11_a": "Ja. FreeCustom.Email verfügt über eine Auth flow testing API, die über RapidAPI verfügbar ist. Es unterstützt das Erstellen von Posteingangskästen, das Empfangen von Nachrichten, die Echtzeitlieferung von WebSocket und die automatische OTP-Extraktion. Pro-Benutzer erhalten vollen API-Zugriff für die Integration in ihre eigenen Apps.",
     "faq12_q": "Sind die temporären Postadressen wirklich kostenlos?",
     "faq12_a": "FreeCustom.Email ist kostenlos für Gäste und kostenloses Konto: Sofort-E-Mail-Adressen, keine Anzeigen, keine Kreditkarte erforderlich. Pro fügt benutzerdefinierte Domains, dauerhaften Speicher und fortschrittliche Entwicklerfunktionen für eine kleine Abonnementgebühr hinzu.",
     "faq13_q": "Was ist der Unterschied zwischen kostenloser und Pro Temp Mail?",

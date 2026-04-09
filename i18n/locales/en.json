@@ -2,7 +2,7 @@
   "Metadata": {
     "title": "Temp Mail — Free Temporary Email, No Ads & No Signup",
     "description": "Get a free temp mail address instantly — no signup, no ads, forever free. Use temporary email to receive OTP codes, verification links, and test registrations. Real-time inbox, custom domains available.",
-    "keywords": "temp mail, disposable email, temporary email, custom email domain, fake email address, email privacy, OTP email, no signup email, free temp mail API",
+    "keywords": "temp mail, disposable email, temporary email, custom email domain, fake email address, email privacy, OTP email, no signup email, free Auth flow testing API",
     "openGraph": {
       "title": "Temp Mail — Free Temporary Email Address, No Signup, No Ads",
       "description": "Create a free temp mail address in seconds. No signup, no ads, forever free. Real-time inbox with custom domain support and automatic OTP extraction.",
@@ -125,7 +125,7 @@
     "faq10_q": "Can I use temp mail for business?",
     "faq10_a": "Yes. Pro plans support custom domains, permanent storage, and API access — ideal for testing, support aliases, or separating sign-ups from your main business inbox.",
     "faq11_q": "Does FreeCustom.Email have an API?",
-    "faq11_a": "Yes. FreeCustom.Email has a temp mail API available via RapidAPI. It supports creating inboxes, receiving messages, WebSocket real-time delivery, and automatic OTP extraction. Pro users get full API access for integration into their own apps.",
+    "faq11_a": "Yes. FreeCustom.Email has an Auth flow testing API available via RapidAPI. It supports creating inboxes, receiving messages, WebSocket real-time delivery, and automatic OTP extraction. Pro users get full API access for integration into their own apps.",
     "faq12_q": "Are temp mail addresses really free?",
     "faq12_a": "FreeCustom.Email is free for guest and free-account use: instant temp mail addresses, no ads, no credit card needed. Pro adds custom domains, permanent storage, and advanced developer features for a small subscription fee.",
     "faq13_q": "What's the difference between free and Pro temp mail?",

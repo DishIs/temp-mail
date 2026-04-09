@@ -11,7 +11,7 @@ export const metadata = {
   // SEO fixes from previous session
   title: 'Temp Mail — Free Temporary Email, No Signup | FreeCustom.Email',
   description: 'Get a free temp mail address instantly — no signup, no ads, forever free. Use temporary email to receive OTP codes, verification links, and test registrations. Real-time inbox, custom domains available.',
-  keywords: 'temp mail, disposable email, temporary email, custom email domain, fake email address, email privacy, OTP email, no signup email, free temp mail API',
+  keywords: 'temp mail, disposable email, temporary email, custom email domain, fake email address, email privacy, OTP email, no signup email, free Auth flow testing API',
   alternates: { canonical: '/en' },
   icons: {
     icon: [

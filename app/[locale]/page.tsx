@@ -356,7 +356,7 @@ export default async function Page(props: Props) {
                           { href: "/disposable-email", label: "Disposable email" },
                           { href: "/anonymous-email", label: "Anonymous email" },
                           { href: "/free-temp-mail", label: "Free disposable email" },
-                          { href: "/temp-mail-api", label: "Temp mail API" },
+                          { href: "/temp-mail-api", label: "Auth flow testing API" },
                         ].map(({ href, label }) => (
                           <li key={href}>
                             <Link href={href} className="text-sm text-foreground underline-offset-2 hover:underline py-0.5 block">{label}</Link>

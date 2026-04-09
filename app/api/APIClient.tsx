@@ -45,11 +45,11 @@ const HOW_IT_WORKS = [
 ];
 
 const OVERVIEW_FAQ = [
-  { q: "What is a temp mail API?", a: "A temp mail API lets you create and use disposable email addresses programmatically. FreeCustom.Email provides instant inboxes, OTP extraction, and optional WebSocket delivery." },
-  { q: "How does the FreeCustom.Email temp mail API work?", a: "Get an API key from the dashboard, then call api2.freecustom.email to register inboxes, list messages, and extract OTPs. The Free plan gives 5,000 requests/month; paid plans add OTP extraction, WebSocket push, attachments, and custom domains." },
-  { q: "Who is the temp mail API for?", a: "Developers running integration tests, QA automation, CI/CD pipelines, and apps that need disposable inboxes for signup flows and verification testing." },
-  { q: "Is there a free temp mail API?", a: "Yes. FreeCustom.Email offers a Free API plan with 5,000 requests per month, 1 req/sec. No credit card required." },
-  { q: "Can I use the temp mail API with my own domain?", a: "Yes, on Growth and Enterprise plans. Add and verify your domain in the dashboard; then register inboxes like user@yourdomain.com via the API." },
+  { q: "What is an Auth flow testing API?", a: "An Auth flow testing API lets you create and use disposable email addresses programmatically. FreeCustom.Email provides instant inboxes, OTP extraction, and optional WebSocket delivery." },
+  { q: "How does the FreeCustom.Email Auth flow testing API work?", a: "Get an API key from the dashboard, then call api2.freecustom.email to register inboxes, list messages, and extract OTPs. The Free plan gives 5,000 requests/month; paid plans add OTP extraction, WebSocket push, attachments, and custom domains." },
+  { q: "Who is the Auth flow testing API for?", a: "Developers running integration tests, QA automation, CI/CD pipelines, and apps that need disposable inboxes for signup flows and verification testing." },
+  { q: "Is there a free Auth flow testing API?", a: "Yes. FreeCustom.Email offers a Free API plan with 5,000 requests per month, 1 req/sec. No credit card required." },
+  { q: "Can I use the Auth flow testing API with my own domain?", a: "Yes, on Growth and Enterprise plans. Add and verify your domain in the dashboard; then register inboxes like user@yourdomain.com via the API." },
 ];
 
 const SDK_LANGS = [
