@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
-import { X, ExternalLink, Sparkles, Bitcoin } from "lucide-react";
+import { X, ExternalLink, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AnnouncementBannerProps {
@@ -213,7 +213,7 @@ export function AnnouncementBanner({ emailArrived = false }: AnnouncementBannerP
               className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center"
               style={{ backgroundColor: `${accentColor}15` }}
             >
-              <Bitcoin className="w-3.5 h-3.5" style={{ color: accentColor }} />
+              <Workflow className="w-3.5 h-3.5" style={{ color: accentColor }} />
             </div>
             
             <div className="flex-1 min-w-0">
