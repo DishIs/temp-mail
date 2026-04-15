@@ -1,18 +1,9 @@
 // app/api/nowpayments/create-subscription/route.ts
 // ─────────────────────────────────────────────────────────────────────────────
-//  Creates a NOWPayments subscription plan (cached by env var) then creates
-//  an email subscription for the user, returning the hosted invoice URL.
-//
-//  ENV vars:
-//    NOWPAYMENTS_API_KEY          – API key from NOWPayments dashboard
-//    NOWPAYMENTS_IPN_SECRET       – IPN secret for webhook verification
-//    NOWPAYMENTS_SANDBOX          – "true" for sandbox mode
-//    NEXT_PUBLIC_APP_URL          – e.g. https://freecustom.email
-//
-//  Plan ID cache (fill after first run — see console output):
-//    NOWPAYMENTS_PLAN_ID_APP_MONTHLY
-//    NOWPAYMENTS_PLAN_ID_APP_YEARLY
-//    NOWPAYMENTS_PLAN_ID_API_DEVELOPER_MONTHLY  ... etc.
+//  FIX Bug 2: order_description for API plans now stores `apiPlan: plan`
+//  (the short name e.g. "developer") instead of only `planKey`.
+//  The backend reads `meta.apiPlan` to set the user's plan — without it the
+//  plan defaulted to 'free' regardless of what was purchased.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
@@ -22,8 +13,6 @@ import { fetchFromServiceAPI } from "@/lib/api";
 type AppBilling     = "monthly" | "yearly";
 type ApiPlanName    = "developer" | "startup" | "growth" | "enterprise";
 type CreditsPackage = "starter" | "builder" | "scale" | "pro";
-
-// ── Price tables (USD) ────────────────────────────────────────────────────────
 
 const APP_PRICES: Record<AppBilling, number> = { monthly: 3.99, yearly: 29.99 };
 
@@ -41,8 +30,6 @@ const CREDITS_PRICES: Record<CreditsPackage, { amount: number; credits: number }
   pro:     { amount: 100, credits: 4_000_000 },
 };
 
-// ── NOWPayments API helpers ───────────────────────────────────────────────────
-
 const NP_BASE = process.env.NOWPAYMENTS_SANDBOX === "true"
   ? "https://api.sandbox.nowpayments.io/v1"
   : "https://api.nowpayments.io/v1";
@@ -52,7 +39,7 @@ async function getNowPaymentsToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      email: process.env.NOWPAYMENTS_EMAIL,
+      email:    process.env.NOWPAYMENTS_EMAIL,
       password: process.env.NOWPAYMENTS_PASSWORD,
     }),
   });
@@ -65,63 +52,69 @@ async function getNowPaymentsToken(): Promise<string> {
 }
 
 async function npHeaders(requireAuth = false): Promise<Record<string, string>> {
-  const headers: Record<string, string> = {
-    "x-api-key": process.env.NOWPAYMENTS_API_KEY ?? "",
+  const h: Record<string, string> = {
+    "x-api-key":    process.env.NOWPAYMENTS_API_KEY ?? "",
     "Content-Type": "application/json",
   };
   if (requireAuth) {
     const token = await getNowPaymentsToken();
-    headers["Authorization"] = `Bearer ${token}`;
+    h["Authorization"] = `Bearer ${token}`;
   }
-  return headers;
+  return h;
 }
 
-async function createCryptoInvoice(
-  planKey:    string,
-  email:     string,
-  userId:    string,
-  productType: "app" | "api",
-  appUrl:    string,
-  billing?: "monthly" | "yearly"
-): Promise<{ paymentUrl: string; invoiceId: string }> {
+async function createCryptoInvoice(opts: {
+  planKey:     string;
+  email:       string;
+  userId:      string;
+  productType: "app" | "api";
+  appUrl:      string;
+  billing?:    "monthly" | "yearly";
+  apiPlan?:    ApiPlanName;  // short name for API plans (e.g. "developer")
+}): Promise<{ paymentUrl: string; invoiceId: string }> {
+  const { planKey, email, userId, productType, appUrl, billing, apiPlan } = opts;
   let amount: number;
-  let description: string;
+  let orderDescription: string;
 
   if (planKey.startsWith("app_")) {
-    amount = billing === "yearly" ? 29.99 : 3.99;
-    description = billing === "yearly" ? "App Pro - Yearly" : "App Pro - Monthly";
+    amount = billing === "yearly" ? APP_PRICES.yearly : APP_PRICES.monthly;
+    // FIX Bug 2 (app): store billing explicitly; no apiPlan needed for app plans
+    orderDescription = JSON.stringify({
+      userId,
+      productType: "app",
+      billing,
+      isCryptoSubscription: true,
+      planKey, // kept for debugging
+    });
   } else if (planKey.startsWith("api_")) {
-    const apiPricesMonthly: Record<string, number> = {
-      api_developer_monthly: 7, api_startup_monthly: 19,
-      api_growth_monthly: 49, api_enterprise_monthly: 149,
-    };
-    const apiPricesYearly: Record<string, number> = {
-      api_developer_yearly: 67, api_startup_yearly: 182,
-      api_growth_yearly: 470, api_enterprise_yearly: 1430,
-    };
-    const prices = billing === "yearly" ? apiPricesYearly : apiPricesMonthly;
-    amount = prices[planKey] ?? 0;
-    const planName = planKey.replace("api_", "").replace("_monthly", "").replace("_yearly", "");
-    description = `API ${planName.charAt(0).toUpperCase() + planName.slice(1)} - ${billing ?? "monthly"}`;
+    const prices = billing === "yearly" ? API_PRICES_YEARLY : API_PRICES_MONTHLY;
+    // planKey is like "api_developer_monthly" — look up from short plan name
+    if (!apiPlan) throw new Error("apiPlan required for api planKey");
+    amount = prices[apiPlan] ?? 0;
+
+    // FIX Bug 2 (api): MUST store `apiPlan` (short name) so the backend handler
+    // can read it. Previously only `planKey` was stored and `meta.apiPlan` was
+    // undefined → plan defaulted to 'free'.
+    orderDescription = JSON.stringify({
+      userId,
+      productType: "api",
+      apiPlan,              // ← "developer" | "startup" | "growth" | "enterprise"
+      billing,
+      isCryptoSubscription: true,
+      planKey, // kept for debugging
+    });
   } else {
     throw new Error("Invalid plan key");
   }
 
-  // Use invoice endpoint - returns valid invoice_url
   const body = {
-    price_amount:        amount,
-    price_currency:     "usd",
+    price_amount:      amount,
+    price_currency:    "usd",
     order_id:          `${userId}_${Date.now()}`,
-    order_description: JSON.stringify({
-      userId,
-      productType,
-      planKey,
-      billing,
-      isCryptoSubscription: true, // Mark for backend tracking
-    }),
-    ipn_callback_url: `${appUrl}/api/nowpayments/webhook`,
-    success_url:        `${appUrl}/payment/success?provider=nowpayments`,
-    cancel_url:         `${appUrl}/pricing`,
+    order_description: orderDescription,
+    ipn_callback_url:  `${appUrl}/api/nowpayments/webhook`,
+    success_url:       `${appUrl}/payment/success?provider=nowpayments`,
+    cancel_url:        `${appUrl}/pricing`,
     customer_email:    email,
   };
 
@@ -135,7 +128,7 @@ async function createCryptoInvoice(
     throw new Error(json?.message ?? "Failed to create invoice");
   }
 
-  const invoiceId = String(json.id ?? "");
+  const invoiceId  = String(json.id ?? "");
   const paymentUrl = json.invoice_url ?? json.payment_url ?? "";
 
   if (!paymentUrl) {
@@ -143,10 +136,7 @@ async function createCryptoInvoice(
     throw new Error("No payment URL returned");
   }
 
-  return {
-    paymentUrl,
-    invoiceId,
-  };
+  return { paymentUrl, invoiceId };
 }
 
 // ── Main route ────────────────────────────────────────────────────────────────
@@ -173,9 +163,9 @@ export async function POST(request: Request) {
       const billing = body.cycle === "yearly" ? "yearly" : "monthly";
       const planKey = `app_${billing}`;
 
-      const { paymentUrl, invoiceId } = await createCryptoInvoice(
-        planKey, email, userId, "app", appUrl, billing
-      );
+      const { paymentUrl, invoiceId } = await createCryptoInvoice({
+        planKey, email, userId, productType: "app", appUrl, billing,
+      });
       return NextResponse.json({ paymentUrl, invoiceId, productType: "app" });
     }
 
@@ -190,13 +180,15 @@ export async function POST(request: Request) {
       }
 
       const planKey = `api_${plan}_${billing}`;
-      const { paymentUrl, invoiceId } = await createCryptoInvoice(
-        planKey, email, userId, "api", appUrl, billing
-      );
+      // FIX Bug 2: pass apiPlan (short name) so it ends up in order_description
+      const { paymentUrl, invoiceId } = await createCryptoInvoice({
+        planKey, email, userId, productType: "api", appUrl, billing,
+        apiPlan: plan,  // ← was missing before
+      });
       return NextResponse.json({ paymentUrl, invoiceId, productType: "api", apiPlan: plan });
     }
 
-    // ── Credits (still one-time invoice, not a subscription) ────────────────
+    // ── Credits ──────────────────────────────────────────────────────────────
     if (type === "credits") {
       const pkg = body.package as CreditsPackage | undefined;
       const allowedPkgs: CreditsPackage[] = ["starter", "builder", "scale", "pro"];
@@ -210,16 +202,20 @@ export async function POST(request: Request) {
         price_amount:      amount,
         price_currency:    "usd",
         order_id:          `${userId}_${Date.now()}`,
-        order_description: JSON.stringify({ userId, productType: "credits", creditsToAdd: credits, package: pkg }),
-        ipn_callback_url:  `${appUrl}/api/nowpayments/webhook`,
-        success_url:       `${appUrl}/payment/success?provider=nowpayments`,
-        cancel_url:        `${appUrl}/api/pricing`,
-        customer_email:    email,
+        order_description: JSON.stringify({
+          userId,
+          productType:  "credits",
+          creditsToAdd: credits,
+          package:      pkg,
+        }),
+        ipn_callback_url: `${appUrl}/api/nowpayments/webhook`,
+        success_url:      `${appUrl}/payment/success?provider=nowpayments`,
+        cancel_url:       `${appUrl}/api/pricing`,
+        customer_email:   email,
       };
 
-      const headers = await npHeaders(false);
       const res  = await fetch(`${NP_BASE}/invoice`, {
-        method: "POST", headers, body: JSON.stringify(invoiceBody),
+        method: "POST", headers: await npHeaders(false), body: JSON.stringify(invoiceBody),
       });
       const json = await res.json();
 
@@ -229,7 +225,7 @@ export async function POST(request: Request) {
       }
 
       const invoiceUrl = json.invoice_url ?? json.payment_url ?? "";
-      const invoiceId = String(json.id ?? "");
+      const invoiceId  = String(json.id ?? "");
 
       return NextResponse.json({
         invoiceUrl,

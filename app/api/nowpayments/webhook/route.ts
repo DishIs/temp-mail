@@ -2,21 +2,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  Receives NOWPayments IPN (Instant Payment Notifications).
 //  Verifies HMAC-SHA512, maps payment_status → eventType, and forwards
-//  to the dedicated backend route POST /nowpayments/event
-//  (handled by nowpayments-handler.ts — NOT paddle-handler.ts).
+//  to the dedicated backend route POST /nowpayments/event.
 //
-//  Signature algorithm (per NOWPayments docs):
-//    1. Deep-sort all JSON body keys alphabetically
-//    2. JSON.stringify the sorted object
-//    3. HMAC-SHA512 with NOWPAYMENTS_IPN_SECRET
-//    4. Compare hex digest to x-nowpayments-sig header (timing-safe)
-//
-//  payment_status flow:
-//    waiting → confirming → confirmed → sending → finished  (success)
-//                                               → failed    (failure)
-//                                               → refunded
-//    partially_paid  (user sent less than required)
-//    expired         (invoice timed out)
+//  FIXES:
+//    Bug 2 – apiPlan extracted from both `apiPlan` and legacy `planKey` fields
+//    Bug 3 – backend failures now return 500 (not 200) so NP retries delivery
+//    Bug 5 – invoice_id=0 (falsy int) no longer swallows payment_id fallback
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { NextResponse }        from "next/server";
@@ -25,14 +16,16 @@ import crypto                  from "crypto";
 import { fetchFromServiceAPI } from "@/lib/api";
 
 // ── Signature verification ────────────────────────────────────────────────────
+// Official algorithm from NOWPayments Zendesk docs:
+// deep-sort all object keys alphabetically (including nested), then HMAC-SHA512.
 
-function sortObjectDeep(obj: unknown): unknown {
-  if (Array.isArray(obj)) return obj.map(sortObjectDeep);
+function sortObject(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(sortObject);
   if (obj !== null && typeof obj === "object") {
     return Object.keys(obj as Record<string, unknown>)
       .sort()
       .reduce<Record<string, unknown>>((acc, key) => {
-        acc[key] = sortObjectDeep((obj as Record<string, unknown>)[key]);
+        acc[key] = sortObject((obj as Record<string, unknown>)[key]);
         return acc;
       }, {});
   }
@@ -42,29 +35,47 @@ function sortObjectDeep(obj: unknown): unknown {
 function verifySignature(rawBody: string, sigHeader: string | null): boolean {
   if (!sigHeader) return false;
   const secret = process.env.NOWPAYMENTS_IPN_SECRET;
-  if (!secret) { console.error("[NOWPayments IPN] NOWPAYMENTS_IPN_SECRET not set"); return false; }
+  if (!secret) {
+    console.error("[NOWPayments IPN] NOWPAYMENTS_IPN_SECRET not set");
+    return false;
+  }
   try {
-    const sorted = sortObjectDeep(JSON.parse(rawBody));
+    const sorted = sortObject(JSON.parse(rawBody));
     const hmac   = crypto.createHmac("sha512", secret).update(JSON.stringify(sorted)).digest("hex");
-    // timingSafeEqual requires same-length buffers
     const a = Buffer.from(hmac,      "hex");
     const b = Buffer.from(sigHeader, "hex");
     return a.length === b.length && crypto.timingSafeEqual(a, b);
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 // ── Metadata parser ───────────────────────────────────────────────────────────
-// We embed { userId, productType, apiPlan, creditsToAdd } in order_description
-// (as JSON string) when creating the subscription/invoice in create-subscription/route.ts.
 
 interface NpMetadata {
   userId?:                string;
   productType?:           "app" | "api" | "credits";
-  apiPlan?:               string;
-  billing?:              string;
+  apiPlan?:               string;   // preferred: "developer" | "startup" | "growth" | "enterprise"
+  planKey?:               string;   // legacy: "api_developer_monthly" — we extract apiPlan from this
+  billing?:              "monthly" | "yearly";
   creditsToAdd?:         number;
   package?:              string;
-  isCryptoSubscription?: boolean; // true if invoice-based subscription (needs renewal tracking)
+  isCryptoSubscription?: boolean;
+}
+
+/**
+ * FIX Bug 2: Extract the short API plan name from whichever field is available.
+ * create-subscription used to store planKey ("api_developer_monthly") but the
+ * backend reads apiPlan ("developer"). We support both.
+ */
+function extractApiPlan(meta: NpMetadata): string | undefined {
+  if (meta.apiPlan) return meta.apiPlan;
+  if (meta.planKey) {
+    // "api_developer_monthly" → "developer"
+    const match = meta.planKey.match(/^api_([a-z]+)_(?:monthly|yearly)$/);
+    if (match) return match[1];
+  }
+  return undefined;
 }
 
 function parseMetadata(ipn: Record<string, unknown>): NpMetadata {
@@ -75,19 +86,24 @@ function parseMetadata(ipn: Record<string, unknown>): NpMetadata {
       if (parsed && typeof parsed === "object") return parsed as NpMetadata;
     }
   } catch { /* fall through */ }
-  // Fallback: userId is first segment of order_id ("userId_timestamp")
   const orderId = (ipn.order_id as string | undefined) ?? "";
   return { userId: orderId.includes("_") ? orderId.split("_")[0] : orderId || undefined };
 }
 
+// ── Invoice ID resolver ───────────────────────────────────────────────────────
+// FIX Bug 5: NP sends invoice_id as an integer. If it's 0 (falsy but valid-ish),
+// the nullish coalescing `?? payment_id` would NOT fall through (0 is not null).
+// We explicitly treat 0 and null/undefined as "absent".
+
+function resolveInvoiceId(ipn: Record<string, unknown>): string {
+  const inv = ipn.invoice_id;
+  if (inv !== null && inv !== undefined && inv !== 0) return String(inv);
+  const pay = ipn.payment_id;
+  if (pay !== null && pay !== undefined) return String(pay);
+  return String(ipn.order_id ?? "");
+}
+
 // ── Status → eventType mapping ────────────────────────────────────────────────
-//
-// We emit TWO events on a clean payment path:
-//   "confirmed" / "sending" → ACTIVATED        (early unlock on blockchain confirm)
-//   "finished"              → PAYMENT_COMPLETED (fully settled — canonical renewal)
-//
-// This mirrors how Paddle fires both subscription.activated AND transaction.completed.
-// The backend handler is idempotent so receiving both is safe.
 
 type BackendEventType = "ACTIVATED" | "PAYMENT_COMPLETED" | "PAYMENT_FAILED" | "REFUNDED";
 
@@ -103,7 +119,6 @@ function mapStatus(npStatus: string): BackendEventType | null {
       return "PAYMENT_FAILED";
     case "refunded":
       return "REFUNDED";
-    // waiting / confirming / partially_paid — acknowledge but don't change plan
     default:
       return null;
   }
@@ -131,12 +146,11 @@ export async function POST(request: Request) {
   console.log(
     `[NOWPayments IPN] status=${npStatus}`,
     `payment_id=${ipn.payment_id}`,
-    `subscription_id=${ipn.subscription_id ?? "n/a"}`,
+    `invoice_id=${ipn.invoice_id ?? "n/a"}`,
   );
 
   const eventType = mapStatus(npStatus);
   if (!eventType) {
-    // Acknowledge to stop NP retrying — nothing to do for this status
     console.log(`[NOWPayments IPN] No-op status: ${npStatus}`);
     return NextResponse.json({ received: true }, { status: 200 });
   }
@@ -147,35 +161,37 @@ export async function POST(request: Request) {
       "[NOWPayments IPN] Could not resolve userId from:",
       JSON.stringify({ order_id: ipn.order_id, order_description: ipn.order_description }),
     );
-    // Return 200 — NP will stop retrying. Manual review via logs.
     return NextResponse.json({ received: true, warning: "userId not resolved" }, { status: 200 });
   }
 
   const payload = {
     eventType,
-    productType:            meta.productType  ?? "app",
-    apiPlan:                meta.apiPlan,
-    billing:               meta.billing,
-    creditsToAdd:          meta.creditsToAdd,
-    userId:                meta.userId,
-    invoiceId:             String(ipn.invoice_id ?? ipn.payment_id ?? ipn.order_id ?? ""),
-    amount:               String(ipn.price_amount ?? ipn.actually_paid ?? ""),
-    currency:             String(ipn.price_currency ?? ipn.pay_currency ?? "usd").toUpperCase(),
+    productType:          meta.productType  ?? "app",
+    apiPlan:              extractApiPlan(meta),          // FIX Bug 2
+    billing:             meta.billing,
+    creditsToAdd:        meta.creditsToAdd,
+    userId:              meta.userId,
+    invoiceId:           resolveInvoiceId(ipn),          // FIX Bug 5
+    amount:             String(ipn.price_amount ?? ipn.actually_paid ?? ""),
+    currency:           String(ipn.price_currency ?? ipn.pay_currency ?? "usd").toUpperCase(),
     isCryptoSubscription: meta.isCryptoSubscription ?? false,
-    startTime:            new Date().toISOString(),
-    rawEvent:             ipn,
+    startTime:           new Date().toISOString(),
+    rawEvent:            ipn,
   };
 
   try {
-    // Routes to nowpayments-handler.ts, NOT paddle-handler.ts
     await fetchFromServiceAPI("/nowpayments/event", {
       method: "POST",
       body:   JSON.stringify(payload),
     });
   } catch (err: any) {
     console.error("[NOWPayments IPN → Backend]", err.message);
-    // Return 200 to stop retries; error is logged for manual review.
-    return NextResponse.json({ received: true, warning: "Backend error" }, { status: 200 });
+    // FIX Bug 3: return 500 so NowPayments retries.
+    // Previously returned 200 which permanently lost the event.
+    return NextResponse.json(
+      { received: false, error: "Backend processing failed — will retry" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ received: true }, { status: 200 });
