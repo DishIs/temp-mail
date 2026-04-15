@@ -725,7 +725,7 @@ paths:
                   description: |
                     Flag this inbox for testing purposes to enable zero-latency event timelines in the Auth Flow Debugger.
                     Requires Growth ($49/mo) or Enterprise ($149/mo) plan.
-                  example: true
+                  example: false
       responses:
         "201":
           description: Inbox registered
