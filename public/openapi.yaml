@@ -93,6 +93,120 @@ paths:
                 $ref: "#/components/schemas/PlansResponse"
 
   # ─────────────────────────────────────────────────────────────────────────
+  # Public v1 — Dashboard Analytics (Growth+ required)
+  # ─────────────────────────────────────────────────────────────────────────
+  /v1/inboxes/{inbox}/timeline:
+    get:
+      summary: Get inbox timeline history
+      operationId: getTimeline
+      tags: [Public v1 - Dashboard Analytics]
+      description: |
+        Returns the timeline history for a specific inbox. This shows the
+        test run history and event sequence for debugging failed tests.
+
+        **Plan required:** Growth ($49/mo) or Enterprise ($149/mo).
+
+        The timeline helps you understand:
+        - When the inbox was created and used
+        - Messages received over time
+        - Test flow patterns and failures
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          description: The inbox to get timeline for (e.g. `test@ditube.info`).
+          schema:
+            type: string
+          example: "test@ditube.info"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      inbox: { type: string }
+                      events: { type: array }
+                      duration_hours: { type: integer }
+                      event_count: { type: integer }
+        "400":
+          description: Missing inbox parameter
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error400Inbox" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Plan too low — Growth or Enterprise required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/inboxes/{inbox}/insights:
+    get:
+      summary: Get inbox failure insights
+      operationId: getInsights
+      tags: [Public v1 - Dashboard Analytics]
+      description: |
+        Returns automated failure insights for a specific inbox. This analyzes the
+        inbox activity and detects common issues with test flows.
+
+        **Plan required:** Growth ($49/mo) or Enterprise ($149/mo).
+
+        Insights include:
+        - Common failure patterns
+        - Recommendations for improving deliverability
+        - Timing issues detection
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: inbox
+          in: path
+          required: true
+          description: The inbox to get insights for (e.g. `test@ditube.info`).
+          schema:
+            type: string
+          example: "test@ditube.info"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      inbox: { type: string }
+                      insights: { type: array }
+                      analyzed_at: { type: string, format: date-time }
+        "400":
+          description: Missing inbox parameter
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error400Inbox" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Plan too low — Growth or Enterprise required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error403Plan" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Public v1 — Platform Domains (read-only, plan-gated)
   # ─────────────────────────────────────────────────────────────────────────
   /v1/domains:
@@ -1578,6 +1692,15 @@ tags:
     description: OTP and verification link extraction (Growth+ only)
   - name: Public v1 - Webhooks
     description: Subscribe to real-time message notifications via HTTP webhooks (Growth+ only).
+  - name: Public v1 - Dashboard Analytics
+    description: |
+      Timeline history and automated failure insights for inboxes.
+
+      **Requires Growth ($49/mo) or Enterprise ($149/mo) plan.**
+
+      These endpoints help you debug and analyze test flow patterns:
+      - `GET /v1/inboxes/{inbox}/timeline` — View inbox event history
+      - `GET /v1/inboxes/{inbox}/insights` — Get automated failure analysis
 
 x-websocket:
   url: "wss://api2.freecustom.email/v1/ws"

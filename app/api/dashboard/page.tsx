@@ -18,12 +18,13 @@ import {
   DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { ApiCustomDomainManager } from "@/components/dashboard/ApiCustomDomainManager";
+import { EventsTab } from "@/components/dashboard/EventsTab";
 import { CUSTOM_DOMAIN_PLANS, WEBHOOK_PLANS } from "@/lib/api-plans-client";
 
 const PAYMENT_LOGS_LIMIT = 20;
 
 // ─── Constant arrays outside the component — never recreated on render ────────
-const TABS = ["overview", "keys", "inboxes", "domains", "webhooks", "usage", "billing"] as const;
+const TABS = ["overview", "events", "keys", "inboxes", "domains", "webhooks", "usage", "billing"] as const;
 
 const ASCII_FRAGS = [
   { x: "1%",  y: "8%",  t: "EHLO api2.freecustom.email" },
@@ -797,7 +798,7 @@ function ApiDashboardContent() {
               {TABS.map(tab => (
                 <TabsTrigger key={tab} value={tab}
                   className="rounded-none px-4 pb-3 pt-0 text-sm border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=active]:shadow-none capitalize whitespace-nowrap">
-                  {tab === "keys" ? "API Keys" : tab}
+                  {tab === "keys" ? "API Keys" : tab === "events" ? "Auth Flow Debugger (new)" : tab}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -808,6 +809,13 @@ function ApiDashboardContent() {
               </div>
             ) : (
               <>
+                {/* EVENTS / TEST RUNS */}
+                <TabsContent value="events" className="mt-0">
+                  <ErrorBoundary>
+                    <EventsTab planName={planName as string} apiInboxes={apiInboxes} />
+                  </ErrorBoundary>
+                </TabsContent>
+
                 {/* OVERVIEW */}
                 <TabsContent value="overview" className="mt-0">
                   <div className="grid gap-px bg-border sm:grid-cols-3 rounded-lg overflow-hidden mb-8">

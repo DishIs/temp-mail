@@ -83,6 +83,34 @@ test.afterEach(async ({}, testInfo) => {
       />
 
       {/* ── Selenium ── */}
+
+
+      {/* ── Auth Flow Debugger ── */}
+      <h2 id="debugger" className="text-2xl font-bold mt-16 mb-4 border-b border-border pb-2">Debugging Failing Tests</h2>
+      <p className="text-muted-foreground leading-relaxed mb-6">
+        When an E2E test fails, you don't want to dig through CI/CD logs. FreeCustom.Email automatically tracks the lifecycle of every email requested during your test runs. 
+      </p>
+      
+      <div className="bg-muted/10 border border-border p-6 rounded-xl mb-6">
+        <h3 className="font-semibold mb-2 flex items-center gap-2">
+          <span className="bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded text-xs uppercase tracking-widest">New</span>
+          Auth Flow Debugger
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+          Open the <strong>Test Runs & Events</strong> tab in your dashboard to view the exact execution of your Playwright flows in real-time.
+        </p>
+        <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-2">
+          <li><strong>Sub-ms Latency Tracking:</strong> Identify if the SMTP relay or your app's worker queue is causing the 30-second timeout.</li>
+          <li><strong>Test Run Grouping:</strong> Inject <code className="text-xs bg-muted/60 rounded px-1">x-fce-test-run-id</code> into your requests, and the dashboard will automatically group the events into a single visual block.</li>
+          <li><strong>Failure Insights:</strong> Automatically detects if multiple emails were sent by accident or if an OTP was missing from the template.</li>
+        </ul>
+        <div className="mt-6">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/api/auth-flow-debugger">Learn more about the Debugger →</Link>
+          </Button>
+        </div>
+      </div>
+
       <h2 id="selenium" className="text-lg font-semibold mt-12 mb-2">Selenium (Python)</h2>
       <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
         The Python SDK supports a <code className="text-xs bg-muted/60 rounded px-1">sync=True</code> mode, which is perfect for traditional, synchronous Selenium test runners like pytest without needing <code className="text-xs bg-muted/60 rounded px-1">asyncio</code> wrappers.

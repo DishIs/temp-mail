@@ -228,6 +228,22 @@ const usage = await client.account.usage();
 console.log(\`\${usage.requests_used} / \${usage.requests_limit} requests used\`);
 console.log('Resets at:', usage.resets);`} language="typescript" />
 
+      {/* Analytics */}
+      <h2 id="analytics" className="text-lg font-semibold mt-10 mb-3">Analytics (timeline & insights)</h2>
+      <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+        Analytics require <strong>Growth plan or above</strong>. View timeline history and automated failure insights for your test inboxes.
+      </p>
+      <CodeBlock code={`// Get timeline events for an inbox — debugging test flows
+const timeline = await client.analytics.timeline('mytest@ditapi.info');
+console.log('Events:', timeline.events);
+console.log('Duration:', timeline.duration_hours, 'hours');
+
+// Get failure insights — automated issue detection
+const insights = await client.analytics.insights('mytest@ditapi.info');
+insights.forEach(insight => {
+  console.log(\`[\${insight.type}] \${insight.message}\`);
+});`} language="typescript" />
+
       {/* Error handling */}
       <h2 id="errors" className="text-lg font-semibold mt-10 mb-3">Error handling</h2>
       <CodeBlock code={`import {

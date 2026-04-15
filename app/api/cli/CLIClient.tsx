@@ -53,6 +53,8 @@ const ALL_COMMANDS = [
   { c: "fce dev",            d: "Register dev inbox + watch instantly",  plan: "Any", star: true },
   { c: "fce watch [inbox]",  d: "Stream emails via WebSocket",           plan: "Startup+" },
   { c: "fce otp <inbox>",    d: "Extract latest OTP code",               plan: "Growth+" },
+  { c: "fce timeline <inbox>", d: "View inbox event timeline",          plan: "Growth+" },
+  { c: "fce insights <inbox>", d: "View failure insights for inbox",       plan: "Growth+" },
   { c: "fce status",         d: "View account and plan",                 plan: "Any" },
   { c: "fce inbox",          d: "Manage registered addresses",           plan: "Any" },
   { c: "fce messages",       d: "List messages in an inbox",             plan: "Any" },
@@ -125,18 +127,41 @@ changed 1 package in 5s`,
   API inboxes  ·  10
   App inboxes  ·  44`,
   },
-  {
+{
     id: "otp",
     label: "OTP",
     cmd: "fce otp dev-fy8x@ditcloud.info",
     output: `────────────────────────────────────────────────
   OTP
-────────────────────────────────────────────────
+ ───────────────────────────────────────────────
 
   OTP   ·  212342
   From  ·  "Dishant Singh" <dishupandey57@gmail.com>
   Subj  ·  Your OTP for FCE: 212342
   Time  ·  20:19:54`,
+  },
+  {
+    id: "timeline",
+    label: "Timeline",
+    cmd: "fce timeline dev-fy8x@ditcloud.info",
+    highlight: true,
+    badge: "🕐 New",
+    output: `Timeline for dev-fy8x@ditcloud.info:
+- register (+15ms)
+- email_received (+2034ms)
+- otp_detected (+2100ms)
+- email_read (+5ms)
+  Duration: 2.1 hours
+  Events: 4`,
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    cmd: "fce insights dev-fy8x@ditcloud.info",
+    output: `Insights for dev-fy8x@ditcloud.info:
+! [timing] OTP detected after 45s — consider reducing timeout
+! [deliverability] Gmail sending delays detected — check spam folder
+  Analyzed: 2026-04-15T13:30:00Z`,
   },
 ];
 

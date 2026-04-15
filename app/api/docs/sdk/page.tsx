@@ -186,6 +186,7 @@ export default function SdkHubPage() {
               { r: "client.domains",  m: "list, listWithExpiry, listCustom, addCustom, verifyCustom, removeCustom" },
               { r: "client.webhooks", m: "register, list, unregister" },
               { r: "client.account",  m: "info, usage" },
+              { r: "client.analytics", m: "timeline, insights" },
               { r: "client.realtime", m: "WebSocket client (on, once, connect, disconnect, wait)" },
             ].map(({ r, m }) => (
               <tr key={r} className="hover:bg-muted/5">

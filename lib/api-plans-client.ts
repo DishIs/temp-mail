@@ -16,3 +16,11 @@ export const WS_PLANS: string[] = ["startup", "growth", "enterprise"];
 
 /** API plans that include Webhooks. */
 export const WEBHOOK_PLANS: string[] = ["growth", "enterprise"];
+/** API plans that include the visual failure insights. */
+export const INSIGHTS_PLANS: string[] = ["growth", "enterprise"];
+
+/** API plans that include live WS timeline updates. */
+export const LIVE_TIMELINE_PLANS: string[] = ["growth", "enterprise"];
+
+/** API plans that include basic timeline access. */
+export const TIMELINE_PLANS: string[] = ["startup", "growth", "enterprise"];

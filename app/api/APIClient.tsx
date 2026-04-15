@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check, Bot } from "lucide-react";
+import { Check, Bot, Zap, Clock } from "lucide-react";
 import { ApiHeroCode } from "@/app/api/ApiHeroCode";
 import { ApiCodeExamples } from "@/app/api/ApiCodeExamples";
 import { EmailFlowAnimation } from "@/app/api/EmailFlowAnimation";
@@ -18,7 +18,7 @@ const FEATURES = [
   { title: "Instant inboxes",     desc: "Register an inbox and start receiving in seconds" },
   { title: "OTP extraction",      desc: "Regex-free. We parse the code, you get the value" },
   { title: "WebSocket push",      desc: "Real-time delivery. No polling required" },
-  { title: "Credits system",      desc: "Pay per request, never expire" },
+  { title: "Live Auth Debugger",  desc: "Visually trace exact OTP extraction flow and latency" },
   { title: "Custom domains",      desc: "Use your own domain on Growth plan and above" },
   { title: "Attachment support",  desc: "Up to 50 MB on Enterprise" },
 ];
@@ -207,6 +207,57 @@ export default function APIClient() {
       </section>
 
       <ApiStats />
+
+      
+      {/* ── AUTH FLOW DEBUGGER ──────────────────────────────── */}
+      <section className="relative border-t border-border px-6 py-24 bg-muted/5 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,hsl(0_0%_50%_/_0.09)_1px,transparent_0)] bg-[size:28px_28px] z-0" />
+        <Cols />
+        <div className="relative z-10 max-w-5xl w-full mx-auto grid md:grid-cols-2 gap-12 items-center">
+          <FadeIn>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-semibold uppercase tracking-widest mb-6">
+              <Zap className="h-3 w-3" /> New Release
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4 leading-tight text-balance break-words">
+              Debug auth flows<br />in real-time
+            </h2>
+            <p className="text-sm text-muted-foreground mb-8 max-w-sm leading-relaxed">
+              Stop blindly guessing why your Playwright tests fail. Group your E2E signups into "Test Runs" and visually trace the exact OTP extraction flow, latency, and failure points in our new Auth Flow Debugger.
+            </p>
+            <Button asChild size="lg">
+              <Link href="/api/auth-flow-debugger">Explore the Debugger →</Link>
+            </Button>
+          </FadeIn>
+          
+          <FadeIn delay={0.2}>
+            <div className="relative shadow-2xl rounded-xl overflow-hidden border border-border bg-background p-6">
+              <div className="flex items-center gap-2 border-b border-border pb-4 mb-4">
+                <div className="h-2 w-2 rounded-full bg-red-500" />
+                <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                <span className="ml-2 font-mono text-xs text-muted-foreground">Test Run: tr_8x9v2</span>
+              </div>
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-border before:to-transparent">
+                <div className="relative flex items-center justify-normal z-10">
+                  <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-background shrink-0 text-[10px] shadow border-green-500 text-green-500">✓</div>
+                  <div className="w-[calc(100%-2.5rem)] px-3 py-2 bg-muted/30 rounded border border-border ml-3 flex justify-between items-center">
+                    <p className="font-medium text-xs">Email Received</p>
+                    <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded">⚠️ slow</span>
+                  </div>
+                </div>
+                <div className="flex justify-center text-[10px] text-muted-foreground -my-2 z-10 relative bg-background px-1 w-max ml-[1.125rem] border border-border rounded-full">↓ 2400ms</div>
+                <div className="relative flex items-center justify-normal z-10 mt-4">
+                  <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 bg-background shrink-0 text-[10px] shadow border-green-500 text-green-500">✓</div>
+                  <div className="w-[calc(100%-2.5rem)] px-3 py-2 bg-muted/30 rounded border border-border ml-3 flex justify-between items-center">
+                    <p className="font-medium text-xs">OTP Extracted</p>
+                    <p className="font-mono text-xs">847291</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
 
       {/* ── HOW IT WORKS — ANIMATED FLOW ──────────────────────────────── */}
       <section className="relative border-t border-border px-6 py-24" style={DOT_BG}>

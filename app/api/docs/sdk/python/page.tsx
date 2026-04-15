@@ -260,6 +260,21 @@ usage = await client.account.usage()
 print(f"{usage.requests_used} / {usage.requests_limit} requests used")
 print(f"Resets at: {usage.resets}")`} language="python" />
 
+      {/* Analytics */}
+      <h2 id="analytics" className="text-lg font-semibold mt-10 mb-3">Analytics (timeline & insights)</h2>
+      <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+        Analytics require <strong>Growth plan or above</strong>. View timeline history and automated failure insights for your test inboxes.
+      </p>
+      <CodeBlock code={`# Get timeline events for an inbox — debugging test flows
+timeline = await client.analytics.timeline("mytest@ditapi.info")
+print("Events:", timeline.events)
+print("Duration:", timeline.duration_hours, "hours")
+
+# Get failure insights — automated issue detection
+insights = await client.analytics.insights("mytest@ditapi.info")
+for insight in insights:
+    print(f"[{insight.type}] {insight.message}")`} language="python" />
+
       {/* Error handling */}
       <h2 id="errors" className="text-lg font-semibold mt-10 mb-3">Error handling</h2>
       <CodeBlock code={`from freecustom_email.errors import (

@@ -5,28 +5,46 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, Sun, Moon, Laptop, MoreVertical, X, LogOut, LayoutDashboard, CreditCard, User } from "lucide-react";
+import { Menu as MenuIcon, Sun, Moon, Laptop, X, LogOut, LayoutDashboard, CreditCard, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { SearchModal } from "@/components/search-modal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const NAV_LINKS = [
-  { href: "/api",                label: "Overview"   },
-  { href: "/ai",                 label: "FCE AI"     },
-  { href: "/api/docs",           label: "Docs"       },
-  { href: "/api/cli",            label: "CLI"        },
-  { href: "/api/use-cases",      label: "Use Cases"  },
-  { href: "/api/mcp",            label: "MCP"        },
-  { href: "/api/automation",     label: "Automation" },
-  { href: "/api/playground",     label: "Playground" },
-  { href: "/api/pricing",        label: "Pricing"    },
-  { href: "/api/docs/changelog", label: "Changelog"  },
-  { href: "/api/dashboard", label: "Dashboard"  },
+// Grouping links for the sophisticated hover dropdown
+const NAV_GROUPS =[
+  {
+    label: "Overview",
+    href: "/api",
+  },
+  {
+    label: "Features",
+    items:[
+      { href: "/api/auth-flow-debugger", label: "Auth Flow Debugger", desc: "Real-time OTP tracing & latency" },
+      { href: "/api/automation",         label: "Automation",         desc: "CI/CD & E2E Testing pipelines" },
+      { href: "/api/cli",                label: "CLI",                desc: "Terminal workflows & testing" },
+      { href: "/api/mcp",                label: "MCP",                desc: "Model Context Protocol integration" },
+      { href: "/ai",                     label: "FCE AI",             desc: "Context-aware AI assistant" },
+    ]
+  },
+  {
+    label: "Resources",
+    items:[
+      { href: "/api/docs",           label: "Documentation", desc: "Quickstarts & SDK guides" },
+      { href: "/api/playground",     label: "Playground",    desc: "Interactive OpenAPI tester" },
+      { href: "/api/use-cases",      label: "Use Cases",     desc: "Real-world implementations" },
+      { href: "/api/docs/changelog", label: "Changelog",     desc: "Latest platform updates" },
+    ]
+  },
+  {
+    label: "Pricing",
+    href: "/api/pricing",
+  },
+  {
+    label: "Dashboard",
+    href: "/api/dashboard",
+  }
 ];
 
 interface ApiStatusData {
@@ -60,7 +78,7 @@ function useThemeRipple() {
       setTheme(next);
     }).ready.then(() => {
       document.documentElement.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
+        { clipPath:[`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
         { duration: 420, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }
       );
     });
@@ -86,9 +104,9 @@ export function DevHeader() {
   const { theme, toggle, btnRef } = useThemeRipple();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted,  setMounted]  = useState(false);
-  const [apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
+  const[apiStatus, setApiStatus] = useState<ApiStatusData | null | undefined>(undefined);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => setMounted(true),[]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -106,8 +124,6 @@ export function DevHeader() {
   }, [status, session?.user?.id]);
 
   const isSessionLoading = !mounted || status === "loading";
-  const isApiStatusLoading = status === "authenticated" && apiStatus === undefined;
-
   const isLoggedIn = status === "authenticated" && !!session?.user;
   const planLabel  = apiStatus?.plan?.label ?? (apiStatus?.plan as { name?: string })?.name ?? null;
   const credits    = apiStatus?.usage?.credits_remaining ?? (apiStatus?.usage as { credits?: number })?.credits ?? 0;
@@ -126,11 +142,13 @@ export function DevHeader() {
   const isActive = (href: string) =>
     pathname === href || (href !== "/api" && pathname.startsWith(href));
 
-  // Show first 4 links in nav, rest in overflow (md) or all on lg
-  const PRIMARY_COUNT = 4;
+  // Determine if any item in a group is active (for dropdown highlight)
+  const isGroupActive = (items?: { href: string }[]) => {
+    return items?.some(item => isActive(item.href)) ?? false;
+  };
 
   const AuthSection = () => {
-    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const[dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -264,37 +282,59 @@ export function DevHeader() {
             </div>
           </Link>
 
-          {/* Desktop & Medium Responsive Nav */}
-          <nav className="hidden md:flex items-center gap-0.5">
-            {NAV_LINKS.map(({ href, label }, index) => (
-              <Link key={href} href={href}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  index >= PRIMARY_COUNT ? "hidden lg:flex" : "flex"
-                } ${
-                  isActive(href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
+          {/* Desktop & Medium Responsive Nav with Hover Dropdowns */}
+          <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+            {NAV_GROUPS.map((group) => {
+              if (group.href) {
+                return (
+                  <Link 
+                    key={group.label} 
+                    href={group.href}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      isActive(group.href) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {group.label}
+                  </Link>
+                );
+              }
 
-            {/* Overflow dropdown for md */}
-            <div className="flex lg:hidden items-center ml-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[10rem]">
-                  {NAV_LINKS.slice(PRIMARY_COUNT).map(({ href, label }) => (
-                    <DropdownMenuItem key={href} asChild>
-                      <Link href={href} className={isActive(href) ? "font-medium" : ""}>{label}</Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+              return (
+                <div key={group.label} className="relative group/nav">
+                  <button 
+                    className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-md transition-colors outline-none ${
+                      isGroupActive(group.items) ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {group.label}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-50 transition-transform duration-200 group-hover/nav:-rotate-180" />
+                  </button>
+
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2.5 opacity-0 invisible group-hover/nav:opacity-100 group-hover/nav:visible transition-all duration-200 z-50">
+                    <div className="w-[300px] rounded-xl border border-border bg-background/95 backdrop-blur-xl p-1.5 shadow-xl">
+                      <div className="grid grid-cols-1 gap-0.5">
+                        {group.items?.map(item => (
+                          <Link 
+                            key={item.href} 
+                            href={item.href} 
+                            className={`flex flex-col px-3 py-2.5 rounded-lg transition-colors ${
+                              isActive(item.href) ? "bg-muted/50" : "hover:bg-muted/40"
+                            }`}
+                          >
+                            <span className={`text-sm font-medium ${isActive(item.href) ? "text-foreground" : "text-foreground/90"}`}>
+                              {item.label}
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-0.5">
+                              {item.desc}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </nav>
 
           {/* Right */}
@@ -330,20 +370,49 @@ export function DevHeader() {
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden border-t border-border bg-background px-4 pb-5 pt-3">
-            <nav className="flex flex-col gap-0.5 mb-4">
-              {NAV_LINKS.map(({ href, label }) => (
-                <Link key={href} href={href} onClick={() => setMenuOpen(false)}
-                  className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                    isActive(href)
-                      ? "text-foreground font-medium bg-muted/30"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
-                  }`}
-                >
-                  {label}
-                </Link>
+          <div className="md:hidden border-t border-border bg-background px-4 pb-5 pt-3 max-h-[calc(100vh-3.5rem)] overflow-y-auto">
+            <nav className="flex flex-col gap-4 mb-4">
+              {NAV_GROUPS.map((group) => (
+                <div key={group.label} className="flex flex-col gap-1">
+                  {group.href ? (
+                    <Link 
+                      href={group.href} 
+                      onClick={() => setMenuOpen(false)}
+                      className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                        isActive(group.href)
+                          ? "text-foreground font-medium bg-muted/30"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                      }`}
+                    >
+                      {group.label}
+                    </Link>
+                  ) : (
+                    <>
+                      <div className="px-3 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mt-2">
+                        {group.label}
+                      </div>
+                      <div className="flex flex-col gap-0.5 border-l-2 border-border ml-3 pl-2">
+                        {group.items?.map(item => (
+                          <Link 
+                            key={item.href} 
+                            href={item.href} 
+                            onClick={() => setMenuOpen(false)}
+                            className={`px-3 py-2 rounded-md text-sm transition-colors ${
+                              isActive(item.href)
+                                ? "text-foreground font-medium bg-muted/30"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                            }`}
+                          >
+                            {item.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               ))}
             </nav>
+
             <div className="border-t border-border pt-4 flex items-center gap-3 flex-wrap">
               <button ref={btnRef} onClick={toggle}
                 className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground shrink-0"

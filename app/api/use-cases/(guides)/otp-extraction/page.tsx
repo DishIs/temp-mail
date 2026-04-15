@@ -27,7 +27,7 @@ export default function OtpExtractionPage() {
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Plan requirements</p>
         <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-1 mb-0">
           <li>Free plan: OTP detected but returns <code className="text-xs bg-muted/60 rounded px-1">__DETECTED__</code> (upgrade hint)</li>
-          <li>Developer+ plan: Full OTP value returned via <code className="text-xs bg-muted/60 rounded px-1">GET /v1/inboxes/{"{inbox}"}/otp</code></li>
+          <li>Growth+ plan: Full OTP value returned via <code className="text-xs bg-muted/60 rounded px-1">GET /v1/inboxes/{"{inbox}"}/otp</code></li>
           <li>Growth+ plan: MCP <code className="text-xs bg-muted/60 rounded px-1">extract_otp</code> tool available</li>
         </ul>
       </div>
