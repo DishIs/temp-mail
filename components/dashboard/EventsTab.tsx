@@ -237,6 +237,7 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
                     setSelectedRunId(null);
                     setRawTimeline([]);
                   }}
+                  disabled={selectedInbox === inbox}
                 >
                   <span className="text-[11px] font-mono font-medium truncate">{inbox}</span>
                   <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
