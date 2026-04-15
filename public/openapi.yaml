@@ -720,6 +720,12 @@ paths:
                   type: string
                   format: email
                   example: "test@ditube.info"
+                isTesting:
+                  type: boolean
+                  description: |
+                    Flag this inbox for testing purposes to enable zero-latency event timelines in the Auth Flow Debugger.
+                    Requires Growth ($49/mo) or Enterprise ($149/mo) plan.
+                  example: true
       responses:
         "201":
           description: Inbox registered
@@ -1606,6 +1612,7 @@ components:
           properties:
             inbox: { type: string }
             otp: { type: string, nullable: true }
+            score: { type: number, format: float, nullable: true, description: "Confidence score (0.0 to 1.0) of the extracted OTP." }
             verification_link: { type: string, nullable: true }
             from: { type: string, nullable: true }
             subject: { type: string, nullable: true }

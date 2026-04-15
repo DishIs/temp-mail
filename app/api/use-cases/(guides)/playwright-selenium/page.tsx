@@ -54,7 +54,7 @@ const fce = new FreecustomEmailClient({ apiKey: process.env.FCE_API_KEY! });
 test("signup with email verification", async ({ page }) => {
   // 1. Create a dynamic inbox
   const inbox = \`pw-test-\${Date.now()}@ditapi.info\`;
-  await fce.inboxes.register(inbox);
+  await fce.inboxes.register(inbox, true); // true = enable zero-latency testing timelines
 
   // 2. Fill the signup form in your app
   await page.goto("https://your-app.com/signup");
@@ -63,7 +63,8 @@ test("signup with email verification", async ({ page }) => {
   await page.click('[type="submit"]');
 
   // 3. Wait for the OTP email and extract the code automatically (Wait API)
-  const otp = await fce.otp.waitFor(inbox, { timeoutMs: 30_000 });
+  const { otp, score } = await fce.otp.waitFor(inbox, { timeoutMs: 30_000 });
+  console.log(\`OTP Confidence Score: \${score * 100}%\`);
 
   // 4. Enter OTP in the verification step
   await page.fill('[name="otp"]', otp);
@@ -127,7 +128,7 @@ fce = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"], sync=True)
 
 def test_signup_with_otp():
     inbox = f"sel-{int(time.time())}@ditapi.info"
-    fce.inboxes.register(inbox)
+    fce.inboxes.register(inbox, is_testing=True) # Enables zero-latency timeline
     
     driver = webdriver.Chrome()
     try:
@@ -137,9 +138,10 @@ def test_signup_with_otp():
         driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
 
         # SDK automatically waits for the email and extracts the 6 digit OTP
-        otp = fce.otp.wait_for(inbox, timeout_ms=30000)
+        result = fce.otp.wait_for(inbox, timeout_ms=30000)
+        print(f"OTP Extraction Confidence: {result.score}")
 
-        driver.find_element(By.NAME, "otp").send_keys(otp)
+        driver.find_element(By.NAME, "otp").send_keys(result.otp)
         driver.find_element(By.CSS_SELECTOR, '[data-testid="verify-btn"]').click()
 
         assert "/dashboard" in driver.current_url

@@ -218,13 +218,14 @@ export default function AuthFlowDebuggerClient() {
                   <br/>
                   test(<span className="text-green-400">'signup flow works'</span>, <span className="text-blue-400">async</span> ({'{'} page {'}'}) <span className="text-blue-400">{'=>'}</span> {'{'}<br/>
                   {'  '}<span className="text-muted-foreground/50">// The debugger tracks this specific inbox</span><br/>
-                  {'  '}<span className="text-blue-400">const</span> {'{'} inbox {'}'} = <span className="text-blue-400">await</span> fce.inboxes.register(<span className="text-green-400">'test'</span>);<br/>
+                  {'  '}<span className="text-blue-400">const</span> {'{'} inbox {'}'} = <span className="text-blue-400">await</span> fce.inboxes.register(<span className="text-green-400">'test'</span>, <span className="text-amber-400">true</span>);<br/>
                   <br/>
                   {'  '}<span className="text-blue-400">await</span> page.goto(<span className="text-green-400">'https://myapp.com/signup'</span>);<br/>
                   {'  '}<span className="text-blue-400">await</span> page.fill(<span className="text-green-400">'#email'</span>, inbox);<br/>
                   {'  '}<span className="text-blue-400">await</span> page.click(<span className="text-green-400">'#submit'</span>);<br/>
                   <br/>
-                  {'  '}<span className="text-blue-400">const</span> {'{'} otp {'}'} = <span className="text-blue-400">await</span> fce.otp.waitFor(inbox);<br/>
+                  {'  '}<span className="text-blue-400">const</span> {'{'} otp, score {'}'} = <span className="text-blue-400">await</span> fce.otp.waitFor(inbox);<br/>
+                  {'  '}console.log(<span className="text-green-400">`OTP Confidence: {'$'}{'{'}score * 100{'}'}%`</span>);<br/>
                   {'  '}<span className="text-blue-400">await</span> page.fill(<span className="text-green-400">'#otp'</span>, otp);<br/>
                   {'}'});
                 </pre>

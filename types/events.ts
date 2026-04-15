@@ -16,6 +16,8 @@ export type EmailEvent = {
     subject?: string;
     from?: string;
     otp?: string;
+    score?: number;
+    raw_snippet?: string;
     verification_link?: string;
     error?: string;
   };

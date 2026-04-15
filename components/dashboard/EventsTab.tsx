@@ -196,7 +196,7 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             Auth Flow Debugger
-            {isAdvanced && <span className="flex items-center gap-1 text-[10px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded border border-blue-500/20"><Zap className="h-3 w-3" fill="currentColor"/> Live</span>}
+            {isAdvanced && <span className="flex items-center gap-1 text-[10px] text-blue-500"><Zap className="h-3 w-3" fill="currentColor"/> Live</span>}
           </h2>
           <p className="text-sm text-muted-foreground">Monitor email flow, OTP extraction, and event delivery in real-time.</p>
         </div>
@@ -218,7 +218,7 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
           <div className="border border-border rounded-lg overflow-hidden flex flex-col h-[650px] overflow-y-auto">
             {filteredInboxes.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground mt-10">
-                No API inboxes found.
+                No testing inboxes found. Register an inbox with `isTesting=true` to see them here.
               </div>
             ) : (
               filteredInboxes.map(inbox => (
@@ -354,7 +354,12 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
                             <span className="text-xs text-muted-foreground">Extracted OTP</span>
                             <div className="flex items-center justify-between">
                               <p className="font-mono text-xl">{otpEvent.metadata.otp}</p>
-                              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(otpEvent.metadata!.otp!)}><Copy className="h-3.5 w-3.5"/></Button>
+                              {otpEvent.metadata.score !== undefined && (
+                                <span className="ml-2 text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 px-1.5 py-0.5 rounded">
+                                  {otpEvent.metadata.score * 100}% confidence
+                                </span>
+                              )}
+                              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(otpEvent.metadata!.otp!)} className="ml-auto"><Copy className="h-3.5 w-3.5"/></Button>
                             </div>
                           </div>
                           {otpEvent.metadata.raw_snippet && (

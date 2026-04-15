@@ -59,6 +59,7 @@ interface ApiStatusData {
   rate_limits?: { requests_per_second?: number; requests_per_month?: number };
   features?: Record<string, boolean | number | string>;
   app_inboxes?: InboxGroup; api_inboxes?: InboxGroup; inboxes?: InboxGroup;
+  testingInboxes?: string[]; testing_inboxes?: string[];
   upsell?: {
     nudges?: string[];
     next_plan?: { name?: string; label?: string; price?: string; unlocks?: string[] };
@@ -631,6 +632,7 @@ function ApiDashboardContent() {
   const features   = data?.features ?? {};
   const upsell     = data?.upsell;
   const apiInboxes = data?.api_inboxes?.list ?? (apiStatus as { apiInboxes?: string[] } | null)?.apiInboxes ?? [];
+  const testingInboxes = data?.testingInboxes ?? data?.testing_inboxes ?? [];
   const appInboxes = data?.app_inboxes?.list ?? [];
 
   const canUseCustomDomains = CUSTOM_DOMAIN_PLANS.includes(planName as string);
@@ -812,7 +814,7 @@ function ApiDashboardContent() {
                 {/* EVENTS / TEST RUNS */}
                 <TabsContent value="events" className="mt-0">
                   <ErrorBoundary>
-                    <EventsTab planName={planName as string} apiInboxes={apiInboxes} />
+                    <EventsTab planName={planName as string} apiInboxes={testingInboxes.length > 0 ? testingInboxes : apiInboxes.filter(inbox => testingInboxes.includes(inbox))} />
                   </ErrorBoundary>
                 </TabsContent>
 
