@@ -167,6 +167,171 @@ test('signup flow', async ({ page }) => {
         <li><code className="bg-muted px-1 rounded">client.inboxes.getInsights(email)</code></li>
       </ul>
 
+      {/* Full API Reference */}
+      <h2 id="api-reference" className="text-xl font-bold mt-12 mb-4">📚 Full API Reference</h2>
+      
+      <h3 className="text-lg font-semibold mt-6 mb-3">Client</h3>
+      <CodeBlock code={`const client = new FreecustomEmailClient({
+  apiKey:  'fce_...',          // required
+  baseUrl: 'https://...',      // optional, defaults to https://api2.freecustom.email/v1
+  timeout: 10_000,             // optional, ms, defaults to 10s
+  retry: {                     // optional
+    attempts:       2,
+    initialDelayMs: 500,
+  },
+});`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Inboxes</h3>
+      <CodeBlock code={`// Register
+await client.inboxes.register('mytest@ditube.info');
+
+// List all registered inboxes
+const inboxes = await client.inboxes.list();
+// [{ inbox: 'mytest@ditube.info', local: 'mytest', domain: 'ditube.info' }]
+
+// Unregister
+await client.inboxes.unregister('mytest@ditube.info');`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Messages</h3>
+      <CodeBlock code={`// List all messages
+const messages = await client.messages.list('mytest@ditube.info');
+
+// Get a specific message
+const msg = await client.messages.get('mytest@ditube.info', 'D3vt8NnEQ');
+console.log(msg.subject, msg.otp, msg.verificationLink);
+
+// Delete a message
+await client.messages.delete('mytest@ditube.info', 'D3vt8NnEQ');
+
+// Wait for a message (polling helper)
+const msg = await client.messages.waitFor('mytest@ditube.info', {
+  timeoutMs:      30_000,
+  pollIntervalMs: 2_000,
+  match: m => m.from.includes('github.com'),
+});`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">OTP</h3>
+      <CodeBlock code={`// Get latest OTP (Growth plan+)
+const result = await client.otp.get('mytest@ditube.info');
+if (result.otp) {
+  console.log('OTP:', result.otp);
+  console.log('Link:', result.verification_link);
+}
+
+// Wait for OTP — polls until it arrives (Growth plan+)
+const otp = await client.otp.waitFor('mytest@ditube.info', {
+  timeoutMs: 30_000,
+});
+console.log('Got OTP:', otp);`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Full Verification Flow (convenience method)</h3>
+      <CodeBlock code={`// Register → trigger email → wait for OTP → unregister — all in one call
+const otp = await client.getOtpForInbox(
+  'mytest@ditube.info',
+  async () => {
+    // This function should trigger your app to send the verification email
+    await fetch('https://yourapp.com/api/send-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'mytest@ditube.info' }),
+    });
+  },
+  { timeoutMs: 30_000, autoUnregister: true },
+);
+console.log('Verified with OTP:', otp);`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Real-time WebSocket</h3>
+      <CodeBlock code={`// Connect to real-time email delivery (Startup plan+)
+const ws = client.realtime({
+  mailbox:              'mytest@ditube.info', // undefined = subscribe to all your inboxes
+  autoReconnect:        true,
+  reconnectDelayMs:     3_000,
+  maxReconnectAttempts: 10,
+  pingIntervalMs:       30_000,
+});
+
+// Event handlers
+ws.on('connected', info => {
+  console.log('Connected — plan:', info.plan);
+});
+
+ws.on('email', email => {
+  console.log('New email!');
+  console.log('OTP:', email.otp);
+});
+
+ws.on('disconnected', ({ code, reason }) => {
+  console.log('Disconnected:', code, reason);
+});
+
+// Connect
+await ws.connect();
+// Disconnect cleanly
+ws.disconnect();`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Domains</h3>
+      <CodeBlock code={`// List available domains on your plan
+const domains = await client.domains.list();
+
+// Custom domains (Growth plan+)
+const custom = await client.domains.listCustom();
+const result = await client.domains.addCustom('mail.yourdomain.com');
+const verification = await client.domains.verifyCustom('mail.yourdomain.com');
+await client.domains.removeCustom('mail.yourdomain.com');`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Webhooks</h3>
+      <CodeBlock code={`// Register a webhook (Startup plan+)
+const hook = await client.webhooks.register(
+  'mytest@ditube.info',
+  'https://your-server.com/hooks/email',
+);
+console.log('Webhook ID:', hook.id);
+
+// List active webhooks
+const hooks = await client.webhooks.list();
+
+// Unregister
+await client.webhooks.unregister(hook.id);`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Account</h3>
+      <CodeBlock code={`// Account info
+const info = await client.account.info();
+
+// Usage stats
+const usage = await client.account.usage();`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Error Handling</h3>
+      <CodeBlock code={`import {
+  FreecustomEmailClient,
+  AuthError,
+  PlanError,
+  RateLimitError,
+  NotFoundError,
+  TimeoutError,
+  FreecustomEmailError,
+} from 'freecustom-email';
+
+try {
+  const otp = await client.otp.get('mytest@ditube.info');
+} catch (err) {
+  if (err instanceof AuthError) {
+    console.error('Invalid API key');
+  } else if (err instanceof PlanError) {
+    console.error('Plan too low:', err.message);
+  }
+}`} language="typescript" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">TypeScript Types</h3>
+      <CodeBlock code={`import type {
+  Message,
+  OtpResult,
+  InboxObject,
+  DomainInfo,
+  AccountInfo,
+  UsageStats,
+  WsConnectedEvent,
+  WsNewEmailEvent,
+} from 'freecustom-email';`} language="typescript" />
+
       {/* Links */}
       <div className="mt-10 p-4 rounded-lg border border-border bg-muted/10 text-sm text-muted-foreground not-prose">
         <p className="font-medium text-foreground mb-2">Links</p>

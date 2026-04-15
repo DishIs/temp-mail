@@ -145,6 +145,119 @@ print("OTP:", otp)`} language="python" />
         <li><code className="bg-muted px-1 rounded">client.inboxes.get_insights(email)</code></li>
       </ul>
 
+      {/* Full API Reference */}
+      <h2 id="api-reference" className="text-xl font-bold mt-12 mb-4">📚 Full API Reference</h2>
+      
+      <h3 className="text-lg font-semibold mt-6 mb-3">Client</h3>
+      <CodeBlock code={`from freecustom_email import FreeCustomEmail
+
+# Async client
+client = FreeCustomEmail(
+    api_key="fce_...",      # required
+    base_url="https://...", # optional
+    timeout=10,             # optional, seconds
+)
+
+# Sync client
+sync_client = FreeCustomEmail(api_key="fce_...", sync=True)`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Inboxes</h3>
+      <CodeBlock code={`# Register
+await client.inboxes.register("mytest@ditube.info")
+
+# List all registered inboxes
+inboxes = await client.inboxes.list()
+
+# Unregister
+await client.inboxes.unregister("mytest@ditube.info")`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Messages</h3>
+      <CodeBlock code={`# List all messages
+messages = await client.messages.list("mytest@ditube.info")
+
+# Get a specific message
+msg = await client.messages.get("mytest@ditube.info", "D3vt8NnEQ")
+print(msg.subject, msg.otp)
+
+# Delete a message
+await client.messages.delete("mytest@ditube.info", "D3vt8NnEQ")
+
+# Wait for a message
+msg = await client.messages.wait_for("mytest@ditube.info", timeout=30)`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">OTP</h3>
+      <CodeBlock code={`# Get latest OTP
+result = await client.otp.get("mytest@ditube.info")
+if result.otp:
+    print(f"OTP: {result.otp}")
+
+# Wait for OTP
+otp = await client.otp.wait_for("mytest@ditube.info", timeout=30)
+print(f"Got OTP: {otp}")`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Real-time WebSocket</h3>
+      <CodeBlock code={`ws = client.realtime(
+    mailbox="mytest@ditube.info", 
+    auto_reconnect=True
+)
+
+@ws.on("connected")
+async def on_connected(info):
+    print("Connected")
+
+@ws.on("email")
+async def on_email(email):
+    print(f"New email OTP: {email.otp}")
+
+await ws.connect()
+await ws.wait()`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Domains</h3>
+      <CodeBlock code={`# List available domains
+domains = await client.domains.list()
+
+# Custom domains
+custom = await client.domains.list_custom()
+result = await client.domains.add_custom("mail.yourdomain.com")
+verification = await client.domains.verify_custom("mail.yourdomain.com")
+await client.domains.remove_custom("mail.yourdomain.com")`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Webhooks</h3>
+      <CodeBlock code={`# Register a webhook
+hook = await client.webhooks.register(
+    "mytest@ditube.info",
+    "https://your-server.com/hooks/email"
+)
+
+# List active webhooks
+hooks = await client.webhooks.list()
+
+# Unregister
+await client.webhooks.unregister(hook.id)`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Account</h3>
+      <CodeBlock code={`# Account info
+info = await client.account.info()
+
+# Usage stats
+usage = await client.account.usage()`} language="python" />
+
+      <h3 className="text-lg font-semibold mt-6 mb-3">Error Handling</h3>
+      <CodeBlock code={`from freecustom_email import (
+    AuthError, 
+    PlanError, 
+    RateLimitError, 
+    NotFoundError, 
+    TimeoutError
+)
+
+try:
+    otp = await client.otp.get("mytest@ditube.info")
+except AuthError:
+    print("Invalid API key")
+except PlanError as e:
+    print(f"Plan too low: {e}")`} language="python" />
+
       {/* Links */}
       <div className="mt-10 p-4 rounded-lg border border-border bg-muted/10 text-sm text-muted-foreground not-prose">
         <p className="font-medium text-foreground mb-2">Links</p>
