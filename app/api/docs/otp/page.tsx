@@ -30,6 +30,7 @@ export default function OtpPage() {
         </thead>
         <tbody>
           <tr className="border-b border-border"><td className="py-2 font-mono text-xs">otp</td><td className="py-2">The code, or null</td></tr>
+          <tr className="border-b border-border"><td className="py-2 font-mono text-xs">score</td><td className="py-2">Confidence score (0.0 to 1.0) of the extracted OTP</td></tr>
           <tr className="border-b border-border"><td className="py-2 font-mono text-xs">verification_link</td><td className="py-2">Extracted link if present</td></tr>
           <tr className="border-b border-border"><td className="py-2 font-mono text-xs">from, subject</td><td className="py-2">Sender and subject</td></tr>
           <tr className="border-b border-border"><td className="py-2 font-mono text-xs">message_id, received_at</td><td className="py-2">Message ID and timestamp</td></tr>
@@ -43,6 +44,7 @@ export default function OtpPage() {
   "data": {
     "inbox": "mytest@ditapi.info",
     "otp": "847291",
+    "score": 0.98,
     "verification_link": "https://github.com/verify?token=abc123",
     "from": "noreply@example.com",
     "subject": "Your code is 847291",

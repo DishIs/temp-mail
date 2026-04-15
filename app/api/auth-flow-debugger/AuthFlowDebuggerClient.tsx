@@ -16,14 +16,14 @@ const FEATURES =[
 ];
 
 const HOW_IT_WORKS =[
-  { step: "01", title: "Identify test runs",     desc: 'Add a custom x-fce-test-run-id header or let our platform auto-detect test batches.' },
+  { step: "01", title: "Identify test runs",     desc: "Use the SDK's startTest method or POST to /tests to group events under a single test run ID." },
   { step: "02", title: "Watch events stream",    desc: "Experience real-time visualization of the email → parsing → OTP extraction flow." },
   { step: "03", title: "Debug failures",         desc: "Tap any event to inspect raw SMTP payloads and pinpoint exact execution latencies." },
 ];
 
 const DEBUGGER_FAQ =[
   { q: "What is the Auth Flow Debugger?", a: "It is a visual interface that streams real-time events for your automated tests. It traces exactly when an email is received, when the OTP is extracted, and measures sub-millisecond latencies between steps." },
-  { q: "How do I group my requests into a 'Test Run'?", a: "Simply pass the `x-fce-test-run-id` header when registering an inbox or interacting with the API. All subsequent emails delivered to that inbox will be grouped under the same visual timeline." },
+  { q: "How do I group my requests into a 'Test Run'?", a: "Simply call `client.inboxes.startTest(email, 'my-test-id')` or make a POST request to `/v1/inboxes/{inbox}/tests`. All subsequent emails delivered to that inbox will be grouped under the same visual timeline." },
   { q: "Does the debugger work with Playwright and Cypress?", a: "Yes. Since it operates entirely on the API side, it works seamlessly with Playwright, Cypress, Selenium, or any custom Node/Python automation script." },
   { q: "Can I view historical test runs?", a: "Yes. Paid plans (Startup and above) retain historical timelines so you can retroactively inspect failed CI/CD pipelines hours or days after they occurred." },
 ];
@@ -196,7 +196,7 @@ export default function AuthFlowDebuggerClient() {
               Identify and track<br />automated test runs
             </h2>
             <p className="text-sm text-muted-foreground mb-8 max-w-sm leading-relaxed">
-              Add the <code className="text-xs bg-muted/60 px-1.5 py-0.5 rounded font-mono">x-fce-test-run-id</code> header to group requests into isolated runs. Drop this pattern into your testing suite and watch the debugger light up dynamically as your CI executes.
+              Use <code className="text-xs bg-muted/60 px-1.5 py-0.5 rounded font-mono">client.inboxes.startTest</code> to group requests into isolated runs. Drop this pattern into your testing suite and watch the debugger light up dynamically as your CI executes.
             </p>
             <Button asChild size="lg">
               <Link href="/api/use-cases/playwright-selenium">Integration Guides →</Link>
@@ -219,6 +219,7 @@ export default function AuthFlowDebuggerClient() {
                   test(<span className="text-green-400">'signup flow works'</span>, <span className="text-blue-400">async</span> ({'{'} page {'}'}) <span className="text-blue-400">{'=>'}</span> {'{'}<br/>
                   {'  '}<span className="text-muted-foreground/50">// The debugger tracks this specific inbox</span><br/>
                   {'  '}<span className="text-blue-400">const</span> {'{'} inbox {'}'} = <span className="text-blue-400">await</span> fce.inboxes.register(<span className="text-green-400">'test'</span>, <span className="text-amber-400">true</span>);<br/>
+                  {'  '}<span className="text-blue-400">await</span> fce.inboxes.startTest(inbox, <span className="text-green-400">'e2e-signup'</span>);<br/>
                   <br/>
                   {'  '}<span className="text-blue-400">await</span> page.goto(<span className="text-green-400">'https://myapp.com/signup'</span>);<br/>
                   {'  '}<span className="text-blue-400">await</span> page.fill(<span className="text-green-400">'#email'</span>, inbox);<br/>

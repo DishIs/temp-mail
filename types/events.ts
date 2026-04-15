@@ -3,6 +3,8 @@ export type EmailEvent = {
   inbox: string;
   type:
     | "inbox_created"
+    | "test_started"
+    | "smtp_rcpt_received"
     | "email_received"
     | "email_parsed"
     | "otp_extracted"

@@ -172,14 +172,14 @@ export default function APIClient() {
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}>
-            Disposable email<br />infrastructure for developers
+            Auth flow testing API<br />for developers and QA
           </motion.h1>
 
           <motion.p
             className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed mb-8"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.2 }}>
-            Programmatic temporary inboxes, real-time delivery via WebSocket, and automatic OTP extraction. Built for CI pipelines, test automation, and app development.
+            Test, debug, and automate signup, OTP, and email-based authentication flows. Gain real-time observability into email delivery, with sub-ms timeline tracking and automatic OTP extraction.
           </motion.p>
 
           <motion.div className="flex flex-wrap items-center justify-center gap-3 mb-12"

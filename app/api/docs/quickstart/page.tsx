@@ -38,7 +38,7 @@ export default function QuickstartPage() {
       <CodeBlock code={`curl -X POST https://api2.freecustom.email/v1/inboxes \\
   -H "Authorization: Bearer fce_your_api_key" \\
   -H "Content-Type: application/json" \\
-  -d '{"inbox":"mytest@ditapi.info"}'`} language="curl" />
+  -d '{"inbox":"mytest@ditapi.info", "isTesting": true}'`} language="curl" />
       <p className="text-sm text-muted-foreground mt-2">
         Success (201): <code className="rounded bg-muted px-1 py-0.5 text-xs">{"{ \"success\": true, \"data\": { \"inbox\": \"mytest@ditapi.info\", \"registered_at\": \"2026-03-04T10:00:00.000Z\" } }"}</code>
       </p>
@@ -62,7 +62,7 @@ export default function QuickstartPage() {
       <CodeBlock code={`curl "https://api2.freecustom.email/v1/inboxes/mytest@ditapi.info/otp" \\
   -H "Authorization: Bearer fce_your_api_key"`} language="curl" />
       <p className="text-sm text-muted-foreground mt-2">
-        Example response: <code className="rounded bg-muted px-1 py-0.5 text-xs">{"{ \"success\": true, \"data\": { \"otp\": \"847291\", \"verification_link\": \"https://...\", \"from\": \"noreply@example.com\", \"subject\": \"Your code is 847291\", \"message_id\": \"msg_abc\", \"received_at\": \"2026-03-04T09:55:00.000Z\" } }"}</code>
+        Example response: <code className="rounded bg-muted px-1 py-0.5 text-xs">{"{ \"success\": true, \"data\": { \"otp\": \"847291\", \"score\": 0.98, \"verification_link\": \"https://...\", \"from\": \"noreply@example.com\", \"subject\": \"Your code is 847291\", \"message_id\": \"msg_abc\", \"received_at\": \"2026-03-04T09:55:00.000Z\" } }"}</code>
       </p>
 
       <h2 id="step-8" className="text-lg font-semibold mt-8 mb-2">8. Subscribe via WebSocket</h2>

@@ -55,6 +55,7 @@ test("signup with email verification", async ({ page }) => {
   // 1. Create a dynamic inbox
   const inbox = \`pw-test-\${Date.now()}@ditapi.info\`;
   await fce.inboxes.register(inbox, true); // true = enable zero-latency testing timelines
+  await fce.inboxes.startTest(inbox, "e2e-signup");
 
   // 2. Fill the signup form in your app
   await page.goto("https://your-app.com/signup");
@@ -63,8 +64,8 @@ test("signup with email verification", async ({ page }) => {
   await page.click('[type="submit"]');
 
   // 3. Wait for the OTP email and extract the code automatically (Wait API)
-  const { otp, score } = await fce.otp.waitFor(inbox, { timeoutMs: 30_000 });
-  console.log(\`OTP Confidence Score: \${score * 100}%\`);
+  const otp = await fce.otp.waitFor(inbox, { timeoutMs: 30_000 });
+  console.log(\`OTP: \${otp}\`);
 
   // 4. Enter OTP in the verification step
   await page.fill('[name="otp"]', otp);
@@ -102,7 +103,7 @@ test.afterEach(async ({}, testInfo) => {
         </p>
         <ul className="text-sm text-muted-foreground list-disc pl-4 space-y-2">
           <li><strong>Sub-ms Latency Tracking:</strong> Identify if the SMTP relay or your app's worker queue is causing the 30-second timeout.</li>
-          <li><strong>Test Run Grouping:</strong> Inject <code className="text-xs bg-muted/60 rounded px-1">x-fce-test-run-id</code> into your requests, and the dashboard will automatically group the events into a single visual block.</li>
+          <li><strong>Test Run Grouping:</strong> Use <code className="text-xs bg-muted/60 rounded px-1">client.inboxes.startTest</code> to group events into a single visual block in the dashboard.</li>
           <li><strong>Failure Insights:</strong> Automatically detects if multiple emails were sent by accident or if an OTP was missing from the template.</li>
         </ul>
         <div className="mt-6">
@@ -129,6 +130,7 @@ fce = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"], sync=True)
 def test_signup_with_otp():
     inbox = f"sel-{int(time.time())}@ditapi.info"
     fce.inboxes.register(inbox, is_testing=True) # Enables zero-latency timeline
+    fce.inboxes.start_test(inbox, "sel-signup-test")
     
     driver = webdriver.Chrome()
     try:
@@ -138,10 +140,10 @@ def test_signup_with_otp():
         driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
 
         # SDK automatically waits for the email and extracts the 6 digit OTP
-        result = fce.otp.wait_for(inbox, timeout_ms=30000)
-        print(f"OTP Extraction Confidence: {result.score}")
+        otp = fce.otp.wait_for(inbox, timeout_ms=30000)
+        print(f"OTP: {otp}")
 
-        driver.find_element(By.NAME, "otp").send_keys(result.otp)
+        driver.find_element(By.NAME, "otp").send_keys(otp)
         driver.find_element(By.CSS_SELECTOR, '[data-testid="verify-btn"]').click()
 
         assert "/dashboard" in driver.current_url
