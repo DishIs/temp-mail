@@ -208,14 +208,8 @@ function UpgradeModal({ open, fromPlan, toPlan, billing, nextBilledAt, onConfirm
         </DialogHeader>
         <div className="rounded-lg border border-border overflow-hidden text-sm">
           <div className="px-4 py-3 bg-muted/20 border-b border-border">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">Charged today</p>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Prorated difference</p>
-                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{preview.daysRemaining} days remaining in current period</p>
-              </div>
-              <span className="text-lg font-bold text-foreground tabular-nums">{fmtUSD(preview.proratedToday)}</span>
-            </div>
+            <p className="font-medium text-foreground mb-1">Upgrade in progress</p>
+            <p className="text-xs text-muted-foreground">You are upgrading to the {toPlan} plan. We will do the math and prorate your subscription properly.</p>
           </div>
           <div className="px-4 py-3">
             <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-2">From {fmtDate(preview.nextBilledAt)} onwards</p>
@@ -228,13 +222,13 @@ function UpgradeModal({ open, fromPlan, toPlan, billing, nextBilledAt, onConfirm
             </div>
           </div>
           <div className="px-4 py-2.5 bg-muted/10 border-t border-border">
-            <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">* Prorated estimate before tax. Exact amount billed by Paddle may differ slightly.</p>
+            <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">* Exact prorated amount will be calculated and billed securely by Paddle.</p>
           </div>
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button onClick={async () => { setBusy(true); try { await onConfirm(); } finally { setBusy(false); } }} disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Pay {fmtUSD(preview.proratedToday)} now</>}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Upgrade"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -579,6 +573,10 @@ export default function ApiPricingPage() {
   };
   const handleDowngrade    = (plan: typeof PLANS[number]) => setDowngradeTarget(plan);
   const handleGetStarted   = (plan: typeof PLANS[number]) => {
+    if (!isLoggedIn) {
+      router.push("/auth?callbackUrl=/api/pricing");
+      return;
+    }
     if (!plan.planId) return;
     setBusyPlanId(plan.planId);
     setAutoBillingTarget({ type: "plan", id: plan.planId, name: plan.label, priceLabel: billing === "yearly" && YEARLY_PRICING[plan.planId] ? YEARLY_PRICING[plan.planId].total : plan.price, isYearly: billing === "yearly" });
