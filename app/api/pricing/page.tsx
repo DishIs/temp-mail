@@ -29,11 +29,11 @@ const PLAN_ORDER = ["free", "developer", "startup", "growth", "enterprise"] as c
 type ApiPlanName = typeof PLAN_ORDER[number];
 
 const PLANS = [
-  { name: "free",       label: "Free",       desc: "Try the API",                price: "$0",   reqSec: "1",   reqMonth: "5,000",      maxInboxes: "10",        otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",   customDomains: false, persistence: "Anonymous (10h)",  freshDomains: false as const,    pool: "shared",    planId: null as string | null, imap: false, wait: false as boolean | string, mcp: false as boolean | string, webhooks: false, sla: false, timeline: '2h', insights: false, live: false },
-  { name: "developer",  label: "Developer",  desc: "Scripts & testing",           price: "$7",   reqSec: "10",  reqMonth: "100,000",     maxInboxes: "25",        otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",   customDomains: false, persistence: "24h",             freshDomains: false as const,    pool: "shared",    planId: "developer",           imap: false, wait: "Yes (10 req/call)",       mcp: false as boolean | string, webhooks: false, sla: false, timeline: '12h', insights: false, live: false },
-  { name: "startup",    label: "Startup",    desc: "Automation & production",     price: "$19",  reqSec: "25",  reqMonth: "500,000",     maxInboxes: "40",        otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",   customDomains: false, persistence: "24h",             freshDomains: "partial" as const, pool: "dedicated", planId: "startup",             imap: false, wait: "Yes (10 req/call)",       mcp: false as boolean | string, webhooks: false, sla: false, timeline: '24h', insights: false, live: false },
-  { name: "growth",     label: "Growth",     desc: "High-scale workflows",        price: "$49",  reqSec: "50",  reqMonth: "2,000,000",   maxInboxes: "100",       otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,     pool: "dedicated", planId: "growth",              imap: true,  wait: "Yes (10 req/call)",       mcp: "60 ops/min",              webhooks: true,  sla: false, timeline: '7 days', insights: true, live: true },
-  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems",   price: "$149", reqSec: "100", reqMonth: "10,000,000",  maxInboxes: "Unlimited", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100", customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,     pool: "dedicated", planId: "enterprise",          imap: true,  wait: "Yes (10 req/call)",       mcp: "200 ops/min",             webhooks: true,  sla: true, timeline: '30 days', insights: true, live: true },
+  { name: "free",       label: "Free",       desc: "Try the API",                price: "$0",   reqSec: "1",   reqMonth: "5,000",      maxInboxes: "10",        otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",   customDomains: false, persistence: "Anonymous (10h)",  freshDomains: false as const,    pool: "shared",    planId: null as string | null, imap: false, wait: false as boolean | string, mcp: false as boolean | string, webhooks: false, sla: false, timeline: '—', insights: false, live: false, testing: false },
+  { name: "developer",  label: "Developer",  desc: "Scripts & testing",           price: "$7",   reqSec: "10",  reqMonth: "100,000",     maxInboxes: "25",        otp: false, attachments: false, maxAttachment: "—",     ws: false, maxWs: "—",   customDomains: false, persistence: "24h",             freshDomains: false as const,    pool: "shared",    planId: "developer",           imap: false, wait: "Yes (10 req/call)",       mcp: false as boolean | string, webhooks: false, sla: false, timeline: '—', insights: false, live: false, testing: false },
+  { name: "startup",    label: "Startup",    desc: "Automation & production",     price: "$19",  reqSec: "25",  reqMonth: "500,000",     maxInboxes: "40",        otp: false, attachments: true,  maxAttachment: "5 MB",  ws: true,  maxWs: "5",   customDomains: false, persistence: "24h",             freshDomains: "partial" as const, pool: "dedicated", planId: "startup",             imap: false, wait: "Yes (10 req/call)",       mcp: false as boolean | string, webhooks: false, sla: false, timeline: '24h', insights: false, live: false, testing: false },
+  { name: "growth",     label: "Growth",     desc: "High-scale workflows",        price: "$49",  reqSec: "50",  reqMonth: "2,000,000",   maxInboxes: "100",       otp: true,  attachments: true,  maxAttachment: "25 MB", ws: true,  maxWs: "20",  customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,     pool: "dedicated", planId: "growth",              imap: true,  wait: "Yes (10 req/call)",       mcp: "60 ops/min",              webhooks: true,  sla: false, timeline: '7 days', insights: true, live: true, testing: true },
+  { name: "enterprise", label: "Enterprise", desc: "Business-critical systems",   price: "$149", reqSec: "100", reqMonth: "10,000,000",  maxInboxes: "Unlimited", otp: true,  attachments: true,  maxAttachment: "50 MB", ws: true,  maxWs: "100", customDomains: true,  persistence: "Pro (forever)",   freshDomains: true as const,     pool: "dedicated", planId: "enterprise",          imap: true,  wait: "Yes (10 req/call)",       mcp: "200 ops/min",             webhooks: true,  sla: true, timeline: '30 days', insights: true, live: true, testing: true },
 ] as const;
 
 const CREDITS = [
@@ -70,6 +70,7 @@ const PAYMENT_METHODS = [
 
 const FAQ_ITEMS = [
   { q: "Can we use pro features by just buying credits with no plans (free)?", a: "No. Features (OTP extraction, attachments, WebSocket, custom domains) are determined by your API plan only. Credits only add request capacity; they don't change your plan or unlock paid features." },
+  { q: "What is the Auth Flow Debugger?", a: "Available on Startup and above, it's a visual dashboard that streams real-time events for your automated E2E tests. It tracks sub-millisecond latencies from when an email is received to when the OTP is extracted. Growth+ plans unlock longer timeline histories and automated failure insights." },
   { q: "Is there a guaranteed uptime SLA?", a: "Yes, the Enterprise plan includes a 99.5% uptime SLA with real-time monitoring, based on real production performance." },
   { q: "What's the difference between credits and API plans?", a: "Your API plan sets which features you get and your base rate limits. Credits only add extra request capacity on top of your monthly quota; they never expire and are consumed when you exceed your plan limit." },
   { q: "Do credits expire?", a: "No. Credits never expire. Top up once and use them whenever you need." },
@@ -350,7 +351,7 @@ function PlanCta({ plan, currentPlan, isLoggedIn, busy, billing, scheduledDowngr
         <Button size="sm" className="w-full" disabled={busy} onClick={() => onGetStarted(plan)}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Get started"}
         </Button>
-        <CryptoCheckoutButton type="api" plan={planName} billing={billing === "yearly" ? "yearly" : "monthly"} className="w-full" />
+        <CryptoCheckoutButton type="api" plan={planName as "developer"|"startup"|"growth"|"enterprise"} billing={billing === "yearly" ? "yearly" : "monthly"} className="w-full" />
       </div>
     );
   }
@@ -369,7 +370,7 @@ function PlanCta({ plan, currentPlan, isLoggedIn, busy, billing, scheduledDowngr
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Upgrade"}
         </Button>
         <CryptoCheckoutButton
-          type="api" plan={planName} billing={billing === "yearly" ? "yearly" : "monthly"}
+          type="api" plan={planName as "developer"|"startup"|"growth"|"enterprise"} billing={billing === "yearly" ? "yearly" : "monthly"}
           className="w-full"
           hasActiveCryptoSub={hasCryptoSub}
           currentCryptoPlan={currentCryptoPlan ?? undefined}
@@ -617,6 +618,12 @@ export default function ApiPricingPage() {
       { label: "MX Pool",         hint: "Dedicated = lower latency & consistent delivery", render: p => p.pool === "shared" ? <div className="text-center"><p className="text-xs text-muted-foreground">Shared</p><p className="font-mono text-[9px] text-muted-foreground/60">~10–30s</p></div> : <div className="text-center"><p className="text-xs text-foreground font-medium">Dedicated</p><p className="font-mono text-[9px] text-emerald-600/80">⚡ &lt;1s</p></div> },
       { label: "Fresh Domains",   hint: "Regularly rotated, not on blocklists", render: p => { if (!p.freshDomains) return <Cross />; if (p.freshDomains === "partial") return <div className="flex flex-col items-center gap-0.5"><Check className="h-4 w-4 text-muted-foreground mx-auto" /><span className="font-mono text-[9px] text-muted-foreground border border-border rounded px-1 py-px">Partial</span></div>; return <div className="flex flex-col items-center gap-0.5"><Tick /><span className="font-mono text-[9px] text-muted-foreground border border-border rounded px-1 py-px">Regular</span></div>; } },
       { label: "Inbox Retention", render: p => p.persistence === "Pro (forever)" ? <ProInboxBadge /> : <span className="text-xs text-foreground">{p.persistence}</span> },
+    ]},
+    { group: "Observability & Debugging", rows: [
+      { label: "Auth Flow Debugger", hint: "Real-time visual tracing for E2E tests", render: p => p.live ? <span className="flex items-center justify-end gap-1.5"><Zap className="h-3 w-3 text-blue-500" fill="currentColor"/><span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Live</span></span> : (p.name !== "free" && p.name !== "developer" ? <Tick /> : <Cross />) },
+      { label: "Timeline History",   hint: "Retention for retroactive debugging", render: p => p.timeline !== "—" ? <span className="text-[10px] font-mono text-foreground">{p.timeline}</span> : <Cross /> },
+      { label: "Failure Insights",   hint: "Automated analysis of E2E failures", render: p => p.insights ? <Tick /> : <Cross /> },
+      { label: "Testing Inboxes",    hint: "Zero-latency tracking flag (isTesting=true)", render: p => p.testing ? <Tick /> : <Cross /> },
     ]},
     { group: "Rate Limits", rows: [
       { label: "Max Inboxes",       hint: "Active inboxes at any given time", render: p => <span className="text-sm font-semibold text-foreground tabular-nums">{p.maxInboxes}</span> },
