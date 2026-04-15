@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Loader2, AlertCircle, Clock, CheckCircle2, XCircle, Search, Copy, Play, RefreshCw, Zap } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Loader2, AlertCircle, Clock, Search, Copy, Play, RefreshCw, Zap, Code2, BookOpen, ChevronRight, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import type { TestRun, EmailEvent } from "@/types/events";
+import type { EmailEvent } from "@/types/events";
 import { TIMELINE_PLANS } from "@/lib/api-plans-client";
 import Link from "next/link";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface Insight {
   type: "email_missing" | "multiple_detected" | "otp_failed" | "slow_delivery";
   message: string;
 }
 
-// Grouped run structure
 interface GroupedTestRun {
   id: string;
   inbox: string;
@@ -32,15 +32,23 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Group events by test_run_id (or default if missing)
   const [testRuns, setTestRuns] = useState<GroupedTestRun[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
-
   
   const hasTimelineAccess = TIMELINE_PLANS.includes(planName?.toLowerCase() || "");
   const isAdvanced = ["growth", "scale", "enterprise"].includes(planName?.toLowerCase() || "");
 
   const filteredInboxes = apiInboxes.filter(inbox => inbox.toLowerCase().includes(search.toLowerCase()));
+
+  // Derived graph data from ALL fetched runs
+  const graphData = useMemo(() => {
+    return testRuns.slice(0, 30).reverse().map(run => {
+      const first = run.events[0]?.timestamp || 0;
+      const last = run.events[run.events.length - 1]?.timestamp || 0;
+      const duration = first && last ? Math.max(0, last - first) : 0;
+      return { id: run.id, duration };
+    });
+  }, [testRuns]);
 
   if (!hasTimelineAccess) {
     return (
@@ -60,30 +68,19 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
     );
   }
 
-
   // 1. Process Raw Timeline into Test Runs
   useEffect(() => {
     const runs = new Map<string, GroupedTestRun>();
-
-    // Sort to ensure chronological processing
     const sorted = [...rawTimeline].sort((a, b) => a.timestamp - b.timestamp);
 
     for (const event of sorted) {
       const runId = event.test_run_id || 'default_run';
       if (!runs.has(runId)) {
-        runs.set(runId, {
-          id: runId,
-          inbox: event.inbox,
-          created_at: event.timestamp,
-          events: [],
-          status: "pending"
-        });
+        runs.set(runId, { id: runId, inbox: event.inbox, created_at: event.timestamp, events: [], status: "pending" });
       }
-      
       const run = runs.get(runId)!;
       run.events.push(event);
 
-      // Simple status derivation
       if (event.type === "error" || (event.metadata && event.metadata.error)) {
         run.status = "failed";
       } else if (event.type === "otp_extracted" && run.status !== "failed") {
@@ -94,7 +91,7 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
     const runsArray = Array.from(runs.values()).sort((a, b) => b.created_at - a.created_at);
     setTestRuns(runsArray);
 
-    if (runsArray.length > 0 && !selectedRunId) {
+    if (runsArray.length > 0 && (!selectedRunId || !runsArray.find(r => r.id === selectedRunId))) {
       setSelectedRunId(runsArray[0].id);
     } else if (runsArray.length === 0) {
       setSelectedRunId(null);
@@ -104,24 +101,15 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
   // 2. Fetch Initial Data
   const fetchData = useCallback(async () => {
     if (!selectedInbox) return;
-    setLoading(true);
-    setError(null);
-    
+    setLoading(true); setError(null);
     try {
       const [timelineRes, insightsRes] = await Promise.all([
         fetch(`/api/user/timeline?inbox=${encodeURIComponent(selectedInbox)}`).then(r => r.json()),
         fetch(`/api/user/insights?inbox=${encodeURIComponent(selectedInbox)}`).then(r => r.json())
       ]);
-
-      if (timelineRes.success) {
-        setRawTimeline(timelineRes.data || timelineRes.timeline || []);
-      } else {
-        setError(timelineRes.message || "Failed to load timeline");
-      }
-      
-      if (insightsRes.success) {
-        setInsights(insightsRes.data || insightsRes.insights || []);
-      }
+      if (timelineRes.success) setRawTimeline(timelineRes.data || timelineRes.timeline || []);
+      else setError(timelineRes.message || "Failed to load timeline");
+      if (insightsRes.success) setInsights(insightsRes.data || insightsRes.insights || []);
     } catch (err) {
       setError("Failed to fetch data");
     } finally {
@@ -129,29 +117,29 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
     }
   }, [selectedInbox]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // 3. WebSocket Subscription for Live Updates
   useEffect(() => {
     if (!selectedInbox || !isAdvanced) return;
-    
     let ws: WebSocket;
     let keepAlive: ReturnType<typeof setInterval>;
 
     const connectWs = async () => {
       try {
-        const tRes = await fetch("/api/ws-ticket", { method: "POST" });
+        const tRes = await fetch("/api/ws-ticket", { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mailbox: selectedInbox })
+        });
         if (!tRes.ok) return;
-        const { ticket } = await tRes.json();
-        if (!ticket) return;
+        const { token } = await tRes.json();
+        if (!token) return;
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${window.location.host}/v1/ws?ticket=${ticket}`);
+        const url = `wss://api2.freecustom.email/?mailbox=${encodeURIComponent(selectedInbox)}&token=${encodeURIComponent(token)}`;
+        ws = new WebSocket(url);
         
         ws.onopen = () => {
-          ws.send(JSON.stringify({ action: "subscribe", inboxes: [selectedInbox] }));
           keepAlive = setInterval(() => { if (ws.readyState === WebSocket.OPEN) ws.send("ping"); }, 30000);
         };
 
@@ -166,7 +154,6 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
                  return [...prev, parsed.payload].sort((a,b) => a.timestamp - b.timestamp);
                });
             } else if (parsed.type === "new_mail") {
-               // Fallback re-fetch if traditional new_mail emitted instead of specific event_update
                setTimeout(() => fetchData(), 500);
             }
           } catch (e) {}
@@ -188,46 +175,60 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
 
   const selectedRun = testRuns.find(r => r.id === selectedRunId);
   const currentTimeline = selectedRun?.events || [];
-  const otpEvent = currentTimeline.find(e => e.type === "otp_extracted");
+  const otpEvents = currentTimeline.filter(e => e.type === "otp_extracted");
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
             Auth Flow Debugger
-            {isAdvanced && <span className="flex items-center gap-1 text-[10px] text-blue-500"><Zap className="h-3 w-3" fill="currentColor"/> Live</span>}
+            {isAdvanced && (
+              <span className="flex items-center gap-1 text-[10px] text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 font-mono tracking-wider">
+                <Zap className="h-3 w-3" fill="currentColor"/> LIVE
+              </span>
+            )}
           </h2>
-          <p className="text-sm text-muted-foreground">Monitor email flow, OTP extraction, and event delivery in real-time.</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Monitor test runs, OTP extraction, and execution latency.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" asChild className="h-7 text-[10px] uppercase tracking-widest gap-1.5 bg-background shadow-sm">
+            <Link href="/api/docs/sdk/npm"><Code2 className="h-3 w-3" /> SDK</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild className="h-7 text-[10px] uppercase tracking-widest gap-1.5 bg-background shadow-sm">
+            <Link href="/api/docs"><BookOpen className="h-3 w-3" /> Docs</Link>
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-border pt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 border-t border-border pt-6">
         {/* Left Col - Inboxes */}
-        <div className="col-span-1 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="lg:col-span-3 space-y-3">
+          <div className="relative shadow-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
-              placeholder="Search inboxes..." 
-              className="pl-9 h-9" 
+              placeholder="Search testing inboxes..." 
+              className="pl-8 h-8 text-[11px] font-mono bg-background" 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           
-          <div className="border border-border rounded-lg overflow-hidden flex flex-col h-[650px] overflow-y-auto">
+          <div className="border border-border bg-background rounded-lg overflow-hidden flex flex-col h-[500px] overflow-y-auto shadow-sm">
             {filteredInboxes.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground mt-10">
-                No testing inboxes found. Register an inbox with `isTesting=true` to see them here.
+              <div className="p-6 text-center text-xs text-muted-foreground mt-10 leading-relaxed">
+                No testing inboxes found.<br/><br/>Register an inbox with <code className="bg-muted px-1 py-0.5 rounded">isTesting=true</code> to see it here.
               </div>
             ) : (
               filteredInboxes.map(inbox => (
                 <button 
                   key={inbox}
-                  className={`p-4 border-b border-border text-left hover:bg-muted/50 transition-colors flex items-center justify-between gap-3 ${selectedInbox === inbox ? 'bg-muted/20' : ''}`}
+                  className={`px-3 py-2.5 border-b border-border text-left hover:bg-muted/40 transition-colors flex items-center justify-between gap-3 ${selectedInbox === inbox ? 'bg-muted/60' : ''}`}
                   onClick={() => setSelectedInbox(inbox)}
                 >
-                  <p className="text-sm font-mono font-medium truncate">{inbox}</p>
+                  <span className="text-[11px] font-mono font-medium truncate">{inbox}</span>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
                 </button>
               ))
             )}
@@ -235,174 +236,219 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
         </div>
 
         {/* Right Col - Details Panel */}
-        <div className="col-span-1 md:col-span-2 border border-border rounded-lg p-6 min-h-[650px] flex flex-col">
+        <div className="lg:col-span-9 border border-border bg-muted/5 rounded-lg flex flex-col min-h-[500px] shadow-sm overflow-hidden">
           {!selectedInbox ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
-              <Clock className="h-8 w-8 mb-4 opacity-50" />
-              <p>Select an inbox to view its test runs and debug details.</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6">
+              <Activity className="h-8 w-8 mb-3 opacity-20" />
+              <p className="text-[10px] uppercase tracking-widest font-medium">Select an inbox to view traces</p>
             </div>
           ) : loading && testRuns.length === 0 ? (
-             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin mb-4 opacity-50" />
+             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6">
+                <Loader2 className="h-6 w-6 animate-spin opacity-50" />
              </div>
           ) : error ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-red-500">
-               <AlertCircle className="h-8 w-8 mb-4 opacity-50" />
-               <p>{error}</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-foreground p-6">
+               <AlertCircle className="h-6 w-6 mb-3 opacity-50" />
+               <p className="text-[11px]">{error}</p>
             </div>
           ) : (
-            <div className="space-y-6 flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col overflow-hidden">
               {/* Header & Test Run Selector */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border pb-4 gap-4">
-                <div>
-                  <h3 className="font-mono font-medium text-lg">{selectedInbox}</h3>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Test Run:</span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border p-3 gap-4 bg-background z-10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-semibold">Test Run</span>
                     {testRuns.length > 0 ? (
                       <select 
-                        className="text-xs font-mono bg-muted/30 border border-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring"
+                        className="text-[10px] font-mono bg-muted/30 border border-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring"
                         value={selectedRunId || ""}
                         onChange={e => setSelectedRunId(e.target.value)}
                       >
                         {testRuns.map(r => (
                           <option key={r.id} value={r.id}>
-                            {r.id} • {new Date(r.created_at).toLocaleTimeString()}
+                            {r.id} ({new Date(r.created_at).toLocaleTimeString()})
                           </option>
                         ))}
                       </select>
                     ) : (
-                      <span className="text-xs font-mono text-muted-foreground">None</span>
+                      <span className="text-[10px] font-mono text-muted-foreground bg-muted/30 border border-border rounded px-2 py-1">None</span>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={fetchData} title="Refresh">
-                    <RefreshCw className="h-3.5 w-3.5" />
+                  <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={fetchData} title="Refresh">
+                    <RefreshCw className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" className="gap-1.5">
-                    <Play className="h-3.5 w-3.5" /> Run Test Again
+                  <Button variant="outline" size="sm" className="h-6 text-[9px] uppercase tracking-widest gap-1.5" onClick={() => copyToClipboard(`await fce.otp.waitFor('${selectedInbox}')`)}>
+                    <Copy className="h-3 w-3" /> Copy Wait code
                   </Button>
                 </div>
-              </div>
-
-              {/* Developer UX Snippets */}
-              <div className="bg-muted/30 p-3 rounded-md flex justify-between items-center text-xs font-mono border border-border">
-                <span className="text-muted-foreground truncate mr-2">await fce.waitForOTP('{selectedInbox}')</span>
-                <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => copyToClipboard(`await fce.waitForOTP('${selectedInbox}')`)}>
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
               </div>
 
               {testRuns.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground py-10">
-                  <p className="text-sm">No events recorded for this inbox yet.</p>
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-10 text-center">
+                  <Clock className="h-6 w-6 mb-3 opacity-20" />
+                  <p className="text-[11px]">Waiting for the first event...</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 flex-1">
-                  {/* Timeline UI */}
-                  <div>
-                    <h4 className="text-sm font-medium uppercase tracking-widest text-muted-foreground mb-4">Event Flow</h4>
-                    <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
-                      {currentTimeline.map((event, i) => {
-                        let latencyFromPrev = 0;
-                        if (i > 0) {
-                          latencyFromPrev = event.timestamp - currentTimeline[i-1].timestamp;
-                        }
-
-                        return (
-                          <div key={event.id || i} className="relative flex flex-col group">
-                            {/* Latency Arrow Label */}
-                            {i > 0 && (
-                              <div className="flex justify-center text-[10px] text-muted-foreground -my-2 z-10 relative bg-background px-1 w-max mx-auto border border-border rounded-full">
-                                ↓ {latencyFromPrev}ms
-                              </div>
-                            )}
-
-                            {/* Event Node */}
-                            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse z-10 mt-4 mb-4">
-                              <div className={`flex items-center justify-center w-5 h-5 rounded-full border-2 bg-background shrink-0 text-[10px] shadow ${event.type === 'error' ? 'border-red-500 text-red-500' : 'border-green-500 text-green-500'}`}>
-                                {event.type === 'error' ? '!' : '✓'}
-                              </div>
-                              <div className="w-[calc(100%-2.5rem)] md:w-[calc(50%-1.5rem)] px-3 py-2 bg-muted/30 rounded border border-border flex flex-col">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="font-medium text-sm capitalize">{event.type.replace(/_/g, ' ')}</p>
-                                  {/* Slow Badge Logic */}
-                                  {latencyFromPrev > 2000 && (
-                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded">
-                                      ⚠️ slow
-                                    </span>
-                                  )}
+                <Tabs defaultValue="flow" className="flex-1 flex flex-col overflow-hidden w-full">
+                  <div className="px-3 pt-2 border-b border-border bg-background shrink-0">
+                    <TabsList className="h-7 bg-muted/50 w-auto inline-flex rounded-none border-b-0 p-0 overflow-hidden">
+                      <TabsTrigger value="flow" className="text-[9px] h-7 px-3 rounded-none uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:border-t data-[state=active]:border-x data-[state=active]:border-border data-[state=active]:shadow-none">Visual Flow</TabsTrigger>
+                      <TabsTrigger value="advanced" className="text-[9px] h-7 px-3 rounded-none uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:border-t data-[state=active]:border-x data-[state=active]:border-border data-[state=active]:shadow-none">Detailed Logs</TabsTrigger>
+                    </TabsList>
+                  </div>
+                  
+                  {/* FLOW TAB */}
+                  <TabsContent value="flow" className="flex-1 p-4 m-0 overflow-y-auto focus-visible:outline-none">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-6">
+                      {/* Timeline UI */}
+                      <div className="relative">
+                        <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border z-0" />
+                        <div className="space-y-4 relative z-10">
+                          {currentTimeline.map((event, i) => {
+                            const isError = event.type === 'error';
+                            const latency = i > 0 ? event.timestamp - currentTimeline[i-1].timestamp : 0;
+                            
+                            return (
+                              <div key={event.id || i} className="relative pl-7 group">
+                                <div className={`absolute left-0 top-1 w-[22px] h-[22px] rounded-md border flex items-center justify-center bg-background text-[9px] font-bold ${isError ? 'border-foreground text-foreground' : 'border-border text-foreground'}`}>
+                                  {isError ? '!' : String(i + 1)}
                                 </div>
-                                {event.metadata?.error && <p className="text-xs text-red-500 mt-1">{event.metadata.error}</p>}
+                                <div className="bg-background border border-border rounded-lg p-2.5 shadow-sm group-hover:border-foreground/20 transition-colors">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <p className="text-[11px] font-semibold capitalize text-foreground">{event.type.replace(/_/g, ' ')}</p>
+                                    {latency > 0 && (
+                                      <span className="text-[9px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                                        +{latency}ms
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] font-mono text-muted-foreground break-all space-y-0.5">
+                                    {event.metadata?.subject && <p className="truncate"><span className="text-foreground/40 mr-1">Subject:</span> {event.metadata.subject}</p>}
+                                    {event.metadata?.from && <p className="truncate"><span className="text-foreground/40 mr-1">From:</span> {event.metadata.from}</p>}
+                                    {event.metadata?.error && <p className="text-foreground mt-1 bg-muted/50 p-1 rounded">{event.metadata.error}</p>}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Right Side - OTP & Insights */}
+                      <div className="space-y-4">
+                        {otpEvents.length > 0 ? (
+                          otpEvents.map((otpEvent, i) => (
+                            <div key={i} className="bg-background border border-border rounded-lg p-3 shadow-sm">
+                              <h4 className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5 border-b border-border pb-1.5">Extracted Payload</h4>
+                              <div className="space-y-3">
+                                <div>
+                                  <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1">OTP Code</p>
+                                  <div className="flex items-center justify-between bg-muted/30 p-2 rounded border border-border">
+                                    <span className="font-mono text-base font-bold tracking-widest">{otpEvent.metadata?.otp || "N/A"}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      {otpEvent.metadata?.score !== undefined && (
+                                        <span className="text-[9px] font-medium bg-foreground text-background px-1.5 py-0.5 rounded">
+                                          {(otpEvent.metadata.score * 100).toFixed(0)}% Conf
+                                        </span>
+                                      )}
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(otpEvent.metadata?.otp || '')}>
+                                        <Copy className="h-3 w-3"/>
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                                {otpEvent.metadata?.raw_snippet && (
+                                  <div>
+                                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1">Source Snippet</p>
+                                    <div className="bg-muted/30 p-1.5 rounded border border-border max-h-24 overflow-y-auto">
+                                      <code className="text-[9px] font-mono text-muted-foreground">{otpEvent.metadata.raw_snippet}</code>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
+                          ))
+                        ) : (
+                          <div className="bg-background border border-border border-dashed rounded-lg p-5 text-center shadow-sm">
+                            <p className="text-[10px] text-muted-foreground">No OTP extraction events in this run.</p>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                        )}
 
-                  {/* Right Side - OTP & Insights */}
-                  <div className="space-y-6">
-                    {/* OTP Debug */}
-                    <div className="bg-muted/10 border border-border rounded-lg p-4">
-                      <h4 className="text-sm font-medium uppercase tracking-widest text-muted-foreground mb-3">OTP Payload</h4>
-                      {otpEvent?.metadata?.otp ? (
-                        <div className="space-y-3">
-                          <div>
-                            <span className="text-xs text-muted-foreground">Extracted OTP</span>
-                            <div className="flex items-center justify-between">
-                              <p className="font-mono text-xl">{otpEvent.metadata.otp}</p>
-                              {otpEvent.metadata.score !== undefined && (
-                                <span className="ml-2 text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 px-1.5 py-0.5 rounded">
-                                  {otpEvent.metadata.score * 100}% confidence
-                                </span>
-                              )}
-                              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(otpEvent.metadata!.otp!)} className="ml-auto"><Copy className="h-3.5 w-3.5"/></Button>
-                            </div>
+                        {insights.length > 0 && (
+                          <div className="bg-background border border-foreground/20 rounded-lg p-3 shadow-sm">
+                            <h4 className="text-[9px] font-semibold uppercase tracking-widest text-foreground mb-2.5 border-b border-border pb-1.5 flex items-center gap-1.5">
+                              <AlertCircle className="h-3 w-3" /> Diagnostics
+                            </h4>
+                            <ul className="space-y-1.5">
+                              {insights.map((insight, idx) => (
+                                <li key={idx} className="text-[10px] text-muted-foreground bg-muted/50 p-1.5 rounded border border-border">
+                                  {insight.message}
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          {otpEvent.metadata.raw_snippet && (
-                            <div>
-                              <span className="text-xs text-muted-foreground">Raw Source Snippet</span>
-                              <div className="mt-1 p-2 bg-muted/50 rounded border border-border max-h-32 overflow-y-auto">
-                                <code className="text-xs font-mono">{otpEvent.metadata.raw_snippet}</code>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No OTP extraction event in this run.</p>
-                      )}
+                        )}
+                      </div>
                     </div>
+                  </TabsContent>
 
-                    {/* Insights Panel */}
-                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4">
-                      <h4 className="text-sm font-medium uppercase tracking-widest text-muted-foreground mb-3">Run Diagnostics</h4>
-                      {!isAdvanced ? (
-                        <div className="text-sm text-muted-foreground">
-                          <p>Detailed diagnostics require Growth plan or higher. Upgrade to unlock.</p>
+                  {/* ADVANCED TAB */}
+                  <TabsContent value="advanced" className="flex-1 p-0 m-0 overflow-hidden flex flex-col focus-visible:outline-none">
+                    <div className="flex-1 overflow-y-auto bg-[#0A0A0A] p-4 text-gray-300 font-mono text-[10px] leading-relaxed select-all">
+                      {currentTimeline.map((event, i) => (
+                        <div key={event.id || i} className="mb-2 pb-2 border-b border-gray-800/50 last:border-0 hover:bg-white/5 p-1 -mx-1 px-1 rounded transition-colors">
+                          <div className="flex items-center gap-2 opacity-50 mb-1">
+                            <span>[{new Date(event.timestamp).toISOString()}]</span>
+                            <span className="text-blue-400">event={event.type}</span>
+                            <span>id={event.id.slice(0,8)}</span>
+                          </div>
+                          <div className="pl-3 border-l border-gray-800/50 ml-1">
+                            {event.metadata ? (
+                              <pre className="whitespace-pre-wrap font-inherit text-[9px] leading-normal opacity-80">
+                                {JSON.stringify(event.metadata, null, 2)}
+                              </pre>
+                            ) : (
+                              <span className="opacity-40 text-[9px]">{"{ no_metadata: true }"}</span>
+                            )}
+                          </div>
                         </div>
-                      ) : insights.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No failure insights detected for this inbox. Everything looks good!</p>
-                      ) : (
-                        <ul className="space-y-2 text-sm">
-                          {insights.map((insight, idx) => (
-                            <li key={idx} className="flex gap-2 text-amber-500 bg-amber-500/10 p-2 rounded border border-amber-500/20">
-                              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" /> 
-                              <span>{insight.message}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                </div>
+                  </TabsContent>
+                </Tabs>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Latency Graph Panel */}
+      {graphData.length > 0 && (
+        <div className="border-t border-border pt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-foreground">Recent Test Runs Latency</h3>
+            <p className="text-[9px] font-mono text-muted-foreground">Last {graphData.length} runs across all testing inboxes</p>
+          </div>
+          <div className="h-32 bg-background border border-border rounded-lg p-3 flex items-end justify-start gap-1 sm:gap-1.5 overflow-x-auto relative shadow-sm">
+            {graphData.map((d, i) => {
+              const maxDur = Math.max(...graphData.map(g => g.duration), 100);
+              const heightPct = Math.max(2, (d.duration / maxDur) * 100);
+              return (
+                <div key={d.id + i} className="flex flex-col items-center justify-end h-full group flex-shrink-0 min-w-[12px] w-[12px] relative cursor-crosshair">
+                  <div className="w-full bg-muted-foreground/20 group-hover:bg-foreground/60 transition-colors rounded-t-[2px]" style={{ height: `${heightPct}%` }} />
+                  <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-foreground text-background px-2 py-1 rounded text-[9px] font-mono pointer-events-none transition-opacity z-20 shadow-md whitespace-nowrap">
+                    Run: {d.id.slice(0, 8)}<br/>
+                    {d.duration}ms
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

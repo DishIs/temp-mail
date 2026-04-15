@@ -766,7 +766,6 @@ function ApiDashboardContent() {
               </div>
               <div className="flex items-center gap-2">
                 <Button asChild variant="ghost" size="sm"><Link href="/api/playground">Playground</Link></Button>
-                <Button asChild variant="ghost" size="sm"><Link href="/api">Overview</Link></Button>
                 <Button asChild size="sm"><Link href="/api/pricing">Upgrade</Link></Button>
               </div>
             </div>
