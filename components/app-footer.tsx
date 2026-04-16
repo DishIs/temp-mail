@@ -263,7 +263,7 @@ export function AppFooter() {
         {/* ── run in postman ─────────────────────────────────────────── */}
         <div className="max-w-[90rem] mx-auto px-8 py-5 flex items-center gap-4">
           <a
-            href="https://www.postman.com/freecustom-email/freecustom-email-for-developers-temp-mail-api/collection/53581811-ebb488ee-fc2a-4234-b518-21d857d472b7"
+            href="https://www.postman.com/freecustom-email/freecustom-email-auth-flow-testing-debugging/collection/53581811-ebb488ee-fc2a-4234-b518-21d857d472b7/?action=share&creator=53581811"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block transition-opacity hover:opacity-80"

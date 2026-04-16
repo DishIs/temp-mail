@@ -82,7 +82,7 @@ export default function QuickstartPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3">
           <p className="font-medium text-foreground mb-1 sm:mb-0">Full API reference</p>
           <a
-            href="https://www.postman.com/freecustom-email/freecustom-email-for-developers-temp-mail-api/collection/53581811-ebb488ee-fc2a-4234-b518-21d857d472b7"
+            href="https://www.postman.com/freecustom-email/freecustom-email-auth-flow-testing-debugging/collection/53581811-ebb488ee-fc2a-4234-b518-21d857d472b7/?action=share&creator=53581811"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block transition-opacity hover:opacity-80"
