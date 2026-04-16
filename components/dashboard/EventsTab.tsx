@@ -57,12 +57,14 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
         <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-6 border border-blue-500/20">
           <Clock className="h-6 w-6 text-blue-500" />
         </div>
-        <h2 className="text-xl font-bold tracking-tight mb-2">Auth Flow Debugger</h2>
+        <h2 className="text-xl font-bold tracking-tight mb-2 flex items-center justify-center gap-2">
+          🔒 Debug your auth flows in real-time
+        </h2>
         <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed mb-6">
-          Visually trace email delivery, OTP extraction, and sub-millisecond latencies. Requires Startup plan or higher.
+          Upgrade to Growth to unlock timeline & insights. Visually trace email delivery, OTP extraction, and sub-millisecond latencies.
         </p>
         <div className="flex gap-4">
-          <Button asChild><Link href="/api/pricing">Upgrade to Unlock</Link></Button>
+          <Button asChild><Link href="/api/pricing">Upgrade to Growth</Link></Button>
           <Button variant="outline" asChild><Link href="/api/auth-flow-debugger">Learn More</Link></Button>
         </div>
       </div>
@@ -252,7 +254,11 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
           {!selectedInbox ? (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6">
               <Activity className="h-8 w-8 mb-3 opacity-20" />
-              <p className="text-[10px] uppercase tracking-widest font-medium">Select an inbox to view traces</p>
+              <p className="text-[10px] uppercase tracking-widest font-medium mb-2">Select an inbox to view traces</p>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Run your test → see timeline here. <br/>
+                Use <code>startTest()</code> to track flows.
+              </p>
             </div>
           ) : (loading || switchingInbox) && testRuns.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6">
@@ -301,7 +307,11 @@ export function EventsTab({ planName, apiInboxes = [] }: { planName: string, api
               {testRuns.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-10 text-center">
                   <Clock className="h-6 w-6 mb-3 opacity-20" />
-                  <p className="text-[11px]">Waiting for the first event...</p>
+                  <p className="text-[11px] mb-2">Waiting for the first event...</p>
+                  <p className="text-[10px] text-muted-foreground bg-muted/30 px-3 py-2 rounded border border-border">
+                    💡 Hint: Run your test → see timeline here.<br/>
+                    Use <code>startTest()</code> in our SDK to track flows properly.
+                  </p>
                 </div>
               ) : (
                 <Tabs defaultValue="flow" className="flex-1 flex flex-col min-w-0 min-h-0 w-full h-full">

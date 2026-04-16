@@ -799,7 +799,7 @@ function ApiDashboardContent() {
               {TABS.map(tab => (
                 <TabsTrigger key={tab} value={tab}
                   className="rounded-none px-4 pb-3 pt-0 text-sm border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=active]:shadow-none capitalize whitespace-nowrap">
-                  {tab === "keys" ? "API Keys" : tab === "events" ? "Auth Flow Debugger (new)" : tab}
+                  {tab === "keys" ? "API Keys" : tab === "events" ? "Auth Flow Debugger" : tab}
                 </TabsTrigger>
               ))}
             </TabsList>
