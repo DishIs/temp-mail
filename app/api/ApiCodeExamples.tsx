@@ -18,32 +18,41 @@ curl "https://api2.freecustom.email/v1/inboxes/test@ditapi.info/otp" \\
 const NODE = `import { FreecustomEmailClient } from 'freecustom-email';
 // npm install freecustom-email
 
-const client = new FreecustomEmailClient({
-  apiKey: process.env.FCE_API_KEY,
-});
+const client = new FreecustomEmailClient({ apiKey: process.env.FCE_API_KEY! });
+const email = 'test@ditapi.info';
 
-// Register a disposable inbox
-await client.inboxes.register('test@ditapi.info');
+await client.inboxes.register(email, true);
+await client.inboxes.startTest(email, 'signup-test-1');
 
-// Wait for OTP — no polling, no regex
-const otp = await client.otp.waitFor('test@ditapi.info');
-console.log(otp); // '212342'`;
+// Trigger your app...
 
-const PYTHON = `from freecustom_email import FreeCustomEmail
+const otp = await client.otp.waitFor(email);
+console.log('OTP:', otp);
+
+const timeline = await client.inboxes.getTimeline(email, 'signup-test-1');
+console.log(timeline);`;
+
+const PYTHON = `import asyncio, os
+from freecustom_email import FreeCustomEmail
 # pip install freecustom-email
-import asyncio, os
-
-client = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"])
 
 async def main():
-    # Register a disposable inbox
-    await client.inboxes.register("test@ditapi.info")
+    client = FreeCustomEmail(api_key=os.environ["FCE_API_KEY"])
+    email = "test@ditapi.info"
 
-    # Wait for OTP — no polling, no regex
-    otp = await client.otp.wait_for("test@ditapi.info")
-    print(otp)  # '212342'
+    await client.inboxes.register(email, is_testing=True)
+    await client.inboxes.start_test(email, "signup-test-1")
 
-asyncio.run(main())`;
+    # Trigger your app...
+
+    otp = await client.otp.wait_for(email)
+    print(f"OTP: {otp}")
+
+    timeline = await client.inboxes.get_timeline(email, "signup-test-1")
+    print(timeline)
+
+if __name__ == "__main__":
+    asyncio.run(main())`;
 
 const GO = `package main
 
