@@ -1,9 +1,10 @@
 // app/layout.tsx
 import "../styles/global.css";
 import Providers from "@/components/Providers";
-import NextTopLoader from 'nextjs-toploader';
 import Script from 'next/script';
 import { AffiliateTracker } from "@/components/AffiliateTracker";
+import { BlogTopLoader } from "@/components/BlogTopLoader";
+import { Suspense } from "react";
 
 const BASE_URL = 'https://www.freecustom.email';
 
@@ -61,6 +62,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
 
       <body>
+        <Suspense fallback={null}>
+          <BlogTopLoader />
+        </Suspense>
         <AffiliateTracker />
         {/*
         <NextTopLoader

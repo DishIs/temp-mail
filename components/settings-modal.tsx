@@ -21,6 +21,7 @@ export interface UserSettings {
   smartOtp: boolean;
   /** Auto-categorize emails by brand (Discord, Instagram, etc.) — Pro only */
   categorization: boolean;
+  skipMessageDeleteConfirm?: boolean;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -30,6 +31,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   shortcuts: { refresh: "r", copy: "c", delete: "d", new: "n", qr: "q" },
   smartOtp: false,          // will be set to true for Pro on first load
   categorization: false,    // opt-in, Pro only
+  skipMessageDeleteConfirm: false,
 };
 
 /** Call this once after session loads to apply Pro defaults */
@@ -297,6 +299,19 @@ export function SettingsModal({
                     </div>
                   </div>
                 )}
+
+                {/* Skip Delete Confirmation */}
+                <div className="mt-4">
+                  <SettingRow
+                    label="Skip Delete Confirmations"
+                    description="Instantly delete individual messages without asking for confirmation."
+                  >
+                    <Switch
+                      checked={local.skipMessageDeleteConfirm}
+                      onCheckedChange={c => update("skipMessageDeleteConfirm", c)}
+                    />
+                  </SettingRow>
+                </div>
               </div>
             )}
 
