@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
+import NProgress from "nprogress";
 
 interface SearchResult {
   title: string;
@@ -110,6 +111,11 @@ export function SearchModal({ triggerClass }: { triggerClass?: string }) {
     setOpen(false);
     const destination = query.trim() ? `${item.url}?sq=${encodeURIComponent(query.trim())}` : item.url;
     setQuery("");
+    
+    if (destination.includes("/blog")) {
+      NProgress.start();
+    }
+    
     router.push(destination);
   };
 
