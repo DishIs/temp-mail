@@ -3,6 +3,7 @@ import "../styles/global.css";
 import Providers from "@/components/Providers";
 import NextTopLoader from 'nextjs-toploader';
 import Script from 'next/script';
+import { AffiliateTracker } from "@/components/AffiliateTracker";
 
 const BASE_URL = 'https://www.freecustom.email';
 
@@ -60,6 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
 
       <body>
+        <AffiliateTracker />
         {/*
         <NextTopLoader
           color="#2299DD"

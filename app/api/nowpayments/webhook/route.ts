@@ -180,6 +180,16 @@ export async function POST(request: Request) {
   };
 
   try {
+    // Track affiliate purchase asynchronously if completed
+    if (eventType === "ACTIVATED" || eventType === "PAYMENT_COMPLETED") {
+      const amountParsed = parseFloat(payload.amount || "0");
+      if (amountParsed > 0) {
+        import("@/lib/affiliate-tracker").then(({ trackAffiliatePurchase }) => {
+          trackAffiliatePurchase(payload.userId, amountParsed).catch(console.error);
+        }).catch(console.error);
+      }
+    }
+
     await fetchFromServiceAPI("/nowpayments/event", {
       method: "POST",
       body:   JSON.stringify(payload),

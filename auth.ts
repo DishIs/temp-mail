@@ -91,6 +91,21 @@ const config: NextAuthConfig = {
   callbacks: {
     async signIn({ user }) {
       upsertUser({ id: user.id!, email: user.email, name: user.name });
+      
+      // Async affiliate tagging
+      try {
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        const affiliateRef = cookieStore.get('affiliate_ref')?.value;
+        if (affiliateRef && user.id) {
+          const { tagUserWithAffiliate } = await import('@/lib/affiliate-tracker');
+          // Fire and forget tagging
+          tagUserWithAffiliate(user.id, affiliateRef).catch(console.error);
+        }
+      } catch (e) {
+        console.error('Affiliate tagging failed in signIn:', e);
+      }
+
       return true;
     },
 

@@ -1203,10 +1203,39 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
   const handleDeleteAction = (type: "inbox" | "message", id?: string) => {
     if (!isAuthenticated && type === "message") { setAuthNeedFeature("Delete Message"); setIsAuthNeedOpen(true); return; }
     if (!isPro && type === "message") { openUpsell("Permanent Deletion"); return; }
-    if (type === "inbox") deleteEmail(); else if (id) { setItemToDelete({ type: "message", id }); setIsDeleteModalOpen(true); }
+    
+    if (type === "inbox") {
+      deleteEmail();
+    } else if (id) {
+      if (userSettings.skipMessageDeleteConfirm) {
+        // Fire and forget, optimistic update
+        const originalMessages = [...messages];
+        setMessages(msgs => msgs.filter(m => m.id !== id));
+        
+        // Background deletion
+        const headers: Record<string, string> = { "x-fce-client": "web-client" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        
+        fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${id}`, { method: "DELETE", headers })
+          .then(async r => {
+            if (!r.ok) {
+              setMessages(originalMessages);
+              const d = await r.json().catch(() => ({}));
+              showApiError("generic", d.message || "Delete failed.");
+            }
+          })
+          .catch(e => {
+            setMessages(originalMessages);
+            showApiError("generic", "Network error.");
+          });
+      } else {
+        setItemToDelete({ type: "message", id }); 
+        setIsDeleteModalOpen(true);
+      }
+    }
   };
 
-  const handleDeleteConfirmation = async () => {
+  const handleDeleteConfirmation = async (dontAskAgain?: boolean) => {
     if (itemToDelete?.type === "email") {
       const allowedDomainsList = fetchedDomains.filter(d => checkDomainAllowed(d.domain, fetchedDomains)).map(d => d.domain);
       const d = getPreferredDomain(allowedDomainsList, localStorage.getItem("primaryDomain"), freeDomainSet);
@@ -1220,26 +1249,42 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
         }).catch(() => { });
       }
     } else if (itemToDelete?.type === "message" && itemToDelete.id) {
+      const targetId = itemToDelete.id; // Store locally before clearing state
+      
+      // Save user preference if checked
+      if (dontAskAgain) {
+        const newSettings = { ...userSettings, skipMessageDeleteConfirm: true };
+        setUserSettings(newSettings);
+        if (isAuthenticated) {
+          fetch("/api/user/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newSettings) }).catch(() => { });
+        }
+      }
+
+      // Optimistic Update
+      const originalMessages = [...messages];
+      setMessages(msgs => msgs.filter(m => m.id !== targetId));
+      
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
+
+      // Background actual deletion
       try {
         const headers: Record<string, string> = { "x-fce-client": "web-client" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
-        const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${itemToDelete.id}`, { method: "DELETE", headers });
+        const r = await fetch(`${API_ENDPOINT}?fullMailboxId=${email}&messageId=${targetId}`, { method: "DELETE", headers });
+        
         if (!r.ok) {
+          setMessages(originalMessages);
           let body: { message?: string; code?: string } | null = null;
           try { body = await r.json(); } catch { }
           const { kind, message } = classifyApiError(r.status, body, isPro);
           showApiError(kind, message);
-          return;
-        }
-        const d = await r.json();
-        if (d.success) {
-          setMessages(msgs => msgs.filter(m => m.id !== itemToDelete.id));
-        } else {
-          showApiError("generic", d.message || "Delete failed.");
         }
       } catch {
+        setMessages(originalMessages);
         showApiError("network");
       }
+      return; // Early return to avoid setting state to null twice
     }
     setIsDeleteModalOpen(false);
     setItemToDelete(null);
@@ -1992,7 +2037,13 @@ export function EmailBox({ serverProfile }: EmailBoxProps) {
       <UpsellModal isOpen={isUpsellOpen} onClose={() => setIsUpsellOpen(false)} featureName={upsellFeature} />
       <CreditsSuccessModal isOpen={showCreditsSuccess} onClose={() => setShowCreditsSuccess(false)} />
       <AuthNeed isOpen={isAuthNeedOpen} onClose={() => setIsAuthNeedOpen(false)} featureName={authNeedFeature} />
-      <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirmation} itemToDelete={itemToDelete?.type === "email" ? "email address" : "message"} />
+      <DeleteConfirmationModal 
+        isOpen={isDeleteModalOpen} 
+        onClose={() => setIsDeleteModalOpen(false)} 
+        onConfirm={handleDeleteConfirmation} 
+        itemToDelete={itemToDelete?.type === "email" ? "email address" : "message"} 
+        showDontAskAgain={itemToDelete?.type === "message"} 
+      />
     </div>
   );
 }

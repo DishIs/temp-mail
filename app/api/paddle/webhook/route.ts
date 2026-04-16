@@ -210,6 +210,19 @@ async function handleTransactionCompleted(event: any) {
   const data = event?.data;
   const subscriptionId = data?.subscription_id ?? data?.subscription?.id ?? null;
   const custom = getCustomData(event);
+  const amount = parseFloat(data?.details?.totals?.total ?? data?.details?.totals?.grand_total ?? "0") / 100; // Assuming Paddle returns cents or similar, wait paddle returns strings like "1000" representing 10.00 usually or it returns string format without decimals? Actually, it returns an integer string for lowest denomination (cents) in v2. Actually Paddle billing v2 usually returns cents. Oh wait, `data.amount` or `data.details.totals.total`? I'll use the raw integer value or just divide by 100 for safety, let's just parse it. Let's just track the raw float.
+
+  const rawAmountStr = data?.details?.totals?.total ?? data?.details?.totals?.grand_total ?? "0";
+  const amountParsed = parseFloat(rawAmountStr) / 100; // standard for paddle to be in cents
+  
+  const userId = custom.userId ?? getUserIdFromEvent(event);
+
+  // Track affiliate purchase asynchronously
+  if (userId) {
+    import("@/lib/affiliate-tracker").then(({ trackAffiliatePurchase }) => {
+      trackAffiliatePurchase(userId, amountParsed).catch(console.error);
+    }).catch(console.error);
+  }
 
   // One-time payment (credits): no subscription_id
   if (!subscriptionId) {

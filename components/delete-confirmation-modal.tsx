@@ -4,19 +4,28 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (dontAskAgain?: boolean) => void;
   itemToDelete: string;
+  showDontAskAgain?: boolean;
 }
 
 export function DeleteConfirmationModal({
-  isOpen, onClose, onConfirm, itemToDelete,
+  isOpen, onClose, onConfirm, itemToDelete, showDontAskAgain
 }: DeleteConfirmationModalProps) {
+  const [dontAskAgain, setDontAskAgain] = useState(false);
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+      else setDontAskAgain(false); // Reset state when opening
+    }}>
       <DialogContent
         className={[
           "sm:max-w-[380px] p-0 gap-0 overflow-hidden",
@@ -37,18 +46,32 @@ export function DeleteConfirmationModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-6 flex items-start gap-4">
-          <div className="mt-0.5 shrink-0 h-9 w-9 rounded-md border border-border bg-muted/20 flex items-center justify-center">
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+        <div className="px-6 py-6 flex flex-col gap-4">
+          <div className="flex items-start gap-4">
+            <div className="mt-0.5 shrink-0 h-9 w-9 rounded-md border border-border bg-muted/20 flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-1">
+                Delete this {itemToDelete}?
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                This action cannot be undone.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground mb-1">
-              Delete this {itemToDelete}?
-            </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              This action cannot be undone.
-            </p>
-          </div>
+          {showDontAskAgain && (
+            <div className="flex items-center space-x-2 mt-2 ml-13 pl-13">
+              <Checkbox 
+                id="dontAskAgain" 
+                checked={dontAskAgain} 
+                onCheckedChange={(checked) => setDontAskAgain(checked === true)} 
+              />
+              <Label htmlFor="dontAskAgain" className="text-sm text-muted-foreground cursor-pointer">
+                Don't ask again
+              </Label>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -57,7 +80,7 @@ export function DeleteConfirmationModal({
             className="font-mono text-xs uppercase tracking-widest">
             Cancel
           </Button>
-          <Button variant="destructive" size="sm" onClick={onConfirm}
+          <Button variant="destructive" size="sm" onClick={() => onConfirm(dontAskAgain)}
             className="font-mono text-xs uppercase tracking-widest">
             Delete
           </Button>
@@ -66,4 +89,5 @@ export function DeleteConfirmationModal({
     </Dialog>
   );
 }
+
 
